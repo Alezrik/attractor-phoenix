@@ -110,6 +110,8 @@ defmodule AttractorEx.Agent.Session do
     |> emit(:session_end, %{})
   end
 
+  defp process_followups(%__MODULE__{state: :closed} = session), do: session
+
   defp process_followups(%__MODULE__{} = session) do
     case :queue.out(session.followup_queue) do
       {{:value, next_input}, rest} ->

@@ -532,6 +532,29 @@ defmodule AttractorEx.Agent.SessionTest do
            end)
   end
 
+  test "llm error does not drop queued follow-up input" do
+    profile =
+      ProviderProfile.new(
+        id: "openai",
+        model: "gpt-5.2",
+        tools: [echo_tool()],
+        provider_options: %{"scenario" => "unused"}
+      )
+
+    client = %Client{providers: %{"openai" => AttractorExTest.LLMErrorAdapter}}
+
+    session =
+      Session.new(client, profile,
+        execution_env: LocalExecutionEnvironment.new(working_dir: File.cwd!())
+      )
+      |> Session.follow_up("second prompt")
+
+    completed = Session.submit(session, "first prompt")
+
+    assert completed.state == :closed
+    assert :queue.to_list(completed.followup_queue) == ["second prompt"]
+  end
+
   test "uses cwd fallback when execution env is not local env struct" do
     profile =
       ProviderProfile.new(
