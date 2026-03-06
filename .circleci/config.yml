@@ -44,9 +44,18 @@ jobs:
       - run:
           name: Run Credo
           command: mix credo --strict
+      - restore_cache:
+          keys:
+            - v1-dialyzer-{{ arch }}-{{ checksum "mix.lock" }}-{{ checksum "mix.exs" }}
+            - v1-dialyzer-{{ arch }}-{{ checksum "mix.lock" }}
+            - v1-dialyzer-{{ arch }}-
       - run:
           name: Run Dialyzer
           command: MIX_ENV=dev mix dialyzer --format short
+      - save_cache:
+          key: v1-dialyzer-{{ arch }}-{{ checksum "mix.lock" }}-{{ checksum "mix.exs" }}
+          paths:
+            - _build/dev
 
   tests_and_coverage:
     executor: elixir
