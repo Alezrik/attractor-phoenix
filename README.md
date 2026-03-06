@@ -85,6 +85,63 @@ Upstream baseline currently tracked by this repo:
 2. Local reference clone path: `_attractor_reference`
 3. Update reminder: re-check upstream spec changes periodically and update tests/implementation when this hash changes.
 
+## LLM Node Configuration (`codergen`)
+
+`box`-shaped nodes (or `type="codergen"`) execute through `AttractorEx.Handlers.Codergen`.
+
+Current configuration model:
+
+1. Node prompt comes from `prompt` (fallback: `label`).
+2. `$goal` in prompt is expanded from graph attribute `goal`.
+3. Preferred path: unified LLM client via `llm_client: %AttractorEx.LLM.Client{...}`.
+4. Legacy path: backend module via `codergen_backend: YourBackendModule`.
+5. Legacy backend contract: `run(node, prompt, context) :: String.t() | AttractorEx.Outcome.t()`.
+
+Unified client request fields are read from node attrs:
+
+1. `llm_model` (required for unified path, or pass `opts[:llm_model]`)
+2. `llm_provider` (optional if client default provider is set, or pass `opts[:llm_provider]`)
+3. `reasoning_effort` (default `"high"`)
+4. `max_tokens` and `temperature` (optional)
+
+Example unified client:
+
+```elixir
+llm_client = %AttractorEx.LLM.Client{
+  providers: %{"openai" => MyApp.OpenAIAdapter},
+  default_provider: "openai"
+}
+
+{:ok, result} =
+  AttractorEx.run(dot_source, %{}, llm_client: llm_client)
+```
+
+Example legacy backend:
+
+```elixir
+defmodule MyApp.LLMBackend do
+  alias AttractorEx.Outcome
+
+  def run(node, prompt, _context) do
+    # Replace this with OpenAI/Anthropic/etc API call.
+    response = "[LLM] #{node.id}: #{prompt}"
+    Outcome.success(%{"responses" => %{node.id => response}}, "LLM call complete")
+  end
+end
+```
+
+Example run:
+
+```elixir
+{:ok, result} =
+  AttractorEx.run(dot_source, %{}, codergen_backend: MyApp.LLMBackend)
+```
+
+Notes:
+
+1. If no backend is passed, simulation backend is used.
+2. Codergen writes `prompt.md`, `response.md`, and `status.json` per stage under run logs.
+
 ## Testing and Coverage
 
 ```bash

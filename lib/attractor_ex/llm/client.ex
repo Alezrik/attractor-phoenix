@@ -1,0 +1,82 @@
+defmodule AttractorEx.LLM.Client do
+  @moduledoc false
+
+  alias AttractorEx.LLM.Request
+
+  defstruct providers: %{}, default_provider: nil, middleware: []
+
+  @type t :: %__MODULE__{
+          providers: %{optional(String.t()) => module()},
+          default_provider: String.t() | nil,
+          middleware: list((Request.t(), (Request.t() -> any()) -> any()))
+        }
+
+  def complete(%__MODULE__{} = client, %Request{} = request) do
+    case complete_with_request(client, request) do
+      {:ok, response, _resolved_request} -> response
+      {:error, _reason} = error -> error
+      other -> other
+    end
+  end
+
+  def complete_with_request(%__MODULE__{} = client, %Request{} = request) do
+    run_with_middleware(client.middleware, request, fn req ->
+      with {:ok, provider_name} <- resolve_provider(client, req),
+           {:ok, adapter} <- fetch_adapter(client, provider_name) do
+        resolved_request = %{req | provider: provider_name}
+
+        case adapter.complete(resolved_request) do
+          {:error, _reason} = error -> error
+          response -> {:ok, response, resolved_request}
+        end
+      end
+    end)
+    |> normalize_complete_result(request)
+  end
+
+  defp normalize_complete_result(
+         {:ok, _response, %Request{} = _resolved_request} = result,
+         _request
+       ),
+       do: result
+
+  defp normalize_complete_result({:error, _reason} = error, _request), do: error
+
+  defp normalize_complete_result(response, %Request{} = request) do
+    # Allow middleware short-circuit returning a response directly.
+    {:ok, response, request}
+  end
+
+  defp resolve_provider(client, request) do
+    provider = blank_to_nil(request.provider) || blank_to_nil(client.default_provider)
+
+    if is_binary(provider) do
+      {:ok, provider}
+    else
+      {:error, :provider_not_configured}
+    end
+  end
+
+  defp fetch_adapter(client, provider_name) do
+    case Map.get(client.providers, provider_name) do
+      nil -> {:error, {:provider_not_registered, provider_name}}
+      adapter -> {:ok, adapter}
+    end
+  end
+
+  defp run_with_middleware([], request, call), do: call.(request)
+
+  defp run_with_middleware([middleware | rest], request, call) when is_function(middleware, 2) do
+    middleware.(request, fn req -> run_with_middleware(rest, req, call) end)
+  end
+
+  defp run_with_middleware([_ | rest], request, call),
+    do: run_with_middleware(rest, request, call)
+
+  defp blank_to_nil(nil), do: nil
+
+  defp blank_to_nil(value) do
+    trimmed = value |> to_string() |> String.trim()
+    if trimmed == "", do: nil, else: trimmed
+  end
+end

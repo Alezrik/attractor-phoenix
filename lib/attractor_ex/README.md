@@ -42,6 +42,66 @@ digraph attractor {
 {:ok, result} = AttractorEx.run(dot, %{})
 ```
 
+## Configuring LLM Nodes (`codergen`)
+
+`AttractorEx` treats `box` nodes (or `type="codergen"`) as LLM stages.
+
+Handler behavior:
+
+1. Prompt source: node `prompt` (fallback: node `label`).
+2. Variable expansion: `$goal` from graph-level `goal`.
+3. Preferred backend selection: `opts[:llm_client]` using unified LLM client.
+4. Legacy backend selection: `opts[:codergen_backend]`.
+5. Legacy backend contract: module with `run(node, prompt, context)` returning:
+   - `String` (will be written to `response.md`), or
+   - `%AttractorEx.Outcome{}` (full control of status/context updates).
+
+Unified client contract:
+
+1. Build client with providers map and optional default:
+   - `%AttractorEx.LLM.Client{providers: %{"openai" => MyAdapter}, default_provider: "openai"}`
+2. Adapter module contract:
+   - `complete(%AttractorEx.LLM.Request{}) :: %AttractorEx.LLM.Response{} | {:error, term()}`
+3. Node attrs used for unified request:
+   - `llm_model`, `llm_provider`, `reasoning_effort`, `max_tokens`, `temperature`
+
+Example backend module:
+
+```elixir
+defmodule MyApp.LLMBackend do
+  alias AttractorEx.Outcome
+
+  def run(node, prompt, _context) do
+    # Call your LLM provider here.
+    text = "Response for #{node.id}: #{prompt}"
+    Outcome.success(%{"responses" => %{node.id => text}}, "LLM completed")
+  end
+end
+```
+
+Run with backend:
+
+```elixir
+AttractorEx.run(dot_source, %{}, codergen_backend: MyApp.LLMBackend)
+```
+
+Run with unified client:
+
+```elixir
+llm_client = %AttractorEx.LLM.Client{
+  providers: %{"openai" => MyAdapter},
+  default_provider: "openai"
+}
+
+AttractorEx.run(dot_source, %{}, llm_client: llm_client)
+```
+
+Artifacts written by codergen stage:
+
+1. `prompt.md`
+2. `response.md`
+3. `status.json`
+
 ## How to Extract into Another Project
 
 1. Copy `lib/attractor_ex/` into your project under `lib/`.
