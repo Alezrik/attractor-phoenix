@@ -1,6 +1,7 @@
 defmodule AttractorEx.HandlersTest do
   use ExUnit.Case, async: true
 
+  alias AttractorEx.LLM.Client
   alias AttractorEx.{Edge, Graph, Node, Outcome}
 
   describe "spec: handler contracts" do
@@ -68,6 +69,58 @@ defmodule AttractorEx.HandlersTest do
         )
 
       assert outcome.status == :fail
+    end
+
+    test "codergen uses unified llm client when provided" do
+      node =
+        Node.new("plan", %{
+          "shape" => "box",
+          "prompt" => "Plan for $goal",
+          "llm_model" => "gpt-5.2",
+          "llm_provider" => "openai",
+          "reasoning_effort" => "medium",
+          "max_tokens" => "64",
+          "temperature" => "0.2"
+        })
+
+      graph = %{attrs: %{"goal" => "ship feature"}}
+      stage_dir = unique_stage_dir("codergen_llm_client")
+
+      llm_client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai"
+      }
+
+      outcome =
+        AttractorEx.Handlers.Codergen.execute(node, %{}, graph, stage_dir, llm_client: llm_client)
+
+      assert outcome.status == :success
+      assert File.read!(Path.join(stage_dir, "response.md")) =~ "model=gpt-5.2"
+      assert get_in(outcome.context_updates, ["llm", "provider"]) == "openai"
+      assert get_in(outcome.context_updates, ["llm", "usage", "reasoning_tokens"]) == 2
+    end
+
+    test "codergen llm client requires model when backend path is selected" do
+      node =
+        Node.new("plan", %{
+          "shape" => "box",
+          "prompt" => "Plan for $goal",
+          "llm_provider" => "openai"
+        })
+
+      graph = %{attrs: %{"goal" => "ship feature"}}
+      stage_dir = unique_stage_dir("codergen_llm_model_required")
+
+      llm_client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai"
+      }
+
+      outcome =
+        AttractorEx.Handlers.Codergen.execute(node, %{}, graph, stage_dir, llm_client: llm_client)
+
+      assert outcome.status == :fail
+      assert outcome.failure_reason =~ "llm_model"
     end
 
     test "wait_for_human returns retry when no answer is provided" do
