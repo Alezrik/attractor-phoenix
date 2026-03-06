@@ -17,7 +17,7 @@
 2. No `AttractorPhoenixWeb*` references inside `lib/attractor_ex`.
 3. The public API is `AttractorEx.run/3`.
 
-See dedicated library docs: [lib/attractor_ex/README.md](C:\Users\ex_ra\code\ai-factory\attractor-phoenix\lib\attractor_ex\README.md)
+See dedicated library docs: [lib/attractor_ex/README.md](lib/attractor_ex/README.md)
 
 ## Demo UI
 
@@ -98,6 +98,7 @@ This project follows and tests against strongDM Attractor concepts/spec:
 1. https://github.com/strongdm
 2. https://github.com/strongdm/attractor
 3. https://github.com/strongdm/attractor/blob/main/attractor-spec.md
+4. Local compliance matrix: `lib/attractor_ex/ATTRACTOR_SPEC_COMPLIANCE.md`
 
 Upstream baseline currently tracked by this repo:
 
