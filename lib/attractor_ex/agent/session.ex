@@ -570,11 +570,11 @@ defmodule AttractorEx.Agent.Session do
 
     receive do
       {^ref, {:ok, value}} ->
-        drain_monitor_message(monitor_ref, pid)
+        flush_monitor(monitor_ref)
         {:ok, value}
 
       {^ref, {:error, reason}} ->
-        drain_monitor_message(monitor_ref, pid)
+        flush_monitor(monitor_ref)
         {:error, reason}
 
       {:DOWN, ^monitor_ref, :process, ^pid, reason} ->
@@ -603,11 +603,11 @@ defmodule AttractorEx.Agent.Session do
   defp consume_late_worker_reply(ref, monitor_ref, pid) do
     receive do
       {^ref, {:ok, value}} ->
-        drain_monitor_message(monitor_ref, pid)
+        flush_monitor(monitor_ref)
         {:ok, value}
 
       {^ref, {:error, reason}} ->
-        drain_monitor_message(monitor_ref, pid)
+        flush_monitor(monitor_ref)
         {:error, reason}
 
       {:DOWN, ^monitor_ref, :process, ^pid, _reason} ->
@@ -616,18 +616,12 @@ defmodule AttractorEx.Agent.Session do
     after
       20 ->
         drain_result_message(ref)
-        drain_monitor_message(monitor_ref, pid)
+        flush_monitor(monitor_ref)
         {:error, :timeout}
     end
   end
 
-  defp drain_monitor_message(monitor_ref, pid) do
-    receive do
-      {:DOWN, ^monitor_ref, :process, ^pid, _reason} -> :ok
-    after
-      0 -> :ok
-    end
-  end
+  defp flush_monitor(monitor_ref), do: Process.demonitor(monitor_ref, [:flush])
 
   defp drain_result_message(ref) do
     receive do
