@@ -44,6 +44,9 @@ jobs:
       - run:
           name: Run Credo
           command: mix credo --strict
+      - run:
+          name: Run Dialyzer
+          command: MIX_ENV=dev mix dialyzer --format short
 
   tests_and_coverage:
     executor: elixir

@@ -34,14 +34,11 @@ defmodule AttractorEx.Parser do
       [body] ->
         name =
           case Regex.run(~r/digraph\s+("?[\w\-]+"?)?\s*\{/m, dot, capture: :all_but_first) do
-            [nil] ->
-              "pipeline"
-
             [value] ->
               candidate =
                 value |> String.trim() |> String.trim_leading("\"") |> String.trim_trailing("\"")
 
-              if valid_identifier?(candidate), do: candidate, else: "pipeline"
+              if candidate != "" and valid_identifier?(candidate), do: candidate, else: "pipeline"
 
             _ ->
               "pipeline"

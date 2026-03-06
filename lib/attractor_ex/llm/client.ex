@@ -15,7 +15,6 @@ defmodule AttractorEx.LLM.Client do
     case complete_with_request(client, request) do
       {:ok, response, _resolved_request} -> response
       {:error, _reason} = error -> error
-      other -> other
     end
   end
 

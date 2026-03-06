@@ -30,6 +30,7 @@ defmodule AttractorPhoenix.MixProject do
     [
       preferred_envs: [
         precommit: :test,
+        dialyzer: :dev,
         coveralls: :test,
         "coveralls.detail": :test,
         "coveralls.post": :test,
@@ -72,7 +73,8 @@ defmodule AttractorPhoenix.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:excoveralls, "~> 0.18", only: :test},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end
 
