@@ -41,6 +41,19 @@ defmodule AttractorEx.Agent.SessionConfig do
 
   @spec new(keyword()) :: t()
   def new(opts \\ []) do
-    struct(__MODULE__, opts)
+    base = struct(__MODULE__)
+
+    merged_output_limits =
+      Map.merge(base.tool_output_limits, Keyword.get(opts, :tool_output_limits, %{}))
+
+    merged_line_limits =
+      Map.merge(base.tool_output_line_limits, Keyword.get(opts, :tool_output_line_limits, %{}))
+
+    opts
+    |> Keyword.delete(:tool_output_limits)
+    |> Keyword.delete(:tool_output_line_limits)
+    |> Keyword.put(:tool_output_limits, merged_output_limits)
+    |> Keyword.put(:tool_output_line_limits, merged_line_limits)
+    |> then(&struct(__MODULE__, &1))
   end
 end

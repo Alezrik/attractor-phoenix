@@ -4,6 +4,7 @@ defmodule AttractorEx.Agent.PrimitivesTest do
   alias AttractorEx.Agent.{
     LocalExecutionEnvironment,
     ProviderProfile,
+    SessionConfig,
     Tool,
     ToolRegistry
   }
@@ -41,5 +42,13 @@ defmodule AttractorEx.Agent.PrimitivesTest do
       |> ToolRegistry.register(tool)
 
     assert %Tool{name: "echo"} = ToolRegistry.get(registry, "echo")
+  end
+
+  test "session config merges partial tool output limit overrides with defaults" do
+    config = SessionConfig.new(tool_output_limits: %{"shell_command" => 123})
+
+    assert config.tool_output_limits["shell_command"] == 123
+    assert is_integer(config.tool_output_limits["__default__"])
+    assert config.tool_output_limits["__default__"] > 0
   end
 end
