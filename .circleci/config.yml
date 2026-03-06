@@ -66,7 +66,8 @@ jobs:
           name: Run tests
           command: |
             mkdir -p test-results
-            JUNIT_REPORT_FILE="$PWD/test-results/junit.xml" \
+            mkdir -p _build/test/lib/attractor_phoenix/test-results
+            JUNIT_REPORT_FILE="test-results/junit.xml" \
               mix test --warnings-as-errors --formatter ExUnit.CLIFormatter --formatter JUnitFormatter
       - store_test_results:
           path: test-results
