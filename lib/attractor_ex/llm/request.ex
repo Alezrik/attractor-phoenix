@@ -10,6 +10,7 @@ defmodule AttractorEx.LLM.Request do
             temperature: nil,
             reasoning_effort: "high",
             tools: [],
+            tool_choice: nil,
             provider_options: %{},
             metadata: %{}
 
@@ -21,6 +22,7 @@ defmodule AttractorEx.LLM.Request do
           temperature: float() | nil,
           reasoning_effort: String.t(),
           tools: list(),
+          tool_choice: String.t() | map() | nil,
           provider_options: map(),
           metadata: map()
         }
