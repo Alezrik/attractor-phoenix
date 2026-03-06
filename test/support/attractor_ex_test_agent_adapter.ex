@@ -52,6 +52,14 @@ defmodule AttractorExTest.AgentAdapter do
     end
   end
 
+  defp do_complete("single_tool_numeric_args", messages, _request) do
+    if has_tool_message?(messages) do
+      response("tool-complete")
+    else
+      response("", [%ToolCall{id: "call-1", name: "echo", arguments: 123}])
+    end
+  end
+
   defp do_complete("single_shell_tool", messages, _request) do
     if has_tool_message?(messages) do
       response("tool-complete")
@@ -66,6 +74,16 @@ defmodule AttractorExTest.AgentAdapter do
     else
       response("", [
         %ToolCall{id: "call-1", name: "shell_command", arguments: %{"timeout_ms" => 300}}
+      ])
+    end
+  end
+
+  defp do_complete("single_shell_tool_with_invalid_timeout_arg", messages, _request) do
+    if has_tool_message?(messages) do
+      response("tool-complete")
+    else
+      response("", [
+        %ToolCall{id: "call-1", name: "shell_command", arguments: %{"timeout_ms" => "bogus"}}
       ])
     end
   end

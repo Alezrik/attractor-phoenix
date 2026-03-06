@@ -83,6 +83,15 @@ defmodule AttractorEx.Agent.SessionTest do
     assert result.content == ""
   end
 
+  test "falls back to empty map when tool arguments are non-map non-binary" do
+    session = build_session("single_tool_numeric_args", [echo_tool()])
+    completed = Session.submit(session, "run tool")
+    tool_turn = Enum.find(completed.history, &(&1.type == :tool_results))
+    [result] = tool_turn.results
+
+    assert result.content == ""
+  end
+
   test "unknown tool returns error result and model can recover" do
     session = build_session("unknown_tool", [echo_tool()])
     completed = Session.submit(session, "unknown")
@@ -133,6 +142,17 @@ defmodule AttractorEx.Agent.SessionTest do
 
     assert aborted.state == :closed
     assert aborted.abort_signaled
+  end
+
+  test "abort_signaled short-circuits tool loop execution" do
+    session =
+      build_session("single_tool", [echo_tool()])
+      |> Map.put(:abort_signaled, true)
+
+    completed = Session.submit(session, "hello")
+
+    assert completed.state == :idle
+    refute Enum.any?(completed.history, &(&1.type == :assistant))
   end
 
   test "loop detection emits warning when identical tool call repeats" do
@@ -404,6 +424,34 @@ defmodule AttractorEx.Agent.SessionTest do
 
     refute result.is_error
     assert result.content == "done"
+  end
+
+  test "invalid shell timeout argument falls back to default timeout" do
+    tool =
+      %Tool{
+        name: "shell_command",
+        description: "slow shell",
+        parameters: %{},
+        execute: fn _args, _env ->
+          Process.sleep(80)
+          "done"
+        end
+      }
+
+    session =
+      build_session("single_shell_tool_with_invalid_timeout_arg", [tool],
+        config: [
+          default_command_timeout_ms: 10,
+          max_command_timeout_ms: 500
+        ]
+      )
+
+    completed = Session.submit(session, "run")
+    tool_turn = Enum.find(completed.history, &(&1.type == :tool_results))
+    [result] = tool_turn.results
+
+    assert result.is_error
+    assert result.content =~ "timeout"
   end
 
   test "late tool reply after timeout is treated as timeout" do
