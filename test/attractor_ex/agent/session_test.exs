@@ -406,6 +406,34 @@ defmodule AttractorEx.Agent.SessionTest do
     assert result.content == "done"
   end
 
+  test "late tool reply after timeout is treated as timeout" do
+    tool =
+      %Tool{
+        name: "shell_command",
+        description: "slow shell",
+        parameters: %{},
+        execute: fn _args, _env ->
+          Process.sleep(40)
+          "done"
+        end
+      }
+
+    session =
+      build_session("single_shell_tool", [tool],
+        config: [
+          default_command_timeout_ms: 5,
+          max_command_timeout_ms: 500
+        ]
+      )
+
+    completed = Session.submit(session, "run")
+    tool_turn = Enum.find(completed.history, &(&1.type == :tool_results))
+    [result] = tool_turn.results
+
+    assert result.is_error
+    assert result.content =~ "timeout"
+  end
+
   test "repeated tool timeouts do not accumulate mailbox messages" do
     tool =
       %Tool{
