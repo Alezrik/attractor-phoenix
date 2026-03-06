@@ -265,6 +265,33 @@ defmodule AttractorEx.Agent.SessionTest do
     assert String.length(result.content) <= 40
   end
 
+  test "tool_call_end event output is bounded by truncation limit" do
+    tool =
+      %Tool{
+        name: "shell_command",
+        description: "test",
+        parameters: %{},
+        execute: fn _args, _env -> String.duplicate("x", 500) end
+      }
+
+    session =
+      build_session("single_shell_tool", [tool],
+        config: [
+          tool_output_limits: %{"shell_command" => 60, "__default__" => 60},
+          tool_output_line_limits: %{}
+        ]
+      )
+
+    completed = Session.submit(session, "truncate")
+
+    event =
+      Enum.find(completed.events, fn item ->
+        item.kind == :tool_call_end and is_binary(item.payload[:output])
+      end)
+
+    assert String.length(event.payload[:output]) <= 60
+  end
+
   test "handles non-list tool_calls as natural completion" do
     session = build_session("invalid_tool_calls_shape", [echo_tool()])
     completed = Session.submit(session, "shape")

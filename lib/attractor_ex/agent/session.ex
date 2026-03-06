@@ -279,7 +279,9 @@ defmodule AttractorEx.Agent.Session do
           raw_output = tool.execute.(args, session.execution_env)
           raw_text = normalize_tool_output(raw_output)
           truncated_output = truncate_tool_output(raw_text, tool_call.name, session.config)
-          end_event = build_event(:tool_call_end, %{call_id: tool_call.id, output: raw_text})
+
+          end_event =
+            build_event(:tool_call_end, %{call_id: tool_call.id, output: truncated_output})
 
           {
             %ToolResult{
