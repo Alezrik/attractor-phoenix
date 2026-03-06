@@ -296,6 +296,15 @@ defmodule AttractorEx.Agent.Session do
 
             {%ToolResult{tool_call_id: tool_call.id, content: error_msg, is_error: true},
              [start_event, end_event]}
+        catch
+          kind, reason ->
+            error_msg =
+              "Tool error (#{tool_call.name}): #{format_caught_failure(kind, reason)}"
+
+            end_event = build_event(:tool_call_end, %{call_id: tool_call.id, error: error_msg})
+
+            {%ToolResult{tool_call_id: tool_call.id, content: error_msg, is_error: true},
+             [start_event, end_event]}
         end
     end
   end
@@ -440,6 +449,10 @@ defmodule AttractorEx.Agent.Session do
     else
       String.slice(marker, 0, limit)
     end
+  end
+
+  defp format_caught_failure(kind, reason) do
+    "#{kind}: #{inspect(reason)}"
   end
 
   defp discover_project_docs(working_dir, provider_id) do

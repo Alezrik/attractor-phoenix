@@ -266,6 +266,40 @@ defmodule AttractorEx.Agent.SessionTest do
     assert result.content =~ "Tool error"
   end
 
+  test "records tool errors when tool throws" do
+    throwing_tool =
+      %Tool{
+        name: "echo",
+        description: "throws",
+        parameters: %{},
+        execute: fn _args, _env -> throw(:bad_state) end
+      }
+
+    completed = Session.submit(build_session("single_tool", [throwing_tool]), "run")
+    tool_turn = Enum.find(completed.history, &(&1.type == :tool_results))
+    [result] = tool_turn.results
+
+    assert result.is_error
+    assert result.content =~ "throw"
+  end
+
+  test "records tool errors when tool exits" do
+    exiting_tool =
+      %Tool{
+        name: "echo",
+        description: "exits",
+        parameters: %{},
+        execute: fn _args, _env -> exit(:bad_exit) end
+      }
+
+    completed = Session.submit(build_session("single_tool", [exiting_tool]), "run")
+    tool_turn = Enum.find(completed.history, &(&1.type == :tool_results))
+    [result] = tool_turn.results
+
+    assert result.is_error
+    assert result.content =~ "exit"
+  end
+
   test "closes session on llm error" do
     profile =
       ProviderProfile.new(
