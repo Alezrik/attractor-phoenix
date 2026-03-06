@@ -28,4 +28,6 @@ config :phoenix,
   sort_verified_routes_query_params: true
 
 config :junit_formatter,
-  report_file: System.get_env("JUNIT_REPORT_FILE", "test-results/junit.xml")
+  report_dir: "test-results",
+  report_file: "junit.xml",
+  automatic_create_dir?: true
