@@ -241,6 +241,30 @@ defmodule AttractorEx.Agent.SessionTest do
     refute String.contains?(result.content, "lines removed")
   end
 
+  test "line truncation still respects final character limit" do
+    tool =
+      %Tool{
+        name: "shell_command",
+        description: "test",
+        parameters: %{},
+        execute: fn _args, _env -> Enum.map_join(1..30, "\n", &"x#{&1}") end
+      }
+
+    session =
+      build_session("single_shell_tool", [tool],
+        config: [
+          tool_output_limits: %{"shell_command" => 40, "__default__" => 40},
+          tool_output_line_limits: %{"shell_command" => 4}
+        ]
+      )
+
+    completed = Session.submit(session, "truncate")
+    tool_turn = Enum.find(completed.history, &(&1.type == :tool_results))
+    [result] = tool_turn.results
+
+    assert String.length(result.content) <= 40
+  end
+
   test "handles non-list tool_calls as natural completion" do
     session = build_session("invalid_tool_calls_shape", [echo_tool()])
     completed = Session.submit(session, "shape")

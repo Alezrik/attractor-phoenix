@@ -327,19 +327,25 @@ defmodule AttractorEx.Agent.Session do
   end
 
   defp truncate_tool_output(text, tool_name, config) do
+    char_limit =
+      Map.get(config.tool_output_limits, tool_name, config.tool_output_limits["__default__"])
+
     char_limited =
       truncate_by_chars(
         text,
-        Map.get(config.tool_output_limits, tool_name, config.tool_output_limits["__default__"])
+        char_limit
       )
 
     line_limit = Map.get(config.tool_output_line_limits, tool_name)
 
-    if is_integer(line_limit) do
-      truncate_by_lines(char_limited, line_limit)
-    else
-      char_limited
-    end
+    final_text =
+      if is_integer(line_limit) do
+        truncate_by_lines(char_limited, line_limit)
+      else
+        char_limited
+      end
+
+    hard_cap_chars(final_text, char_limit)
   end
 
   defp truncate_by_chars(text, limit) when is_integer(limit) and limit > 0 do
@@ -450,6 +456,16 @@ defmodule AttractorEx.Agent.Session do
       String.slice(marker, 0, limit)
     end
   end
+
+  defp hard_cap_chars(text, limit) when is_integer(limit) and limit > 0 do
+    if String.length(text) <= limit do
+      text
+    else
+      String.slice(text, 0, limit)
+    end
+  end
+
+  defp hard_cap_chars(text, _limit), do: text
 
   defp format_caught_failure(kind, reason) do
     "#{kind}: #{inspect(reason)}"
