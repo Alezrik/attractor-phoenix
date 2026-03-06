@@ -29,6 +29,14 @@ const PipelineBuilder = {
     this.edgeDragSource = null
     this.edgeDragLine = null
     this.nextId = 1
+    this.shellEl = document.getElementById("builder-shell")
+    this.summaryEl = document.getElementById("workflow-summary")
+    this.toggleLeftBtn = document.getElementById("toggle-left-panel")
+    this.toggleLeftCenterBtn = document.getElementById("toggle-left-panel-center")
+    this.toggleRightBtn = document.getElementById("toggle-right-panel")
+    this.toggleRightCenterBtn = document.getElementById("toggle-right-panel-center")
+    this.leftCollapsed = false
+    this.rightCollapsed = false
 
     this.addStartBtn = document.getElementById("add-start")
     this.addToolBtn = document.getElementById("add-tool")
@@ -116,9 +124,11 @@ const PipelineBuilder = {
     this.propSave?.addEventListener("click", () => this.saveNodeProperties())
     this.propAddConnection?.addEventListener("click", () => this.addConnectionRow())
     this.bindGraphInputs()
+    this.bindPanelToggles()
 
     this.dotEl.addEventListener("input", () => {
-      // Manual DOT edits stay in textarea until "Apply DOT" is pressed.
+      window.clearTimeout(this.dotInputTimer)
+      this.dotInputTimer = window.setTimeout(() => this.syncFromDotInput(), 180)
     })
 
     this.fitNodesInViewport()
@@ -126,7 +136,8 @@ const PipelineBuilder = {
     this.sync(false)
   },
 
-  parseDot(dotText) {
+  parseDot(dotText, options = {}) {
+    const useFallback = options.useFallback !== false
     const lines = dotText
       .split(/\r?\n/)
       .map((line) => line.trim())
@@ -173,7 +184,7 @@ const PipelineBuilder = {
     }
 
     // Ensure graph has minimally useful nodes.
-    if (nodes.length === 0) {
+    if (nodes.length === 0 && useFallback) {
       return {
         graphAttrs: {
           goal: graphAttrs.goal || "Hello World",
@@ -303,10 +314,194 @@ const PipelineBuilder = {
   },
 
   sync(writeDot = true) {
+    this.positionDiamondAnchors()
+    this.resolveNodeOverlaps()
     this.renderNodes()
     this.renderEdges()
+    this.renderWorkflowSummary()
     this.updateAddButtons()
     if (writeDot) this.writeDot()
+  },
+
+  syncFromDotInput() {
+    const dotText = this.dotEl?.value || ""
+    const parsed = this.parseDot(dotText, { useFallback: false })
+
+    // Ignore incomplete/partial DOT edits while the user is still typing.
+    if (parsed.nodes.length === 0 && parsed.edges.length === 0) return
+
+    this.state = {
+      graphAttrs: parsed.graphAttrs || {},
+      nodes: parsed.nodes || [],
+      edges: parsed.edges || [],
+    }
+    this.fitNodesInViewport()
+    this.populateGraphFields()
+    this.sync(false)
+  },
+
+  bindPanelToggles() {
+    const toggleLeft = () => {
+      this.leftCollapsed = !this.leftCollapsed
+      this.applyPanelState()
+    }
+
+    const toggleRight = () => {
+      this.rightCollapsed = !this.rightCollapsed
+      this.applyPanelState()
+    }
+
+    this.toggleLeftBtn?.addEventListener("click", toggleLeft)
+    this.toggleLeftCenterBtn?.addEventListener("click", toggleLeft)
+    this.toggleRightBtn?.addEventListener("click", toggleRight)
+    this.toggleRightCenterBtn?.addEventListener("click", toggleRight)
+    this.applyPanelState()
+  },
+
+  applyPanelState() {
+    if (!this.shellEl) return
+    this.shellEl.classList.toggle("left-collapsed", this.leftCollapsed)
+    this.shellEl.classList.toggle("right-collapsed", this.rightCollapsed)
+
+    const leftText = this.leftCollapsed ? "Show Left" : "Hide Left"
+    const rightText = this.rightCollapsed ? "Show Right" : "Hide Right"
+
+    if (this.toggleLeftBtn) this.toggleLeftBtn.textContent = leftText
+    if (this.toggleLeftCenterBtn) this.toggleLeftCenterBtn.textContent = leftText
+    if (this.toggleRightBtn) this.toggleRightBtn.textContent = rightText
+    if (this.toggleRightCenterBtn) this.toggleRightCenterBtn.textContent = rightText
+  },
+
+  renderWorkflowSummary() {
+    if (!this.summaryEl) return
+
+    const graphLabel = this.state.graphAttrs?.label || "attractor"
+    const graphGoal = this.state.graphAttrs?.goal || "No goal set yet."
+    const edgeLines = this.state.edges.map((edge) => {
+      const detail =
+        edge.attrs?.status ? ` when ${edge.attrs.status}` : edge.attrs?.condition ? ` if ${edge.attrs.condition}` : ""
+      return `From ${edge.from}, go to ${edge.to}${detail}.`
+    })
+
+    const sectionDetails = this.state.nodes.map((node) => {
+      const label = node.attrs?.label || node.id
+      if (node.type === "tool") {
+        const cmd = node.attrs?.tool_command || "No command set"
+        return `${label}: this section outputs/runs: ${cmd}`
+      }
+
+      if (node.type === "start") return `${label}: this section starts the workflow.`
+      if (node.type === "end") return `${label}: this section finishes the workflow.`
+      if (node.type === "wait.human") return `${label}: this section waits for a human choice.`
+      if (node.type === "conditional") return `${label}: this section checks conditions to choose a path.`
+      if (node.type === "parallel") return `${label}: this section runs multiple paths at the same time.`
+      if (node.type === "parallel.fan_in") return `${label}: this section combines results from parallel paths.`
+      if (node.type === "stack.manager_loop") return `${label}: this section supervises looped child work.`
+
+      return `${label}: this section runs an LLM/codergen step.`
+    })
+
+    const headerLines = [
+      `Workflow: ${this.escapeHtml(graphLabel)}`,
+      `Goal: ${this.escapeHtml(graphGoal)}`,
+    ]
+
+    this.summaryEl.innerHTML = `
+      <div class="builder-summary">
+        <div class="builder-summary-meta">
+          ${headerLines.map((line) => `<p>${line}</p>`).join("")}
+        </div>
+        <div class="builder-summary-block">
+          <p class="builder-summary-title">Flow in plain speak:</p>
+          <div class="builder-summary-lines">
+            ${
+              edgeLines.map((line) => `<p>${this.escapeHtml(line)}</p>`).join("") ||
+              "<p>No edges yet.</p>"
+            }
+          </div>
+        </div>
+        <div class="builder-summary-block">
+          <p class="builder-summary-title">What each section does:</p>
+          <div class="builder-summary-lines">
+            ${
+              sectionDetails.map((line) => `<p>${this.escapeHtml(line)}</p>`).join("") ||
+              "<p>No sections yet.</p>"
+            }
+          </div>
+        </div>
+      </div>
+    `
+  },
+
+  positionDiamondAnchors() {
+    if (!this.state?.nodes?.length) return
+    const start = this.state.nodes.find((node) => node.type === "start")
+    const done = this.state.nodes.find((node) => node.type === "end")
+    const others = this.state.nodes.filter((node) => node !== start && node !== done)
+    if (!start || !done || others.length === 0) return
+
+    const minX = Math.min(...others.map((node) => node.x))
+    const maxX = Math.max(...others.map((node) => node.x))
+    const centerX = Math.round(((minX + maxX) / 2) / GRID_SIZE) * GRID_SIZE
+    const minY = Math.min(...others.map((node) => node.y))
+    const maxY = Math.max(...others.map((node) => node.y))
+
+    start.x = centerX
+    start.y = Math.max(0, minY - 140)
+    done.x = centerX
+    done.y = maxY + 140
+    this.clampNodeToViewport(start)
+    this.clampNodeToViewport(done)
+  },
+
+  resolveNodeOverlaps() {
+    if (!this.state?.nodes?.length) return
+
+    const spacingX = NODE_WIDTH + GRID_SIZE * 2
+    const spacingY = NODE_HEIGHT + GRID_SIZE * 2
+    const protectedIds = new Set(
+      this.state.nodes.filter((node) => node.type === "start" || node.type === "end").map((node) => node.id)
+    )
+
+    for (let pass = 0; pass < 8; pass++) {
+      let movedAny = false
+
+      for (let i = 0; i < this.state.nodes.length; i++) {
+        for (let j = i + 1; j < this.state.nodes.length; j++) {
+          const a = this.state.nodes[i]
+          const b = this.state.nodes[j]
+
+          const overlapX = Math.abs(a.x - b.x) < NODE_WIDTH
+          const overlapY = Math.abs(a.y - b.y) < NODE_HEIGHT
+          if (!overlapX || !overlapY) continue
+
+          let mover = b
+          if (protectedIds.has(b.id) && !protectedIds.has(a.id)) mover = a
+
+          mover.y += spacingY
+          this.clampNodeToViewport(mover)
+
+          // If clamping pinned the node in-place, push sideways instead.
+          if (Math.abs(mover.y - a.y) < NODE_HEIGHT && Math.abs(mover.y - b.y) < NODE_HEIGHT) {
+            mover.x += spacingX
+            this.clampNodeToViewport(mover)
+          }
+
+          movedAny = true
+        }
+      }
+
+      if (!movedAny) break
+    }
+  },
+
+  escapeHtml(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;")
+      .replace(/'/g, "&#39;")
   },
 
   renderNodes() {

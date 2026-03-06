@@ -36,7 +36,7 @@ defmodule AttractorPhoenixWeb.Layouts do
   def app(assigns) do
     ~H"""
     <header class="border-b border-base-300 px-4 py-4 sm:px-6 lg:px-8">
-      <div class="mx-auto flex max-w-5xl items-center justify-between">
+      <div class="mx-auto flex w-full max-w-[120rem] items-center justify-between">
         <a href="/" class="text-sm font-semibold tracking-wide">
           attractor-phoenix
         </a>
@@ -46,8 +46,8 @@ defmodule AttractorPhoenixWeb.Layouts do
       </div>
     </header>
 
-    <main class="px-4 py-10 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-5xl space-y-4">
+    <main class="px-3 py-8 sm:px-5 lg:px-6">
+      <div class="mx-auto w-full max-w-[120rem] space-y-4">
         {render_slot(@inner_block)}
       </div>
     </main>

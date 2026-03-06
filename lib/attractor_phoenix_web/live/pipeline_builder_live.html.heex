@@ -7,9 +7,22 @@
       </p>
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-2">
-      <div class="space-y-3 rounded-xl border border-base-300 bg-base-100 p-4">
-        <div class="flex flex-wrap items-center gap-2">
+    <div id="builder-shell" class="builder-shell">
+      <aside id="builder-left-panel" class="builder-side builder-left">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold tracking-wide">Workflow Summary</h2>
+          <button id="toggle-left-panel" type="button" class="builder-btn">Hide Left</button>
+        </div>
+        <div
+          id="workflow-summary"
+          class="builder-summary-host min-h-[220px] rounded-xl border border-base-300 bg-base-100/80 p-3 text-sm leading-6"
+        >
+        </div>
+        <p class="text-xs text-base-content/70">
+          Read-only plain-language guide for less technical users.
+        </p>
+
+        <div class="builder-left-actions">
           <button type="button" id="add-start" class="builder-btn">Add Start</button>
           <button type="button" id="add-tool" class="builder-btn">Add Tool</button>
           <button type="button" id="add-end" class="builder-btn">Add End</button>
@@ -20,12 +33,18 @@
         <p class="text-xs text-base-content/70">
           In Add Edges mode, drag from one node to another to create a connection.
         </p>
+      </aside>
 
+      <main class="builder-center">
+        <div class="flex flex-wrap items-center justify-end gap-2 pb-2">
+          <button id="toggle-left-panel-center" type="button" class="builder-btn">Toggle Left</button>
+          <button id="toggle-right-panel-center" type="button" class="builder-btn">Toggle Right</button>
+        </div>
         <div
           id="pipeline-builder"
           phx-hook="PipelineBuilder"
           phx-update="ignore"
-          class="relative h-[58vh] min-h-[320px] max-h-[560px] overflow-hidden rounded-xl border border-base-300 bg-base-200/40"
+          class="relative h-[74vh] min-h-[460px] overflow-hidden rounded-xl border border-base-300 bg-base-200/40"
         >
           <svg id="builder-edges" class="absolute inset-0 h-full w-full">
             <defs>
@@ -225,9 +244,13 @@
             </div>
           </form>
         </dialog>
-      </div>
+      </main>
 
-      <div class="space-y-4 rounded-xl border border-base-300 bg-base-100 p-4">
+      <aside id="builder-right-panel" class="builder-side builder-right">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold">DOT + Run</h2>
+          <button id="toggle-right-panel" type="button" class="builder-btn">Hide Right</button>
+        </div>
         <div class="space-y-3 rounded-lg border border-base-300 bg-base-100 p-3">
           <h3 class="text-sm font-semibold">Graph Settings</h3>
           <div class="grid gap-3 md:grid-cols-2">
@@ -315,7 +338,7 @@
             Run Pipeline
           </button>
         </.form>
-      </div>
+      </aside>
     </div>
 
     <%= if @error do %>
