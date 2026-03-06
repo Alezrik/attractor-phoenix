@@ -29,6 +29,23 @@ defmodule AttractorEx.Agent.SessionTest do
     assert Enum.any?(completed.events, &(&1.kind == :tool_call_end))
   end
 
+  test "uses high reasoning effort by default" do
+    completed = Session.submit(build_session("echo_reasoning_effort", [echo_tool()]), "hello")
+    assert last_assistant_text(completed) == "effort:high"
+  end
+
+  test "uses configured reasoning effort override" do
+    completed =
+      Session.submit(
+        build_session("echo_reasoning_effort", [echo_tool()],
+          config: [reasoning_effort: "medium"]
+        ),
+        "hello"
+      )
+
+    assert last_assistant_text(completed) == "effort:medium"
+  end
+
   test "handles string-keyed tool call maps from provider payloads" do
     session = build_session("single_tool_string_keys", [echo_tool()])
     completed = Session.submit(session, "run tool")

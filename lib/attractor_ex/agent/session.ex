@@ -206,7 +206,7 @@ defmodule AttractorEx.Agent.Session do
       messages: [%Message{role: :system, content: system_prompt}] ++ history_to_messages(session),
       tools: ProviderProfile.tool_definitions(profile),
       tool_choice: "auto",
-      reasoning_effort: session.config.reasoning_effort,
+      reasoning_effort: session.config.reasoning_effort || "high",
       provider_options: profile.provider_options
     }
   end

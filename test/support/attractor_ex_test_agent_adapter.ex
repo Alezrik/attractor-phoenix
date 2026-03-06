@@ -7,12 +7,12 @@ defmodule AttractorExTest.AgentAdapter do
   def complete(request) do
     scenario = get_in(request.provider_options, ["scenario"]) || "no_tools"
     messages = request.messages || []
-    do_complete(scenario, messages)
+    do_complete(scenario, messages, request)
   end
 
-  defp do_complete("no_tools", _messages), do: response("done")
+  defp do_complete("no_tools", _messages, _request), do: response("done")
 
-  defp do_complete("single_tool", messages) do
+  defp do_complete("single_tool", messages, _request) do
     if has_tool_message?(messages) do
       response("tool-complete")
     else
@@ -20,7 +20,7 @@ defmodule AttractorExTest.AgentAdapter do
     end
   end
 
-  defp do_complete("single_tool_string_keys", messages) do
+  defp do_complete("single_tool_string_keys", messages, _request) do
     if has_tool_message?(messages) do
       response("tool-complete")
     else
@@ -28,7 +28,7 @@ defmodule AttractorExTest.AgentAdapter do
     end
   end
 
-  defp do_complete("single_tool_atom_keys", messages) do
+  defp do_complete("single_tool_atom_keys", messages, _request) do
     if has_tool_message?(messages) do
       response("tool-complete")
     else
@@ -36,7 +36,7 @@ defmodule AttractorExTest.AgentAdapter do
     end
   end
 
-  defp do_complete("single_tool_json_args", messages) do
+  defp do_complete("single_tool_json_args", messages, _request) do
     if has_tool_message?(messages) do
       response("tool-complete")
     else
@@ -44,7 +44,7 @@ defmodule AttractorExTest.AgentAdapter do
     end
   end
 
-  defp do_complete("single_tool_invalid_json_args", messages) do
+  defp do_complete("single_tool_invalid_json_args", messages, _request) do
     if has_tool_message?(messages) do
       response("tool-complete")
     else
@@ -52,7 +52,7 @@ defmodule AttractorExTest.AgentAdapter do
     end
   end
 
-  defp do_complete("single_shell_tool", messages) do
+  defp do_complete("single_shell_tool", messages, _request) do
     if has_tool_message?(messages) do
       response("tool-complete")
     else
@@ -60,7 +60,7 @@ defmodule AttractorExTest.AgentAdapter do
     end
   end
 
-  defp do_complete("single_shell_tool_with_timeout_arg", messages) do
+  defp do_complete("single_shell_tool_with_timeout_arg", messages, _request) do
     if has_tool_message?(messages) do
       response("tool-complete")
     else
@@ -70,7 +70,7 @@ defmodule AttractorExTest.AgentAdapter do
     end
   end
 
-  defp do_complete("unknown_tool", messages) do
+  defp do_complete("unknown_tool", messages, _request) do
     if has_tool_message?(messages) do
       response("recovered-after-unknown")
     else
@@ -78,11 +78,11 @@ defmodule AttractorExTest.AgentAdapter do
     end
   end
 
-  defp do_complete("looping_tool", _messages) do
+  defp do_complete("looping_tool", _messages, _request) do
     response("", [%ToolCall{id: "loop-1", name: "echo", arguments: %{"text" => "repeat"}}])
   end
 
-  defp do_complete("parallel_tools", messages) do
+  defp do_complete("parallel_tools", messages, _request) do
     if has_tool_message?(messages) do
       response("parallel-done")
     else
@@ -93,15 +93,19 @@ defmodule AttractorExTest.AgentAdapter do
     end
   end
 
-  defp do_complete("followup_echo", messages) do
+  defp do_complete("followup_echo", messages, _request) do
     response("ack:" <> last_user_text(messages))
   end
 
-  defp do_complete("invalid_tool_calls_shape", _messages) do
+  defp do_complete("echo_reasoning_effort", _messages, request) do
+    response("effort:" <> to_string(request.reasoning_effort || "nil"))
+  end
+
+  defp do_complete("invalid_tool_calls_shape", _messages, _request) do
     response("shape-done", %{})
   end
 
-  defp do_complete(_scenario, _messages), do: response("done")
+  defp do_complete(_scenario, _messages, _request), do: response("done")
 
   defp has_tool_message?(messages) do
     Enum.any?(messages, fn msg -> msg.role == :tool end)
