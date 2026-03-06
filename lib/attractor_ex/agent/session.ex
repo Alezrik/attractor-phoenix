@@ -244,10 +244,33 @@ defmodule AttractorEx.Agent.Session do
     profile = session.provider_profile
 
     if profile.supports_parallel_tool_calls and length(tool_calls) > 1 do
-      task_results =
+      stream_results =
         tool_calls
-        |> Task.async_stream(&execute_single_tool(session, &1), timeout: :infinity, ordered: true)
-        |> Enum.map(fn {:ok, value} -> value end)
+        |> Task.async_stream(&execute_single_tool(session, &1),
+          timeout: session.config.max_command_timeout_ms + 100,
+          on_timeout: :kill_task,
+          ordered: true
+        )
+        |> Enum.to_list()
+
+      task_results =
+        Enum.zip(tool_calls, stream_results)
+        |> Enum.map(fn
+          {_tool_call, {:ok, value}} ->
+            value
+
+          {tool_call, {:exit, reason}} ->
+            error_msg = "Tool error (#{tool_call.name}): #{format_task_exit(reason)}"
+            end_event = build_event(:tool_call_end, %{call_id: tool_call.id, error: error_msg})
+
+            {
+              %ToolResult{tool_call_id: tool_call.id, content: error_msg, is_error: true},
+              [
+                build_event(:tool_call_start, %{tool_name: tool_call.name, call_id: tool_call.id}),
+                end_event
+              ]
+            }
+        end)
 
       {
         Enum.map(task_results, fn {result, _events} -> result end),
@@ -278,35 +301,38 @@ defmodule AttractorEx.Agent.Session do
         }
 
       tool ->
-        try do
-          args = normalize_arguments(tool_call.arguments)
-          raw_output = tool.execute.(args, session.execution_env)
-          raw_text = normalize_tool_output(raw_output)
-          truncated_output = truncate_tool_output(raw_text, tool_call.name, session.config)
+        args = normalize_arguments(tool_call.arguments)
+        timeout_ms = resolve_tool_timeout_ms(tool_call.name, args, session.config)
 
-          end_event =
-            build_event(:tool_call_end, %{call_id: tool_call.id, output: truncated_output})
+        case run_tool_with_timeout(
+               fn -> tool.execute.(args, session.execution_env) end,
+               timeout_ms
+             ) do
+          {:ok, raw_output} ->
+            raw_text = normalize_tool_output(raw_output)
+            truncated_output = truncate_tool_output(raw_text, tool_call.name, session.config)
 
-          {
-            %ToolResult{
-              tool_call_id: tool_call.id,
-              content: truncated_output,
-              is_error: false
-            },
-            [start_event, end_event]
-          }
-        rescue
-          error ->
-            error_msg = "Tool error (#{tool_call.name}): #{Exception.message(error)}"
+            end_event =
+              build_event(:tool_call_end, %{call_id: tool_call.id, output: truncated_output})
+
+            {
+              %ToolResult{
+                tool_call_id: tool_call.id,
+                content: truncated_output,
+                is_error: false
+              },
+              [start_event, end_event]
+            }
+
+          {:error, :timeout} ->
+            error_msg = "Tool error (#{tool_call.name}): timeout after #{timeout_ms}ms"
             end_event = build_event(:tool_call_end, %{call_id: tool_call.id, error: error_msg})
 
             {%ToolResult{tool_call_id: tool_call.id, content: error_msg, is_error: true},
              [start_event, end_event]}
-        catch
-          kind, reason ->
-            error_msg =
-              "Tool error (#{tool_call.name}): #{format_caught_failure(kind, reason)}"
 
+          {:error, reason} ->
+            error_msg = "Tool error (#{tool_call.name}): #{reason}"
             end_event = build_event(:tool_call_end, %{call_id: tool_call.id, error: error_msg})
 
             {%ToolResult{tool_call_id: tool_call.id, content: error_msg, is_error: true},
@@ -475,6 +501,70 @@ defmodule AttractorEx.Agent.Session do
   end
 
   defp hard_cap_chars(text, _limit), do: text
+
+  defp resolve_tool_timeout_ms(tool_name, args, config) do
+    override =
+      if tool_name == "shell_command" do
+        parse_timeout_ms(Map.get(args, "timeout_ms") || Map.get(args, :timeout_ms))
+      else
+        nil
+      end
+
+    timeout_ms = override || config.default_command_timeout_ms
+    timeout_ms |> max(1) |> min(config.max_command_timeout_ms)
+  end
+
+  defp parse_timeout_ms(value) when is_integer(value) and value > 0, do: value
+
+  defp parse_timeout_ms(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {parsed, ""} when parsed > 0 -> parsed
+      _ -> nil
+    end
+  end
+
+  defp parse_timeout_ms(_value), do: nil
+
+  defp run_tool_with_timeout(callback, timeout_ms) when is_function(callback, 0) do
+    parent = self()
+    ref = make_ref()
+
+    pid =
+      spawn(fn ->
+        result =
+          try do
+            {:ok, callback.()}
+          rescue
+            error -> {:error, Exception.message(error)}
+          catch
+            kind, reason -> {:error, format_caught_failure(kind, reason)}
+          end
+
+        send(parent, {ref, result})
+      end)
+
+    receive do
+      {^ref, {:ok, value}} ->
+        {:ok, value}
+
+      {^ref, {:error, reason}} ->
+        {:error, reason}
+    after
+      timeout_ms ->
+        _ = Process.exit(pid, :kill)
+        {:error, :timeout}
+    end
+  end
+
+  defp format_task_exit(reason) do
+    case reason do
+      {exception, _stacktrace} when is_struct(exception, Exception) ->
+        Exception.message(exception)
+
+      _ ->
+        inspect(reason)
+    end
+  end
 
   defp format_caught_failure(kind, reason) do
     "#{kind}: #{inspect(reason)}"

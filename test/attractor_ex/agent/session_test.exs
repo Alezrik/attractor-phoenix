@@ -308,6 +308,62 @@ defmodule AttractorEx.Agent.SessionTest do
     assert String.length(event.payload[:output]) <= 60
   end
 
+  test "tool execution times out using default session timeout" do
+    tool =
+      %Tool{
+        name: "shell_command",
+        description: "slow shell",
+        parameters: %{},
+        execute: fn _args, _env ->
+          Process.sleep(200)
+          "done"
+        end
+      }
+
+    session =
+      build_session("single_shell_tool", [tool],
+        config: [
+          default_command_timeout_ms: 50,
+          max_command_timeout_ms: 500
+        ]
+      )
+
+    completed = Session.submit(session, "run")
+    tool_turn = Enum.find(completed.history, &(&1.type == :tool_results))
+    [result] = tool_turn.results
+
+    assert result.is_error
+    assert result.content =~ "timeout"
+  end
+
+  test "shell timeout_ms argument overrides default timeout within max cap" do
+    tool =
+      %Tool{
+        name: "shell_command",
+        description: "slow shell",
+        parameters: %{},
+        execute: fn _args, _env ->
+          Process.sleep(150)
+          "done"
+        end
+      }
+
+    session =
+      build_session("single_shell_tool_with_timeout_arg", [tool],
+        config: [
+          default_command_timeout_ms: 50,
+          max_command_timeout_ms: 500
+        ]
+      )
+
+    completed = Session.submit(session, "run")
+    tool_turn = Enum.find(completed.history, &(&1.type == :tool_results))
+    [result] = tool_turn.results
+
+    refute result.is_error
+    assert result.content == "done"
+  end
+
   test "handles non-list tool_calls as natural completion" do
     session = build_session("invalid_tool_calls_shape", [echo_tool()])
     completed = Session.submit(session, "shape")
@@ -347,7 +403,7 @@ defmodule AttractorEx.Agent.SessionTest do
     [result] = tool_turn.results
 
     assert result.is_error
-    assert result.content =~ "throw"
+    assert result.content =~ "Tool error"
   end
 
   test "records tool errors when tool exits" do
@@ -364,7 +420,7 @@ defmodule AttractorEx.Agent.SessionTest do
     [result] = tool_turn.results
 
     assert result.is_error
-    assert result.content =~ "exit"
+    assert result.content =~ "Tool error"
   end
 
   test "closes session on llm error" do

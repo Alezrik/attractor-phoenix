@@ -60,6 +60,16 @@ defmodule AttractorExTest.AgentAdapter do
     end
   end
 
+  defp do_complete("single_shell_tool_with_timeout_arg", messages) do
+    if has_tool_message?(messages) do
+      response("tool-complete")
+    else
+      response("", [
+        %ToolCall{id: "call-1", name: "shell_command", arguments: %{"timeout_ms" => 300}}
+      ])
+    end
+  end
+
   defp do_complete("unknown_tool", messages) do
     if has_tool_message?(messages) do
       response("recovered-after-unknown")
