@@ -133,7 +133,8 @@ Coverage is configured to enforce a 90% minimum for AttractorEx scope.
 
 1. https://github.com/strongdm/attractor
 2. https://github.com/strongdm/attractor/blob/main/attractor-spec.md
-3. Baseline commit currently implemented/tested against:
+3. Local compliance matrix: `lib/attractor_ex/ATTRACTOR_SPEC_COMPLIANCE.md`
+4. Baseline commit currently implemented/tested against:
    `2f892efd63ee7c11f038856b90aae57c067b77c2` (2026-02-19)
 
 ## Keeping Up with Upstream
