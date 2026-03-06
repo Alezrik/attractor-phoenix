@@ -23,11 +23,6 @@ commands:
       - run:
           name: Fetch dependencies
           command: mix deps.get
-      - save_cache:
-          key: v1-mix-deps-{{ checksum "mix.lock" }}
-          paths:
-            - deps
-            - _build
 
 jobs:
   quality_gates:
@@ -38,6 +33,11 @@ jobs:
       - run:
           name: Check formatting
           command: mix format --check-formatted
+      - save_cache:
+          key: v1-mix-deps-{{ checksum "mix.lock" }}
+          paths:
+            - deps
+            - _build
       - run:
           name: Compile with warnings as errors
           command: mix compile --warnings-as-errors
@@ -64,7 +64,9 @@ jobs:
       - setup_elixir
       - run:
           name: Run tests
-          command: mix test --warnings-as-errors
+          command: mix test --warnings-as-errors --formatter ExUnit.CLIFormatter --formatter JUnitFormatter
+      - store_test_results:
+          path: test-results
       - run:
           name: Coverage gate and JSON report
           command: mix coveralls.json
