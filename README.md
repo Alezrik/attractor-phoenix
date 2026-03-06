@@ -1,4 +1,5 @@
 # attractor-phoenix
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/Alezrik/attractor-phoenix/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/Alezrik/attractor-phoenix/tree/main)
 
 `attractor-phoenix` is a demo app whose primary deliverable is the `AttractorEx` library.
 
@@ -53,6 +54,25 @@ Optional one-shot setup:
 ```bash
 mix setup
 ```
+
+## Git Quality Hooks
+
+Install repo-managed Git hooks so local commits and pushes enforce the same CI gates:
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/setup-githooks.ps1
+```
+
+or:
+
+```bash
+bash scripts/setup-githooks.sh
+```
+
+Installed hooks (platform-independent dispatcher with PowerShell or POSIX shell):
+
+1. `pre-commit`: `mix format --check-formatted`, `mix compile --warnings-as-errors`, and `mix credo --strict`
+2. `pre-push`: `mix test --warnings-as-errors`, `mix credo --strict`, `mix dialyzer --format short`, and `mix coveralls.json`
 
 ## Default Pipeline
 

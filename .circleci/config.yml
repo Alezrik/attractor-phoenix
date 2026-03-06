@@ -1,0 +1,84 @@
+version: 2.1
+
+executors:
+  elixir:
+    docker:
+      - image: cimg/elixir:1.16
+    environment:
+      MIX_ENV: test
+
+commands:
+  setup_elixir:
+    description: Install tooling and fetch dependencies
+    steps:
+      - run:
+          name: Install Hex and Rebar
+          command: |
+            mix local.hex --force
+            mix local.rebar --force
+      - restore_cache:
+          keys:
+            - v1-mix-deps-{{ checksum "mix.lock" }}
+            - v1-mix-deps-
+      - run:
+          name: Fetch dependencies
+          command: mix deps.get
+      - save_cache:
+          key: v1-mix-deps-{{ checksum "mix.lock" }}
+          paths:
+            - deps
+            - _build
+
+jobs:
+  quality_gates:
+    executor: elixir
+    steps:
+      - checkout
+      - setup_elixir
+      - run:
+          name: Check formatting
+          command: mix format --check-formatted
+      - run:
+          name: Compile with warnings as errors
+          command: mix compile --warnings-as-errors
+      - run:
+          name: Run Credo
+          command: mix credo --strict
+      - run:
+          name: Run Dialyzer
+          command: MIX_ENV=dev mix dialyzer --format short
+
+  tests_and_coverage:
+    executor: elixir
+    steps:
+      - checkout
+      - setup_elixir
+      - run:
+          name: Run tests
+          command: mix test --warnings-as-errors
+      - run:
+          name: Coverage gate and JSON report
+          command: mix coveralls.json
+      - run:
+          name: Coverage HTML report
+          command: mix coveralls.html
+      - run:
+          name: Show off coverage summary
+          command: |
+            mix run -e "
+              report_path = \"cover/excoveralls.json\"
+              report = report_path |> File.read!() |> Jason.decode!()
+              coverage = report[\"coverage\"] || 0.0
+              IO.puts(\"Coverage: #{Float.round(coverage, 2)}%\")
+            "
+      - store_artifacts:
+          path: cover
+          destination: coverage
+
+workflows:
+  ci:
+    jobs:
+      - quality_gates
+      - tests_and_coverage:
+          requires:
+            - quality_gates
