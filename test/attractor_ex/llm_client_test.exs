@@ -1,7 +1,7 @@
 defmodule AttractorEx.LLMClientTest do
   use ExUnit.Case, async: true
 
-  alias AttractorEx.LLM.{Client, Message, Request, Response}
+  alias AttractorEx.LLM.{Client, Message, Request, Response, StreamEvent}
 
   test "routes request by explicit provider" do
     client = %Client{
@@ -106,5 +106,44 @@ defmodule AttractorEx.LLMClientTest do
 
     assert %Response{text: text} = Client.complete(client, request)
     assert text =~ "provider=anthropic"
+  end
+
+  test "stream routes to adapter and returns stream events" do
+    client = %Client{providers: %{"openai" => AttractorExTest.LLMAdapter}, default_provider: "openai"}
+
+    events =
+      client
+      |> Client.stream(%Request{model: "gpt-5.2", messages: [%Message{role: :user, content: "hi"}]})
+      |> Enum.to_list()
+
+    assert [%StreamEvent{type: :stream_start}, %StreamEvent{type: :text_delta, text: "provider=openai"}] =
+             events
+  end
+
+  test "stream returns unsupported error when provider has no stream callback" do
+    client = %Client{providers: %{"openai" => AttractorExTest.LLMErrorAdapter}, default_provider: "openai"}
+
+    assert {:error, {:stream_not_supported, "openai"}} =
+             Client.stream(client, %Request{model: "gpt-5.2", messages: []})
+  end
+
+  test "streaming middleware can transform request before adapter call" do
+    middleware = fn request, next -> next.(%{request | provider: "anthropic"}) end
+
+    client = %Client{
+      providers: %{
+        "openai" => AttractorExTest.LLMAdapter,
+        "anthropic" => AttractorExTest.LLMAdapter
+      },
+      default_provider: "openai",
+      streaming_middleware: [middleware]
+    }
+
+    events = Client.stream(client, %Request{model: "gpt-5.2", messages: []}) |> Enum.to_list()
+
+    assert Enum.any?(events, fn
+             %StreamEvent{type: :text_delta, text: "provider=anthropic"} -> true
+             _ -> false
+           end)
   end
 end

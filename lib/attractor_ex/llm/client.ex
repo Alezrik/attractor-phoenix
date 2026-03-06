@@ -3,12 +3,15 @@ defmodule AttractorEx.LLM.Client do
 
   alias AttractorEx.LLM.Request
 
-  defstruct providers: %{}, default_provider: nil, middleware: []
+  defstruct providers: %{}, default_provider: nil, middleware: [], streaming_middleware: []
+
+  @type middleware :: (Request.t(), (Request.t() -> any()) -> any())
 
   @type t :: %__MODULE__{
           providers: %{optional(String.t()) => module()},
           default_provider: String.t() | nil,
-          middleware: list((Request.t(), (Request.t() -> any()) -> any()))
+          middleware: [middleware()],
+          streaming_middleware: [middleware()]
         }
 
   def complete(%__MODULE__{} = client, %Request{} = request) do
@@ -27,6 +30,34 @@ defmodule AttractorEx.LLM.Client do
         case adapter.complete(resolved_request) do
           {:error, _reason} = error -> error
           response -> {:ok, response, resolved_request}
+        end
+      end
+    end)
+    |> normalize_complete_result(request)
+  end
+
+  def stream(%__MODULE__{} = client, %Request{} = request) do
+    case stream_with_request(client, request) do
+      {:ok, events, _resolved_request} -> events
+      {:error, _reason} = error -> error
+    end
+  end
+
+  def stream_with_request(%__MODULE__{} = client, %Request{} = request) do
+    run_with_middleware(client.streaming_middleware, request, fn req ->
+      with {:ok, provider_name} <- resolve_provider(client, req),
+           {:ok, adapter} <- fetch_adapter(client, provider_name) do
+        resolved_request = %{req | provider: provider_name}
+
+        cond do
+          not function_exported?(adapter, :stream, 1) ->
+            {:error, {:stream_not_supported, provider_name}}
+
+          true ->
+            case adapter.stream(resolved_request) do
+              {:error, _reason} = error -> error
+              events -> {:ok, events, resolved_request}
+            end
         end
       end
     end)
