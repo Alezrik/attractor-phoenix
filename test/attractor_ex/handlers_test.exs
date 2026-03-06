@@ -123,6 +123,23 @@ defmodule AttractorEx.HandlersTest do
       assert outcome.failure_reason =~ "llm_model"
     end
 
+    test "codergen records resolved provider from llm client default" do
+      node = Node.new("plan", %{"shape" => "box", "prompt" => "Plan", "llm_model" => "gpt-5.2"})
+      graph = %{attrs: %{}}
+      stage_dir = unique_stage_dir("codergen_llm_default_provider")
+
+      llm_client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai"
+      }
+
+      outcome =
+        AttractorEx.Handlers.Codergen.execute(node, %{}, graph, stage_dir, llm_client: llm_client)
+
+      assert outcome.status == :success
+      assert get_in(outcome.context_updates, ["llm", "provider"]) == "openai"
+    end
+
     test "wait_for_human returns retry when no answer is provided" do
       node = Node.new("gate", %{"type" => "wait.human"})
       graph = %Graph{edges: [Edge.new("gate", "done", %{"label" => "[Y] Continue"})]}

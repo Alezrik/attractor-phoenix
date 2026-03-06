@@ -48,13 +48,14 @@ defmodule AttractorEx.Handlers.Codergen do
   defp run_with_llm_client(client, node, prompt, _context, opts) do
     with {:ok, model} <- fetch_model(node, opts),
          request <- build_request(node, prompt, model, opts),
-         %Response{} = response <- Client.complete(client, request) do
+         {:ok, %Response{} = response, resolved_request} <-
+           Client.complete_with_request(client, request) do
       Outcome.success(
         %{
           "responses" => %{node.id => response.text},
           "llm" => %{
-            "provider" => request.provider,
-            "model" => request.model,
+            "provider" => resolved_request.provider,
+            "model" => resolved_request.model,
             "finish_reason" => response.finish_reason,
             "usage" => stringify_map_keys(Map.from_struct(response.usage))
           }

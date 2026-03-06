@@ -68,4 +68,43 @@ defmodule AttractorEx.LLMClientTest do
     assert %Response{text: text} = Client.complete(client, request)
     assert text =~ "model=gpt-5.2-codex"
   end
+
+  test "middleware can set provider before routing when request/provider default are blank" do
+    middleware = fn request, next ->
+      next.(%{request | provider: "openai"})
+    end
+
+    client = %Client{
+      providers: %{"openai" => AttractorExTest.LLMAdapter},
+      middleware: [middleware]
+    }
+
+    request = %Request{model: "gpt-5.2", messages: [%Message{role: :user, content: "hi"}]}
+    assert %Response{text: text} = Client.complete(client, request)
+    assert text =~ "provider=openai"
+  end
+
+  test "middleware can reroute provider even when request has provider set" do
+    middleware = fn request, next ->
+      next.(%{request | provider: "anthropic"})
+    end
+
+    client = %Client{
+      providers: %{
+        "openai" => AttractorExTest.LLMAdapter,
+        "anthropic" => AttractorExTest.LLMAdapter
+      },
+      default_provider: "openai",
+      middleware: [middleware]
+    }
+
+    request = %Request{
+      provider: "openai",
+      model: "claude-opus-4-6",
+      messages: [%Message{role: :user, content: "hi"}]
+    }
+
+    assert %Response{text: text} = Client.complete(client, request)
+    assert text =~ "provider=anthropic"
+  end
 end

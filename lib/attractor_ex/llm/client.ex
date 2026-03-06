@@ -12,12 +12,39 @@ defmodule AttractorEx.LLM.Client do
         }
 
   def complete(%__MODULE__{} = client, %Request{} = request) do
-    with {:ok, provider_name} <- resolve_provider(client, request),
-         {:ok, adapter} <- fetch_adapter(client, provider_name) do
-      run_with_middleware(client.middleware, request, fn req ->
-        adapter.complete(%{req | provider: provider_name})
-      end)
+    case complete_with_request(client, request) do
+      {:ok, response, _resolved_request} -> response
+      {:error, _reason} = error -> error
+      other -> other
     end
+  end
+
+  def complete_with_request(%__MODULE__{} = client, %Request{} = request) do
+    run_with_middleware(client.middleware, request, fn req ->
+      with {:ok, provider_name} <- resolve_provider(client, req),
+           {:ok, adapter} <- fetch_adapter(client, provider_name) do
+        resolved_request = %{req | provider: provider_name}
+
+        case adapter.complete(resolved_request) do
+          {:error, _reason} = error -> error
+          response -> {:ok, response, resolved_request}
+        end
+      end
+    end)
+    |> normalize_complete_result(request)
+  end
+
+  defp normalize_complete_result(
+         {:ok, _response, %Request{} = _resolved_request} = result,
+         _request
+       ),
+       do: result
+
+  defp normalize_complete_result({:error, _reason} = error, _request), do: error
+
+  defp normalize_complete_result(response, %Request{} = request) do
+    # Allow middleware short-circuit returning a response directly.
+    {:ok, response, request}
   end
 
   defp resolve_provider(client, request) do
