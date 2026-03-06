@@ -126,9 +126,6 @@ defmodule AttractorEx.Agent.Session do
       session.abort_signaled ->
         session
 
-      turn_limit_reached?(session.config.max_tool_rounds_per_input, round_count) ->
-        emit(session, :turn_limit, %{round: round_count})
-
       turn_limit_reached?(session.config.max_turns, count_turns(session)) ->
         emit(session, :turn_limit, %{total_turns: count_turns(session)})
 
@@ -152,8 +149,12 @@ defmodule AttractorEx.Agent.Session do
             if normalized_tool_calls == [] do
               after_assistant
             else
-              after_assistant
-              |> execute_tool_round(normalized_tool_calls, round_count + 1)
+              if turn_limit_reached?(session.config.max_tool_rounds_per_input, round_count) do
+                emit(after_assistant, :turn_limit, %{round: round_count})
+              else
+                after_assistant
+                |> execute_tool_round(normalized_tool_calls, round_count + 1)
+              end
             end
         end
     end

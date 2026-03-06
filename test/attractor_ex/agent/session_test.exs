@@ -187,6 +187,19 @@ defmodule AttractorEx.Agent.SessionTest do
            end)
   end
 
+  test "max tool rounds still allows post-tool assistant completion" do
+    session =
+      build_session("single_tool", [echo_tool()], config: [max_tool_rounds_per_input: 1])
+
+    completed = Session.submit(session, "hello")
+
+    assert last_assistant_text(completed) == "tool-complete"
+
+    refute Enum.any?(completed.events, fn event ->
+             event.kind == :turn_limit
+           end)
+  end
+
   test "parallel tool calls execute concurrently when profile allows it" do
     session = build_session("parallel_tools", [slow_tool()], supports_parallel: true)
 
