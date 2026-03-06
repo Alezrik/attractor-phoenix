@@ -1,0 +1,356 @@
+<Layouts.app flash={@flash} current_scope={assigns[:current_scope]}>
+  <section class="space-y-6" id="pipeline-builder-page">
+    <div>
+      <h1 class="text-3xl font-bold tracking-tight">attractor-phoenix</h1>
+      <p class="text-sm text-base-content/70">
+        Live graphical pipeline builder with DOT editing and execution.
+      </p>
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-2">
+      <div class="space-y-3 rounded-xl border border-base-300 bg-base-100 p-4">
+        <div class="flex flex-wrap items-center gap-2">
+          <button type="button" id="add-start" class="builder-btn">Add Start</button>
+          <button type="button" id="add-tool" class="builder-btn">Add Tool</button>
+          <button type="button" id="add-end" class="builder-btn">Add End</button>
+          <button type="button" id="connect-toggle" class="builder-btn">Add Edges</button>
+          <button type="button" id="clear-edges" class="builder-btn">Clear Edges</button>
+          <button type="button" id="apply-dot" class="builder-btn">Apply DOT</button>
+        </div>
+        <p class="text-xs text-base-content/70">
+          In Add Edges mode, drag from one node to another to create a connection.
+        </p>
+
+        <div
+          id="pipeline-builder"
+          phx-hook="PipelineBuilder"
+          phx-update="ignore"
+          class="relative h-[58vh] min-h-[320px] max-h-[560px] overflow-hidden rounded-xl border border-base-300 bg-base-200/40"
+        >
+          <svg id="builder-edges" class="absolute inset-0 h-full w-full">
+            <defs>
+              <marker
+                id="builder-arrow"
+                viewBox="0 0 10 10"
+                refX="9"
+                refY="5"
+                markerWidth="6"
+                markerHeight="6"
+                orient="auto-start-reverse"
+              >
+                <path d="M 0 0 L 10 5 L 0 10 z" class="fill-base-content/70" />
+              </marker>
+            </defs>
+          </svg>
+          <div id="builder-canvas" class="absolute inset-0"></div>
+        </div>
+
+        <dialog
+          id="node-properties-dialog"
+          class="rounded-xl border border-base-300 p-0 backdrop:bg-black/40"
+        >
+          <form method="dialog" class="w-[min(96vw,56rem)] space-y-4 bg-base-100 p-4">
+            <h3 class="text-lg font-semibold">Node Properties</h3>
+
+            <div class="grid gap-3 md:grid-cols-3">
+              <label id="node-prop-wrap-id" class="block space-y-1">
+                <span class="text-xs font-semibold">ID</span>
+                <input
+                  id="node-prop-id"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label id="node-prop-wrap-label" class="block space-y-1">
+                <span class="text-xs font-semibold">Label</span>
+                <input
+                  id="node-prop-label"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label id="node-prop-wrap-type" class="block space-y-1">
+                <span class="text-xs font-semibold">Type</span>
+                <select
+                  id="node-prop-type"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                >
+                  <option value="start">start</option>
+                  <option value="tool">tool</option>
+                  <option value="wait.human">wait.human</option>
+                  <option value="conditional">conditional</option>
+                  <option value="parallel">parallel</option>
+                  <option value="parallel.fan_in">parallel.fan_in</option>
+                  <option value="stack.manager_loop">stack.manager_loop</option>
+                  <option value="codergen">codergen</option>
+                  <option value="end">exit</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="grid gap-3 md:grid-cols-2">
+              <label id="node-prop-wrap-prompt" class="block space-y-1 md:col-span-2">
+                <span class="text-xs font-semibold">Prompt</span>
+                <textarea
+                  id="node-prop-prompt"
+                  rows="3"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                ></textarea>
+              </label>
+              <label id="node-prop-wrap-class" class="block space-y-1">
+                <span class="text-xs font-semibold">Class</span>
+                <input
+                  id="node-prop-class"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label id="node-prop-wrap-timeout" class="block space-y-1">
+                <span class="text-xs font-semibold">Timeout</span>
+                <input
+                  id="node-prop-timeout"
+                  placeholder="900s"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label id="node-prop-wrap-max-retries" class="block space-y-1">
+                <span class="text-xs font-semibold">Max Retries</span>
+                <input
+                  id="node-prop-max-retries"
+                  type="number"
+                  min="0"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label id="node-prop-wrap-fidelity" class="block space-y-1">
+                <span class="text-xs font-semibold">Fidelity</span>
+                <input
+                  id="node-prop-fidelity"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label id="node-prop-wrap-thread-id" class="block space-y-1">
+                <span class="text-xs font-semibold">Thread ID</span>
+                <input
+                  id="node-prop-thread-id"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label id="node-prop-wrap-retry-target" class="block space-y-1">
+                <span class="text-xs font-semibold">Retry Target</span>
+                <input
+                  id="node-prop-retry-target"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label id="node-prop-wrap-fallback-retry-target" class="block space-y-1">
+                <span class="text-xs font-semibold">Fallback Retry Target</span>
+                <input
+                  id="node-prop-fallback-retry-target"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label id="node-prop-wrap-llm-model" class="block space-y-1">
+                <span class="text-xs font-semibold">LLM Model</span>
+                <input
+                  id="node-prop-llm-model"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label id="node-prop-wrap-llm-provider" class="block space-y-1">
+                <span class="text-xs font-semibold">LLM Provider</span>
+                <input
+                  id="node-prop-llm-provider"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label id="node-prop-wrap-reasoning-effort" class="block space-y-1">
+                <span class="text-xs font-semibold">Reasoning Effort</span>
+                <select
+                  id="node-prop-reasoning-effort"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                >
+                  <option value="">(default)</option>
+                  <option value="low">low</option>
+                  <option value="medium">medium</option>
+                  <option value="high">high</option>
+                </select>
+              </label>
+              <div id="node-prop-wrap-command" class="space-y-1">
+                <span class="text-xs font-semibold">Tool Command</span>
+                <input
+                  id="node-prop-command"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm font-mono"
+                />
+              </div>
+              <label
+                id="node-prop-wrap-goal-gate"
+                class="flex items-center gap-2 text-xs font-semibold"
+              >
+                <input id="node-prop-goal-gate" type="checkbox" /> goal_gate
+              </label>
+              <label
+                id="node-prop-wrap-auto-status"
+                class="flex items-center gap-2 text-xs font-semibold"
+              >
+                <input id="node-prop-auto-status" type="checkbox" /> auto_status
+              </label>
+              <label
+                id="node-prop-wrap-allow-partial"
+                class="flex items-center gap-2 text-xs font-semibold"
+              >
+                <input id="node-prop-allow-partial" type="checkbox" /> allow_partial
+              </label>
+            </div>
+
+            <div
+              id="node-prop-wrap-connections"
+              class="space-y-2 rounded-lg border border-base-300 p-3"
+            >
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wide text-base-content/70">
+                  Connections
+                </span>
+                <button id="node-prop-add-connection" class="builder-btn" type="button">
+                  + Add Connection
+                </button>
+              </div>
+              <div id="node-connections-list" class="space-y-2"></div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-2">
+              <button id="node-prop-cancel" value="cancel" class="builder-btn" type="submit">
+                Cancel
+              </button>
+              <button id="node-prop-save" value="default" class="builder-btn" type="button">
+                Save
+              </button>
+            </div>
+          </form>
+        </dialog>
+      </div>
+
+      <div class="space-y-4 rounded-xl border border-base-300 bg-base-100 p-4">
+        <div class="space-y-3 rounded-lg border border-base-300 bg-base-100 p-3">
+          <h3 class="text-sm font-semibold">Graph Settings</h3>
+          <div class="grid gap-3 md:grid-cols-2">
+            <label class="space-y-1">
+              <span class="text-xs font-semibold">Goal</span>
+              <input
+                id="graph-goal"
+                class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+              />
+            </label>
+            <label class="space-y-1">
+              <span class="text-xs font-semibold">Label</span>
+              <input
+                id="graph-label"
+                class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+              />
+            </label>
+            <label class="space-y-1 md:col-span-2">
+              <span class="text-xs font-semibold">Model Stylesheet</span>
+              <textarea
+                id="graph-model-stylesheet"
+                rows="2"
+                class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm font-mono"
+              ></textarea>
+            </label>
+            <label class="space-y-1">
+              <span class="text-xs font-semibold">Default Max Retry</span>
+              <input
+                id="graph-default-max-retry"
+                type="number"
+                min="0"
+                class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+              />
+            </label>
+            <label class="space-y-1">
+              <span class="text-xs font-semibold">Default Fidelity</span>
+              <input
+                id="graph-default-fidelity"
+                class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+              />
+            </label>
+            <label class="space-y-1">
+              <span class="text-xs font-semibold">Retry Target</span>
+              <input
+                id="graph-retry-target"
+                class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+              />
+            </label>
+            <label class="space-y-1">
+              <span class="text-xs font-semibold">Fallback Retry Target</span>
+              <input
+                id="graph-fallback-retry-target"
+                class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+              />
+            </label>
+          </div>
+        </div>
+
+        <.form for={%{}} id="pipeline-runner-form" phx-submit="run_pipeline" class="space-y-4">
+          <div class="space-y-2">
+            <label class="text-sm font-semibold" for="pipeline-dot">Pipeline DOT</label>
+            <textarea
+              id="pipeline-dot"
+              name="pipeline[dot]"
+              rows="16"
+              class="w-full rounded-xl border border-base-300 bg-base-100 p-3 font-mono text-xs"
+            >{@dot}</textarea>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-semibold" for="pipeline-context-json">Context JSON</label>
+            <textarea
+              id="pipeline-context-json"
+              name="pipeline[context_json]"
+              rows="6"
+              class="w-full rounded-xl border border-base-300 bg-base-100 p-3 font-mono text-xs"
+            >{@context_json}</textarea>
+          </div>
+
+          <button
+            id="run-pipeline"
+            type="submit"
+            class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
+          >
+            Run Pipeline
+          </button>
+        </.form>
+      </div>
+    </div>
+
+    <%= if @error do %>
+      <div
+        id="run-error"
+        class="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700"
+      >
+        {@error}
+      </div>
+    <% end %>
+
+    <%= if @result do %>
+      <div id="run-result" class="space-y-3 rounded-xl border border-base-300 bg-base-200/50 p-4">
+        <h2 class="text-lg font-semibold">Run Result</h2>
+        <p class="text-sm">Status: <strong>{@result.status}</strong></p>
+        <p class="text-sm">Run ID: <code>{@result.run_id}</code></p>
+        <p class="text-sm">Logs: <code>{@result.logs_root}</code></p>
+
+        <%= if is_map(get_in(@result, [:context, "tools"])) and map_size(get_in(@result, [:context, "tools"])) > 0 do %>
+          <div
+            id="command-output"
+            class="space-y-2 rounded-lg border border-base-300 bg-base-100 p-3"
+          >
+            <h3 class="text-sm font-semibold">Command Output</h3>
+            <%= for {node_id, output} <- get_in(@result, [:context, "tools"]) do %>
+              <div class="space-y-1">
+                <p class="text-xs font-semibold text-base-content/70">{node_id}</p>
+                <pre class="overflow-x-auto rounded border border-base-300 bg-base-100 p-2 text-xs">{output}</pre>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+
+        <pre class="overflow-x-auto rounded-lg bg-base-100 p-3 text-xs"><%= Jason.encode_to_iodata!(@result, pretty: true) %></pre>
+      </div>
+    <% end %>
+  </section>
+</Layouts.app>

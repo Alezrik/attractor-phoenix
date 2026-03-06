@@ -1,0 +1,9 @@
+{
+  "skip_files": [
+    "lib/attractor_phoenix",
+    "lib/attractor_phoenix_web"
+  ],
+  "coverage_options": {
+    "minimum_coverage": 90
+  }
+}
