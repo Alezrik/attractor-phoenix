@@ -169,6 +169,18 @@ defmodule AttractorEx.Agent.SessionTest do
     assert Enum.any?(completed.events, &(&1.kind == :loop_detection))
   end
 
+  test "batched repeated tool calls in one round do not trigger loop detection" do
+    session =
+      build_session("batched_repeated_calls_once", [echo_tool()],
+        config: [loop_detection_window: 2]
+      )
+
+    completed = Session.submit(session, "run batched")
+
+    assert last_assistant_text(completed) == "batched-done"
+    refute Enum.any?(completed.events, &(&1.kind == :loop_detection))
+  end
+
   test "max turns emits limit event" do
     session = build_session("no_tools", [echo_tool()], config: [max_turns: 1])
     completed = Session.submit(session, "hello")

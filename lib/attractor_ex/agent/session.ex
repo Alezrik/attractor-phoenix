@@ -435,20 +435,24 @@ defmodule AttractorEx.Agent.Session do
   end
 
   defp detect_loop(history, window) when is_integer(window) and window > 1 do
-    signatures =
+    round_signatures =
       history
       |> Enum.flat_map(fn
         %{type: :assistant, tool_calls: calls} ->
-          Enum.map(calls, &tool_signature/1)
+          if calls == [] do
+            []
+          else
+            [round_signature(calls)]
+          end
 
         _ ->
           []
       end)
 
-    if length(signatures) < window do
+    if length(round_signatures) < window do
       false
     else
-      recent = Enum.take(signatures, -window)
+      recent = Enum.take(round_signatures, -window)
       Enum.uniq(recent) |> length() == 1
     end
   end
@@ -457,6 +461,10 @@ defmodule AttractorEx.Agent.Session do
 
   defp tool_signature(%ToolCall{name: name, arguments: arguments}) do
     "#{name}:#{normalize_tool_output(arguments)}"
+  end
+
+  defp round_signature(calls) do
+    Enum.map_join(calls, "||", &tool_signature/1)
   end
 
   defp normalize_tool_calls(tool_calls) when is_list(tool_calls) do

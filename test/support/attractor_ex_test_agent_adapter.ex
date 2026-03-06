@@ -93,6 +93,18 @@ defmodule AttractorExTest.AgentAdapter do
     end
   end
 
+  defp do_complete("batched_repeated_calls_once", messages, _request) do
+    if has_tool_message?(messages) do
+      response("batched-done")
+    else
+      response("", [
+        %ToolCall{id: "b1", name: "echo", arguments: %{"text" => "x"}},
+        %ToolCall{id: "b2", name: "echo", arguments: %{"text" => "x"}},
+        %ToolCall{id: "b3", name: "echo", arguments: %{"text" => "x"}}
+      ])
+    end
+  end
+
   defp do_complete("followup_echo", messages, _request) do
     response("ack:" <> last_user_text(messages))
   end
