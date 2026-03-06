@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+set -eu
+
+echo "[pre-push] Running tests with warnings as errors..."
+mix test --warnings-as-errors
+
+echo "[pre-push] Enforcing coverage gate..."
+mix coveralls.json
+

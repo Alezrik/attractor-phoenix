@@ -54,6 +54,25 @@ Optional one-shot setup:
 mix setup
 ```
 
+## Git Quality Hooks
+
+Install repo-managed Git hooks so local commits and pushes enforce the same CI gates:
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/setup-githooks.ps1
+```
+
+or:
+
+```bash
+bash scripts/setup-githooks.sh
+```
+
+Installed hooks (platform-independent dispatcher with PowerShell or POSIX shell):
+
+1. `pre-commit`: `mix format --check-formatted` and `mix compile --warnings-as-errors`
+2. `pre-push`: `mix test --warnings-as-errors` and `mix coveralls.json`
+
 ## Default Pipeline
 
 ```dot
