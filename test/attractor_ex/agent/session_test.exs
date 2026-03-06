@@ -40,6 +40,32 @@ defmodule AttractorEx.Agent.SessionTest do
     refute result.is_error
   end
 
+  test "handles atom-keyed tool call maps" do
+    session = build_session("single_tool_atom_keys", [echo_tool()])
+    completed = Session.submit(session, "run tool")
+
+    assert completed.state == :idle
+    assert last_assistant_text(completed) == "tool-complete"
+  end
+
+  test "parses JSON string arguments for tool calls" do
+    session = build_session("single_tool_json_args", [echo_tool()])
+    completed = Session.submit(session, "run tool")
+    tool_turn = Enum.find(completed.history, &(&1.type == :tool_results))
+    [result] = tool_turn.results
+
+    assert result.content == "hello"
+  end
+
+  test "falls back to empty map when tool arguments are invalid JSON" do
+    session = build_session("single_tool_invalid_json_args", [echo_tool()])
+    completed = Session.submit(session, "run tool")
+    tool_turn = Enum.find(completed.history, &(&1.type == :tool_results))
+    [result] = tool_turn.results
+
+    assert result.content == ""
+  end
+
   test "unknown tool returns error result and model can recover" do
     session = build_session("unknown_tool", [echo_tool()])
     completed = Session.submit(session, "unknown")
@@ -75,6 +101,23 @@ defmodule AttractorEx.Agent.SessionTest do
     assert Enum.map(user_turns, & &1.content) == ["first prompt", "second prompt"]
   end
 
+  test "returns unchanged session for submit when state is closed" do
+    closed =
+      build_session("no_tools", [echo_tool()])
+      |> Session.close()
+
+    result = Session.submit(closed, "ignored")
+    assert result == closed
+  end
+
+  test "abort marks session as closed" do
+    session = build_session("no_tools", [echo_tool()])
+    aborted = Session.abort(session)
+
+    assert aborted.state == :closed
+    assert aborted.abort_signaled
+  end
+
   test "loop detection emits warning when identical tool call repeats" do
     session =
       build_session("looping_tool", [echo_tool()],
@@ -90,6 +133,24 @@ defmodule AttractorEx.Agent.SessionTest do
 
     assert Enum.any?(completed.history, fn turn ->
              turn.type == :steering and String.contains?(turn.content, "Loop detected")
+           end)
+  end
+
+  test "max turns emits limit event" do
+    session = build_session("no_tools", [echo_tool()], config: [max_turns: 1])
+    completed = Session.submit(session, "hello")
+
+    assert Enum.any?(completed.events, fn event ->
+             event.kind == :turn_limit and event.payload[:total_turns] == 1
+           end)
+  end
+
+  test "max tool rounds emits limit event" do
+    session = build_session("looping_tool", [echo_tool()], config: [max_tool_rounds_per_input: 1])
+    completed = Session.submit(session, "hello")
+
+    assert Enum.any?(completed.events, fn event ->
+             event.kind == :turn_limit and event.payload[:round] == 1
            end)
   end
 
@@ -154,6 +215,96 @@ defmodule AttractorEx.Agent.SessionTest do
 
     assert String.length(result.content) <= 30
     assert result.content =~ "[WARNING: Tool output"
+  end
+
+  test "line truncation fallback keeps original output when limit is not integer" do
+    tool =
+      %Tool{
+        name: "shell_command",
+        description: "test",
+        parameters: %{},
+        execute: fn _args, _env -> Enum.map_join(1..10, "\n", &"line-#{&1}") end
+      }
+
+    session =
+      build_session("single_shell_tool", [tool],
+        config: [
+          tool_output_limits: %{"shell_command" => 500, "__default__" => 500},
+          tool_output_line_limits: %{"shell_command" => nil}
+        ]
+      )
+
+    completed = Session.submit(session, "truncate")
+    tool_turn = Enum.find(completed.history, &(&1.type == :tool_results))
+    [result] = tool_turn.results
+
+    refute String.contains?(result.content, "lines removed")
+  end
+
+  test "handles non-list tool_calls as natural completion" do
+    session = build_session("invalid_tool_calls_shape", [echo_tool()])
+    completed = Session.submit(session, "shape")
+
+    assert last_assistant_text(completed) == "shape-done"
+    refute Enum.any?(completed.events, &(&1.kind == :tool_call_start))
+  end
+
+  test "records tool errors when tool raises" do
+    crashing_tool =
+      %Tool{
+        name: "echo",
+        description: "crashes",
+        parameters: %{},
+        execute: fn _args, _env -> raise "boom" end
+      }
+
+    completed = Session.submit(build_session("single_tool", [crashing_tool]), "run")
+    tool_turn = Enum.find(completed.history, &(&1.type == :tool_results))
+    [result] = tool_turn.results
+
+    assert result.is_error
+    assert result.content =~ "Tool error"
+  end
+
+  test "closes session on llm error" do
+    profile =
+      ProviderProfile.new(
+        id: "openai",
+        model: "gpt-5.2",
+        tools: [echo_tool()],
+        provider_options: %{"scenario" => "unused"}
+      )
+
+    client = %Client{providers: %{"openai" => AttractorExTest.LLMErrorAdapter}}
+
+    session =
+      Session.new(client, profile,
+        execution_env: LocalExecutionEnvironment.new(working_dir: File.cwd!())
+      )
+
+    completed = Session.submit(session, "error please")
+
+    assert completed.state == :closed
+
+    assert Enum.any?(completed.history, fn turn ->
+             turn.type == :system and String.contains?(turn.content, "LLM error")
+           end)
+  end
+
+  test "uses cwd fallback when execution env is not local env struct" do
+    profile =
+      ProviderProfile.new(
+        id: "openai",
+        model: "gpt-5.2",
+        tools: [echo_tool()],
+        provider_options: %{"scenario" => "no_tools"}
+      )
+
+    client = %Client{providers: %{"openai" => AttractorExTest.AgentAdapter}}
+    session = Session.new(client, profile, execution_env: %{}, config: [])
+    completed = Session.submit(session, "hello")
+
+    assert completed.state == :idle
   end
 
   defp build_session(scenario, tools, opts \\ []) do

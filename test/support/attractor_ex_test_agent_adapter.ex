@@ -28,6 +28,30 @@ defmodule AttractorExTest.AgentAdapter do
     end
   end
 
+  defp do_complete("single_tool_atom_keys", messages) do
+    if has_tool_message?(messages) do
+      response("tool-complete")
+    else
+      response("", [%{id: "call-1", name: "echo", arguments: %{"text" => "hello"}}])
+    end
+  end
+
+  defp do_complete("single_tool_json_args", messages) do
+    if has_tool_message?(messages) do
+      response("tool-complete")
+    else
+      response("", [%ToolCall{id: "call-1", name: "echo", arguments: "{\"text\":\"hello\"}"}])
+    end
+  end
+
+  defp do_complete("single_tool_invalid_json_args", messages) do
+    if has_tool_message?(messages) do
+      response("tool-complete")
+    else
+      response("", [%ToolCall{id: "call-1", name: "echo", arguments: "{bad json"}])
+    end
+  end
+
   defp do_complete("single_shell_tool", messages) do
     if has_tool_message?(messages) do
       response("tool-complete")
@@ -61,6 +85,10 @@ defmodule AttractorExTest.AgentAdapter do
 
   defp do_complete("followup_echo", messages) do
     response("ack:" <> last_user_text(messages))
+  end
+
+  defp do_complete("invalid_tool_calls_shape", _messages) do
+    response("shape-done", %{})
   end
 
   defp do_complete(_scenario, _messages), do: response("done")

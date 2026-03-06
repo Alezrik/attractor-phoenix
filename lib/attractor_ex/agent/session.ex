@@ -147,12 +147,13 @@ defmodule AttractorEx.Agent.Session do
 
           %Response{} = response ->
             after_assistant = append_assistant_turn(session, response)
+            normalized_tool_calls = normalize_tool_calls(response.tool_calls)
 
-            if response.tool_calls == [] do
+            if normalized_tool_calls == [] do
               after_assistant
             else
               after_assistant
-              |> execute_tool_round(response.tool_calls, round_count + 1)
+              |> execute_tool_round(normalized_tool_calls, round_count + 1)
             end
         end
     end
