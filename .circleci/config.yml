@@ -23,11 +23,6 @@ commands:
       - run:
           name: Fetch dependencies
           command: mix deps.get
-      - save_cache:
-          key: v1-mix-deps-{{ checksum "mix.lock" }}
-          paths:
-            - deps
-            - _build
 
 jobs:
   quality_gates:
@@ -38,15 +33,29 @@ jobs:
       - run:
           name: Check formatting
           command: mix format --check-formatted
+      - save_cache:
+          key: v1-mix-deps-{{ checksum "mix.lock" }}
+          paths:
+            - deps
+            - _build
       - run:
           name: Compile with warnings as errors
           command: mix compile --warnings-as-errors
       - run:
           name: Run Credo
           command: mix credo --strict
+      - restore_cache:
+          keys:
+            - v1-dialyzer-{{ arch }}-{{ checksum "mix.lock" }}-{{ checksum "mix.exs" }}
+            - v1-dialyzer-{{ arch }}-{{ checksum "mix.lock" }}
+            - v1-dialyzer-{{ arch }}-
       - run:
           name: Run Dialyzer
           command: MIX_ENV=dev mix dialyzer --format short
+      - save_cache:
+          key: v1-dialyzer-{{ arch }}-{{ checksum "mix.lock" }}-{{ checksum "mix.exs" }}
+          paths:
+            - _build/dev
 
   tests_and_coverage:
     executor: elixir
@@ -56,6 +65,8 @@ jobs:
       - run:
           name: Run tests
           command: mix test --warnings-as-errors
+      - store_test_results:
+          path: test-results
       - run:
           name: Coverage gate and JSON report
           command: mix coveralls.json
