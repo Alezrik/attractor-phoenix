@@ -41,6 +41,9 @@ jobs:
       - run:
           name: Compile with warnings as errors
           command: mix compile --warnings-as-errors
+      - run:
+          name: Run Credo
+          command: mix credo --strict
 
   tests_and_coverage:
     executor: elixir
