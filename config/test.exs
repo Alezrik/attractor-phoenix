@@ -27,4 +27,5 @@ config :phoenix_live_view,
 config :phoenix,
   sort_verified_routes_query_params: true
 
-config :junit_formatter, report_file: "test-results/junit.xml"
+config :junit_formatter,
+  report_file: System.get_env("JUNIT_REPORT_FILE", "test-results/junit.xml")

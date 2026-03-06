@@ -64,7 +64,10 @@ jobs:
       - setup_elixir
       - run:
           name: Run tests
-          command: mix test --warnings-as-errors --formatter ExUnit.CLIFormatter --formatter JUnitFormatter
+          command: |
+            mkdir -p test-results
+            JUNIT_REPORT_FILE="$PWD/test-results/junit.xml" \
+              mix test --warnings-as-errors --formatter ExUnit.CLIFormatter --formatter JUnitFormatter
       - store_test_results:
           path: test-results
       - run:
