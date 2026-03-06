@@ -1,4 +1,5 @@
 # attractor-phoenix
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/Alezrik/attractor-phoenix/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/Alezrik/attractor-phoenix/tree/main)
 
 `attractor-phoenix` is a demo app whose primary deliverable is the `AttractorEx` library.
 
