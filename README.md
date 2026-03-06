@@ -99,12 +99,26 @@ This project follows and tests against strongDM Attractor concepts/spec:
 2. https://github.com/strongdm/attractor
 3. https://github.com/strongdm/attractor/blob/main/attractor-spec.md
 4. Local compliance matrix: `lib/attractor_ex/ATTRACTOR_SPEC_COMPLIANCE.md`
+5. Unified LLM compliance matrix: `lib/attractor_ex/UNIFIED_LLM_SPEC_COMPLIANCE.md`
 
 Upstream baseline currently tracked by this repo:
 
 1. `strongdm/attractor` commit: `2f892efd63ee7c11f038856b90aae57c067b77c2` (2026-02-19)
 2. Local reference clone path: `_attractor_reference`
 3. Update reminder: re-check upstream spec changes periodically and update tests/implementation when this hash changes.
+
+## Unified LLM Client (spec implementation status)
+
+`AttractorEx.LLM.Client` now implements the spec-defined low-level foundation for a unified client:
+
+1. Provider routing by request provider or client default provider.
+2. Request middleware for blocking completion flows.
+3. Streaming middleware for stream flows.
+4. Provider adapter contract with `complete/1` and optional `stream/1`.
+5. Unified request model fields including `top_p`, `stop_sequences`, and `response_format`.
+6. Unified stream event envelope via `AttractorEx.LLM.StreamEvent`.
+
+Current scope is intentionally low-level and adapter-agnostic. See the detailed matrix in `lib/attractor_ex/UNIFIED_LLM_SPEC_COMPLIANCE.md`.
 
 ## LLM Node Configuration (`codergen`)
 

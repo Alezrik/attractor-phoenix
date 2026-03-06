@@ -8,9 +8,12 @@ defmodule AttractorEx.LLM.Request do
             messages: [],
             max_tokens: nil,
             temperature: nil,
+            top_p: nil,
+            stop_sequences: [],
             reasoning_effort: "high",
             tools: [],
             tool_choice: nil,
+            response_format: nil,
             provider_options: %{},
             metadata: %{}
 
@@ -20,9 +23,12 @@ defmodule AttractorEx.LLM.Request do
           messages: [Message.t()],
           max_tokens: integer() | nil,
           temperature: float() | nil,
+          top_p: float() | nil,
+          stop_sequences: [String.t()],
           reasoning_effort: String.t(),
           tools: list(),
           tool_choice: String.t() | map() | nil,
+          response_format: :text | :json | %{type: :json_schema, schema: map()} | nil,
           provider_options: map(),
           metadata: map()
         }

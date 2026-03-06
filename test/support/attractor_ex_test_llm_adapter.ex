@@ -1,7 +1,7 @@
 defmodule AttractorExTest.LLMAdapter do
   @moduledoc false
 
-  alias AttractorEx.LLM.{Request, Response, Usage}
+  alias AttractorEx.LLM.{Request, Response, StreamEvent, Usage}
 
   def complete(%Request{} = request) do
     text_part =
@@ -18,5 +18,12 @@ defmodule AttractorExTest.LLMAdapter do
       finish_reason: "stop",
       raw: %{"ok" => true}
     }
+  end
+
+  def stream(%Request{} = request) do
+    [
+      %StreamEvent{type: :stream_start},
+      %StreamEvent{type: :text_delta, text: "provider=#{request.provider}"}
+    ]
   end
 end
