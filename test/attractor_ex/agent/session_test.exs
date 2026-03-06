@@ -29,6 +29,17 @@ defmodule AttractorEx.Agent.SessionTest do
     assert Enum.any?(completed.events, &(&1.kind == :tool_call_end))
   end
 
+  test "handles string-keyed tool call maps from provider payloads" do
+    session = build_session("single_tool_string_keys", [echo_tool()])
+    completed = Session.submit(session, "run tool")
+
+    assert completed.state == :idle
+    assert last_assistant_text(completed) == "tool-complete"
+    tool_turn = Enum.find(completed.history, &(&1.type == :tool_results))
+    [result] = tool_turn.results
+    refute result.is_error
+  end
+
   test "unknown tool returns error result and model can recover" do
     session = build_session("unknown_tool", [echo_tool()])
     completed = Session.submit(session, "unknown")
@@ -117,7 +128,32 @@ defmodule AttractorEx.Agent.SessionTest do
     tool_turn = Enum.find(completed.history, &(&1.type == :tool_results))
     [result] = tool_turn.results
 
-    assert result.content =~ "[WARNING: Tool output was truncated."
+    assert result.content =~ "[WARNING: Tool output"
+  end
+
+  test "character truncation never exceeds configured limit" do
+    tool =
+      %Tool{
+        name: "shell_command",
+        description: "test",
+        parameters: %{},
+        execute: fn _args, _env -> String.duplicate("x", 500) end
+      }
+
+    session =
+      build_session("single_shell_tool", [tool],
+        config: [
+          tool_output_limits: %{"shell_command" => 30, "__default__" => 30},
+          tool_output_line_limits: %{}
+        ]
+      )
+
+    completed = Session.submit(session, "truncate")
+    tool_turn = Enum.find(completed.history, &(&1.type == :tool_results))
+    [result] = tool_turn.results
+
+    assert String.length(result.content) <= 30
+    assert result.content =~ "[WARNING: Tool output"
   end
 
   defp build_session(scenario, tools, opts \\ []) do

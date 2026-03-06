@@ -337,12 +337,14 @@ defmodule AttractorEx.Agent.Session do
       text
     else
       removed = String.length(text) - limit
-      marker = "\n[WARNING: Tool output was truncated. #{removed} characters removed...]\n"
-      head_size = div(limit, 2)
-      tail_size = limit - head_size
+      marker_full = "\n[WARNING: Tool output was truncated. #{removed} characters removed...]\n"
+      marker = bounded_marker(marker_full, limit)
+      remaining_budget = max(limit - String.length(marker), 0)
+      head_size = div(remaining_budget, 2)
+      tail_size = remaining_budget - head_size
       head = String.slice(text, 0, head_size)
-      tail = String.slice(text, -tail_size, tail_size)
-      head <> marker <> tail
+      tail = if tail_size > 0, do: String.slice(text, -tail_size, tail_size), else: ""
+      String.slice(head <> marker <> tail, 0, limit)
     end
   end
 
@@ -421,7 +423,23 @@ defmodule AttractorEx.Agent.Session do
     }
   end
 
+  defp normalize_tool_call(%{"name" => name} = call) do
+    %ToolCall{
+      id: Map.get(call, "id") || Map.get(call, :id),
+      name: to_string(name),
+      arguments: Map.get(call, "arguments") || Map.get(call, :arguments) || %{}
+    }
+  end
+
   defp normalize_tool_call(_call), do: %ToolCall{}
+
+  defp bounded_marker(marker, limit) do
+    if String.length(marker) <= limit do
+      marker
+    else
+      String.slice(marker, 0, limit)
+    end
+  end
 
   defp discover_project_docs(working_dir, provider_id) do
     common = find_doc(working_dir, "AGENTS.md")
