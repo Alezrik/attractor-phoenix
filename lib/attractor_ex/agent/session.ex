@@ -552,8 +552,8 @@ defmodule AttractorEx.Agent.Session do
     parent = self()
     ref = make_ref()
 
-    pid =
-      spawn(fn ->
+    {pid, monitor_ref} =
+      spawn_monitor(fn ->
         result =
           try do
             {:ok, callback.()}
@@ -568,14 +568,19 @@ defmodule AttractorEx.Agent.Session do
 
     receive do
       {^ref, {:ok, value}} ->
+        drain_monitor_message(monitor_ref, pid)
         {:ok, value}
 
       {^ref, {:error, reason}} ->
+        drain_monitor_message(monitor_ref, pid)
         {:error, reason}
+
+      {:DOWN, ^monitor_ref, :process, ^pid, reason} ->
+        {:error, format_task_exit(reason)}
     after
       timeout_ms ->
         _ = Process.exit(pid, :kill)
-        {:error, :timeout}
+        consume_late_worker_reply(ref, monitor_ref, pid)
     end
   end
 
@@ -591,6 +596,43 @@ defmodule AttractorEx.Agent.Session do
 
   defp format_caught_failure(kind, reason) do
     "#{kind}: #{inspect(reason)}"
+  end
+
+  defp consume_late_worker_reply(ref, monitor_ref, pid) do
+    receive do
+      {^ref, {:ok, value}} ->
+        drain_monitor_message(monitor_ref, pid)
+        {:ok, value}
+
+      {^ref, {:error, reason}} ->
+        drain_monitor_message(monitor_ref, pid)
+        {:error, reason}
+
+      {:DOWN, ^monitor_ref, :process, ^pid, _reason} ->
+        drain_result_message(ref)
+        {:error, :timeout}
+    after
+      20 ->
+        drain_result_message(ref)
+        drain_monitor_message(monitor_ref, pid)
+        {:error, :timeout}
+    end
+  end
+
+  defp drain_monitor_message(monitor_ref, pid) do
+    receive do
+      {:DOWN, ^monitor_ref, :process, ^pid, _reason} -> :ok
+    after
+      0 -> :ok
+    end
+  end
+
+  defp drain_result_message(ref) do
+    receive do
+      {^ref, _result} -> :ok
+    after
+      0 -> :ok
+    end
   end
 
   defp discover_project_docs(working_dir, provider_id) do
