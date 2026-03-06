@@ -21,6 +21,9 @@ defmodule AttractorExTest.LLMAdapter do
   end
 
   def stream(%Request{} = request) do
-    [%StreamEvent{type: :stream_start}, %StreamEvent{type: :text_delta, text: "provider=#{request.provider}"}]
+    [
+      %StreamEvent{type: :stream_start},
+      %StreamEvent{type: :text_delta, text: "provider=#{request.provider}"}
+    ]
   end
 end

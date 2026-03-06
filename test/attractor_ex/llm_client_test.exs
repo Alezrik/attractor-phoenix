@@ -1,7 +1,7 @@
 defmodule AttractorEx.LLMClientTest do
   use ExUnit.Case, async: true
 
-  alias AttractorEx.LLM.{Client, Message, Request, Response, StreamEvent}
+  alias AttractorEx.LLM.{Client, Message, Request, Response, StreamEvent, Usage}
 
   test "routes request by explicit provider" do
     client = %Client{
@@ -109,19 +109,31 @@ defmodule AttractorEx.LLMClientTest do
   end
 
   test "stream routes to adapter and returns stream events" do
-    client = %Client{providers: %{"openai" => AttractorExTest.LLMAdapter}, default_provider: "openai"}
+    client = %Client{
+      providers: %{"openai" => AttractorExTest.LLMAdapter},
+      default_provider: "openai"
+    }
 
     events =
       client
-      |> Client.stream(%Request{model: "gpt-5.2", messages: [%Message{role: :user, content: "hi"}]})
+      |> Client.stream(%Request{
+        model: "gpt-5.2",
+        messages: [%Message{role: :user, content: "hi"}]
+      })
       |> Enum.to_list()
 
-    assert [%StreamEvent{type: :stream_start}, %StreamEvent{type: :text_delta, text: "provider=openai"}] =
+    assert [
+             %StreamEvent{type: :stream_start},
+             %StreamEvent{type: :text_delta, text: "provider=openai"}
+           ] =
              events
   end
 
   test "stream returns unsupported error when provider has no stream callback" do
-    client = %Client{providers: %{"openai" => AttractorExTest.LLMErrorAdapter}, default_provider: "openai"}
+    client = %Client{
+      providers: %{"openai" => AttractorExTest.LLMErrorAdapter},
+      default_provider: "openai"
+    }
 
     assert {:error, {:stream_not_supported, "openai"}} =
              Client.stream(client, %Request{model: "gpt-5.2", messages: []})
@@ -145,5 +157,101 @@ defmodule AttractorEx.LLMClientTest do
              %StreamEvent{type: :text_delta, text: "provider=anthropic"} -> true
              _ -> false
            end)
+  end
+
+  describe "unified LLM spec coverage" do
+    test "request fields are preserved and usage includes reasoning/cache counters" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
+        default_provider: "openai"
+      }
+
+      request = %Request{
+        model: "gpt-5.2",
+        messages: [%Message{role: :user, content: "hi"}],
+        max_tokens: 256,
+        temperature: 0.3,
+        top_p: 0.9,
+        stop_sequences: ["END", "DONE"],
+        reasoning_effort: "medium",
+        response_format: %{type: :json_schema, schema: %{"type" => "object"}},
+        provider_options: %{"region" => "us"},
+        metadata: %{"trace_id" => "abc-123"}
+      }
+
+      assert %Response{usage: %Usage{} = usage, raw: %{"request_snapshot" => snapshot}} =
+               Client.complete(client, request)
+
+      assert snapshot["model"] == "gpt-5.2"
+      assert snapshot["provider"] == "openai"
+      assert snapshot["max_tokens"] == 256
+      assert snapshot["temperature"] == 0.3
+      assert snapshot["top_p"] == 0.9
+      assert snapshot["stop_sequences"] == ["END", "DONE"]
+      assert snapshot["reasoning_effort"] == "medium"
+      assert snapshot["response_format"] == %{type: :json_schema, schema: %{"type" => "object"}}
+      assert snapshot["provider_options"] == %{"region" => "us"}
+      assert snapshot["metadata"] == %{"trace_id" => "abc-123"}
+
+      assert usage.reasoning_tokens == 20
+      assert usage.cache_read_tokens == 7
+      assert usage.cache_write_tokens == 3
+    end
+
+    test "complete_with_request returns resolved provider on default routing" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
+        default_provider: "openai"
+      }
+
+      request = %Request{model: "gpt-5.2", messages: [%Message{role: :user, content: "hi"}]}
+
+      assert {:ok, %Response{}, %Request{} = resolved_request} =
+               Client.complete_with_request(client, request)
+
+      assert resolved_request.provider == "openai"
+      assert resolved_request.model == "gpt-5.2"
+    end
+
+    test "stream_with_request returns stream events and resolved provider" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
+        default_provider: "openai"
+      }
+
+      request = %Request{model: "gpt-5.2", messages: [%Message{role: :user, content: "hi"}]}
+
+      assert {:ok, events, %Request{} = resolved_request} =
+               Client.stream_with_request(client, request)
+
+      assert resolved_request.provider == "openai"
+
+      assert [
+               %StreamEvent{type: :stream_start},
+               %StreamEvent{type: :text_delta, text: "chunk"},
+               %StreamEvent{type: :reasoning_delta, reasoning: "thinking"},
+               %StreamEvent{
+                 type: :tool_call,
+                 tool_call: %{"id" => "call-1", "name" => "echo"}
+               },
+               %StreamEvent{
+                 type: :tool_result,
+                 tool_result: %{"id" => "call-1", "output" => "done"}
+               },
+               %StreamEvent{
+                 type: :response,
+                 response: %Response{text: "final", finish_reason: "stop"}
+               },
+               %StreamEvent{
+                 type: :stream_end,
+                 usage: %Usage{total_tokens: 1}
+               },
+               %StreamEvent{
+                 type: :error,
+                 error: {:simulated_error, "openai"},
+                 raw: %{"request_snapshot" => %{"provider" => "openai"}}
+               }
+             ] = Enum.to_list(events)
+    end
   end
 end
