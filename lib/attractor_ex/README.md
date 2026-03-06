@@ -102,6 +102,15 @@ Artifacts written by codergen stage:
 2. `response.md`
 3. `status.json`
 
+
+## Coding Agent Loop Spec Compliance
+
+Coding-agent loop behavior is implemented in the Agent session modules and tracked in:
+
+1. `lib/attractor_ex/CODING_AGENT_LOOP_COMPLIANCE.md`
+
+That document maps implementation details to automated tests and should be updated whenever upstream loop-spec behavior changes.
+
 ## How to Extract into Another Project
 
 1. Copy `lib/attractor_ex/` into your project under `lib/`.
