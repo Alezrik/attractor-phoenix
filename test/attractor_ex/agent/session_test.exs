@@ -420,6 +420,37 @@ defmodule AttractorEx.Agent.SessionTest do
 
     baseline_len = Process.info(self(), :message_queue_len) |> elem(1)
 
+    queue_lengths =
+      for _ <- 1..5 do
+        session =
+          build_session("single_shell_tool", [tool],
+            config: [
+              default_command_timeout_ms: 10,
+              max_command_timeout_ms: 500
+            ]
+          )
+
+        _ = Session.submit(session, "run")
+        Process.info(self(), :message_queue_len) |> elem(1)
+      end
+
+    assert Enum.all?(queue_lengths, &(&1 <= baseline_len))
+  end
+
+  test "repeated tool timeouts do not leave stale messages after final run" do
+    tool =
+      %Tool{
+        name: "shell_command",
+        description: "slow shell",
+        parameters: %{},
+        execute: fn _args, _env ->
+          Process.sleep(80)
+          "done"
+        end
+      }
+
+    baseline_len = Process.info(self(), :message_queue_len) |> elem(1)
+
     for _ <- 1..5 do
       session =
         build_session("single_shell_tool", [tool],
@@ -432,10 +463,7 @@ defmodule AttractorEx.Agent.SessionTest do
       _ = Session.submit(session, "run")
     end
 
-    # Give late worker replies a moment to arrive if any leaked.
-    Process.sleep(30)
     after_len = Process.info(self(), :message_queue_len) |> elem(1)
-
     assert after_len <= baseline_len
   end
 
