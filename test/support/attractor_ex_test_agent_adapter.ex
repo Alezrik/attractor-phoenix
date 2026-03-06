@@ -105,6 +105,10 @@ defmodule AttractorExTest.AgentAdapter do
     response("shape-done", %{})
   end
 
+  defp do_complete("malformed_tool_call_list", _messages, _request) do
+    response("shape-done", [%{}])
+  end
+
   defp do_complete(_scenario, _messages, _request), do: response("done")
 
   defp has_tool_message?(messages) do

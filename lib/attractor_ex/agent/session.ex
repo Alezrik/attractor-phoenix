@@ -460,7 +460,9 @@ defmodule AttractorEx.Agent.Session do
   end
 
   defp normalize_tool_calls(tool_calls) when is_list(tool_calls) do
-    Enum.map(tool_calls, &normalize_tool_call/1)
+    tool_calls
+    |> Enum.map(&normalize_tool_call/1)
+    |> Enum.reject(&is_nil/1)
   end
 
   defp normalize_tool_calls(_), do: []
@@ -468,22 +470,34 @@ defmodule AttractorEx.Agent.Session do
   defp normalize_tool_call(%ToolCall{} = tool_call), do: tool_call
 
   defp normalize_tool_call(%{name: name} = call) do
-    %ToolCall{
-      id: Map.get(call, :id) || Map.get(call, "id"),
-      name: to_string(name),
-      arguments: Map.get(call, :arguments) || Map.get(call, "arguments") || %{}
-    }
+    normalized_name = name |> to_string() |> String.trim()
+
+    if normalized_name == "" do
+      nil
+    else
+      %ToolCall{
+        id: Map.get(call, :id) || Map.get(call, "id"),
+        name: normalized_name,
+        arguments: Map.get(call, :arguments) || Map.get(call, "arguments") || %{}
+      }
+    end
   end
 
   defp normalize_tool_call(%{"name" => name} = call) do
-    %ToolCall{
-      id: Map.get(call, "id") || Map.get(call, :id),
-      name: to_string(name),
-      arguments: Map.get(call, "arguments") || Map.get(call, :arguments) || %{}
-    }
+    normalized_name = name |> to_string() |> String.trim()
+
+    if normalized_name == "" do
+      nil
+    else
+      %ToolCall{
+        id: Map.get(call, "id") || Map.get(call, :id),
+        name: normalized_name,
+        arguments: Map.get(call, "arguments") || Map.get(call, :arguments) || %{}
+      }
+    end
   end
 
-  defp normalize_tool_call(_call), do: %ToolCall{}
+  defp normalize_tool_call(_call), do: nil
 
   defp bounded_marker(marker, limit) do
     if String.length(marker) <= limit do

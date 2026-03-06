@@ -402,6 +402,15 @@ defmodule AttractorEx.Agent.SessionTest do
     refute Enum.any?(completed.events, &(&1.kind == :tool_call_start))
   end
 
+  test "ignores malformed tool call list entries" do
+    session = build_session("malformed_tool_call_list", [echo_tool()])
+    completed = Session.submit(session, "shape")
+
+    assert last_assistant_text(completed) == "shape-done"
+    refute Enum.any?(completed.events, &(&1.kind == :tool_call_start))
+    refute Enum.any?(completed.events, &(&1.kind == :turn_limit))
+  end
+
   test "records tool errors when tool raises" do
     crashing_tool =
       %Tool{
