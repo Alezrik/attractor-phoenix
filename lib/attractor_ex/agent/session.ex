@@ -602,13 +602,9 @@ defmodule AttractorEx.Agent.Session do
 
   defp consume_late_worker_reply(ref, monitor_ref, pid) do
     receive do
-      {^ref, {:ok, value}} ->
+      {^ref, _result} ->
         flush_monitor(monitor_ref)
-        {:ok, value}
-
-      {^ref, {:error, reason}} ->
-        flush_monitor(monitor_ref)
-        {:error, reason}
+        {:error, :timeout}
 
       {:DOWN, ^monitor_ref, :process, ^pid, _reason} ->
         drain_result_message(ref)
