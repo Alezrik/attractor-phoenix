@@ -176,12 +176,16 @@ defmodule AttractorEx.Agent.Session do
   defp execute_tool_round(%__MODULE__{} = session, tool_calls, round_count) do
     {results, events} = execute_tool_calls(session, normalize_tool_calls(tool_calls))
 
-    session
-    |> append_events(events)
-    |> append_turn(%{type: :tool_results, results: results, timestamp: DateTime.utc_now()})
-    |> drain_steering()
-    |> maybe_emit_loop_detection()
-    |> run_rounds(round_count)
+    next_session =
+      session
+      |> append_events(events)
+      |> append_turn(%{type: :tool_results, results: results, timestamp: DateTime.utc_now()})
+      |> drain_steering()
+
+    case maybe_emit_loop_detection(next_session) do
+      {loop_session, true} -> loop_session
+      {loop_session, false} -> run_rounds(loop_session, round_count)
+    end
   end
 
   defp build_request(%__MODULE__{} = session) do
@@ -392,11 +396,14 @@ defmodule AttractorEx.Agent.Session do
       warning =
         "Loop detected: the last #{session.config.loop_detection_window} tool calls follow a repeating pattern. Try a different approach."
 
-      session
-      |> append_turn(%{type: :steering, content: warning, timestamp: DateTime.utc_now()})
-      |> emit(:loop_detection, %{message: warning})
+      detected_session =
+        session
+        |> append_turn(%{type: :steering, content: warning, timestamp: DateTime.utc_now()})
+        |> emit(:loop_detection, %{message: warning})
+
+      {detected_session, true}
     else
-      session
+      {session, false}
     end
   end
 

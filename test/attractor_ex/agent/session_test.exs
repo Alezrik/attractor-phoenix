@@ -136,6 +136,22 @@ defmodule AttractorEx.Agent.SessionTest do
            end)
   end
 
+  test "loop detection terminates current processing cycle" do
+    session =
+      build_session("looping_tool", [echo_tool()],
+        config: [
+          max_tool_rounds_per_input: 0,
+          loop_detection_window: 2
+        ]
+      )
+
+    completed = Session.submit(session, "loop forever")
+    assistant_turns = Enum.count(completed.history, &(&1.type == :assistant))
+
+    assert assistant_turns == 2
+    assert Enum.any?(completed.events, &(&1.kind == :loop_detection))
+  end
+
   test "max turns emits limit event" do
     session = build_session("no_tools", [echo_tool()], config: [max_turns: 1])
     completed = Session.submit(session, "hello")
