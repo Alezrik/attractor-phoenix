@@ -35,3 +35,6 @@ attractor_phoenix-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# Local tooling and test output
+/.elixir-tools/
+/test-results/

@@ -111,6 +111,33 @@ defmodule AttractorEx.ParserTest do
       assert graph.nodes["review"].attrs["reasoning_effort"] == "high"
     end
 
+    test "applies CSS model_stylesheet rules from graph attrs" do
+      stylesheet =
+        "* { llm_provider: anthropic; llm_model: claude-sonnet-4-5; } .code { llm_model: claude-opus-4-6; } #critical_review { llm_model: gpt-5.2; llm_provider: openai; reasoning_effort: high; }"
+
+      escaped_stylesheet = String.replace(stylesheet, "\"", "\\\"")
+
+      dot = """
+      digraph attractor {
+        graph [model_stylesheet="#{escaped_stylesheet}"]
+        start [shape=Mdiamond]
+        plan [shape=box]
+        implement [shape=box, class="code"]
+        critical_review [shape=box, class="code"]
+        done [shape=Msquare]
+        start -> plan -> implement -> critical_review -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.nodes["plan"].attrs["llm_provider"] == "anthropic"
+      assert graph.nodes["plan"].attrs["llm_model"] == "claude-sonnet-4-5"
+      assert graph.nodes["implement"].attrs["llm_model"] == "claude-opus-4-6"
+      assert graph.nodes["critical_review"].attrs["llm_model"] == "gpt-5.2"
+      assert graph.nodes["critical_review"].attrs["llm_provider"] == "openai"
+      assert graph.nodes["critical_review"].attrs["reasoning_effort"] == "high"
+    end
+
     test "returns an error when model_stylesheet is invalid JSON" do
       dot = """
       digraph attractor {
@@ -122,7 +149,7 @@ defmodule AttractorEx.ParserTest do
       """
 
       assert {:error, message} = Parser.parse(dot)
-      assert message =~ "model_stylesheet is not valid JSON"
+      assert message =~ "model_stylesheet is not valid JSON or CSS stylesheet"
     end
   end
 end
