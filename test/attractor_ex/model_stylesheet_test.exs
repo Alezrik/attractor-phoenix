@@ -282,7 +282,7 @@ defmodule AttractorEx.ModelStylesheetTest do
       {:ok, rules} =
         ModelStylesheet.parse("""
         node[type=tool] { timeout: 90s; command: mix test; retry_target: retry; }
-        node[type=wait.human] { prompt: "Choose path"; human.timeout: 30s; human.default_choice: done; }
+        node[type=wait.human] { prompt: "Choose path"; human.timeout: 30s; human.default_choice: done; human.multiple: true; }
         """)
 
       tool =
@@ -305,6 +305,7 @@ defmodule AttractorEx.ModelStylesheetTest do
       assert human_gate["prompt"] == "Choose path"
       assert human_gate["human.timeout"] == "30s"
       assert human_gate["human.default_choice"] == "done"
+      assert human_gate["human.multiple"] == "true"
     end
   end
 

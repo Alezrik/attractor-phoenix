@@ -70,6 +70,26 @@ defmodule AttractorEx.DotSchemaTest do
       assert length(graph.edges) == 1
     end
 
+    test "supports repeated attribute blocks and semicolon-separated attrs inside blocks" do
+      dot = """
+      digraph attractor {
+        node [shape=box; timeout="900s"][class="core"]
+        edge [label="next"; weight=1][fidelity="full"]
+        start [shape=Mdiamond]
+        task [prompt="Plan"]
+        done [shape=Msquare]
+        start -> task -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.nodes["task"].attrs["timeout"] == "900s"
+      assert graph.nodes["task"].attrs["class"] == "core"
+      assert Enum.all?(graph.edges, &(&1.attrs["label"] == "next"))
+      assert Enum.all?(graph.edges, &(&1.attrs["weight"] == 1))
+      assert Enum.all?(graph.edges, &(&1.attrs["fidelity"] == "full"))
+    end
+
     test "strips line and block comments" do
       dot = """
       digraph attractor {

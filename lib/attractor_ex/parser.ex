@@ -107,7 +107,7 @@ defmodule AttractorEx.Parser do
   end
 
   defp parse_statement("graph " <> rest, graph, scope, opts) do
-    attrs = rest |> String.trim() |> parse_attribute_block()
+    attrs = rest |> String.trim() |> parse_attribute_blocks()
 
     if opts[:top_level?] do
       {:ok, %{graph | attrs: Map.merge(graph.attrs, attrs)}, scope}
@@ -117,7 +117,7 @@ defmodule AttractorEx.Parser do
   end
 
   defp parse_statement("node " <> rest, graph, scope, opts) do
-    attrs = rest |> String.trim() |> parse_attribute_block()
+    attrs = rest |> String.trim() |> parse_attribute_blocks()
     next_scope = %{scope | node_defaults: Map.merge(scope.node_defaults, attrs)}
 
     if opts[:top_level?] do
@@ -128,7 +128,7 @@ defmodule AttractorEx.Parser do
   end
 
   defp parse_statement("edge " <> rest, graph, scope, opts) do
-    attrs = rest |> String.trim() |> parse_attribute_block()
+    attrs = rest |> String.trim() |> parse_attribute_blocks()
     next_scope = %{scope | edge_defaults: Map.merge(scope.edge_defaults, attrs)}
 
     if opts[:top_level?] do
@@ -179,7 +179,7 @@ defmodule AttractorEx.Parser do
     else
       attrs =
         scope.node_defaults
-        |> Map.merge(parse_attribute_block(attrs_part))
+        |> Map.merge(parse_attribute_blocks(attrs_part))
         |> merge_class_attr(scope.classes)
 
       existing =
@@ -210,7 +210,7 @@ defmodule AttractorEx.Parser do
     if length(ids) < 2 do
       {:error, "Invalid edge declaration: #{statement}"}
     else
-      attrs = Map.merge(scope.edge_defaults, parse_attribute_block(attrs_part))
+      attrs = Map.merge(scope.edge_defaults, parse_attribute_blocks(attrs_part))
 
       next_graph =
         ids
@@ -252,23 +252,66 @@ defmodule AttractorEx.Parser do
     do_split_attrs(statement, "", nil)
   end
 
-  defp parse_attribute_block("[" <> rest) do
-    rest
-    |> String.trim_trailing("]")
-    |> split_attr_pairs()
-    |> Enum.map(&String.trim/1)
-    |> Enum.reduce(%{}, fn pair, acc ->
-      case String.split(pair, "=", parts: 2) do
-        [key, value] ->
-          Map.put(acc, String.trim(key), parse_value(value))
-
-        _ ->
-          acc
-      end
-    end)
+  defp parse_attribute_blocks(text) when is_binary(text) do
+    text
+    |> String.trim()
+    |> do_parse_attribute_blocks(%{})
   end
 
-  defp parse_attribute_block(_), do: %{}
+  defp parse_attribute_blocks(_), do: %{}
+
+  defp do_parse_attribute_blocks("[" <> _rest = text, acc) do
+    case take_attribute_block(text) do
+      {:ok, block, rest} ->
+        block_attrs =
+          block
+          |> split_attr_pairs()
+          |> Enum.map(&String.trim/1)
+          |> Enum.reduce(%{}, fn pair, block_acc ->
+            case String.split(pair, "=", parts: 2) do
+              [key, value] ->
+                Map.put(block_acc, String.trim(key), parse_value(value))
+
+              _ ->
+                block_acc
+            end
+          end)
+
+        do_parse_attribute_blocks(String.trim_leading(rest), Map.merge(acc, block_attrs))
+
+      :error ->
+        acc
+    end
+  end
+
+  defp do_parse_attribute_blocks(_text, acc), do: acc
+
+  defp take_attribute_block("[" <> rest), do: do_take_attribute_block(rest, "", nil, 1)
+  defp take_attribute_block(_text), do: :error
+
+  defp do_take_attribute_block(<<>>, _current, _quote, _depth), do: :error
+
+  defp do_take_attribute_block(<<char, rest::binary>>, current, quote, depth) do
+    cond do
+      char in [?", ?'] and is_nil(quote) ->
+        do_take_attribute_block(rest, current <> <<char>>, char, depth)
+
+      char == quote ->
+        do_take_attribute_block(rest, current <> <<char>>, nil, depth)
+
+      is_nil(quote) and char == ?[ ->
+        do_take_attribute_block(rest, current <> <<char>>, quote, depth + 1)
+
+      is_nil(quote) and char == ?] and depth == 1 ->
+        {:ok, current, rest}
+
+      is_nil(quote) and char == ?] ->
+        do_take_attribute_block(rest, current <> <<char>>, quote, depth - 1)
+
+      true ->
+        do_take_attribute_block(rest, current <> <<char>>, quote, depth)
+    end
+  end
 
   defp split_attr_pairs(text) do
     {parts, current, _in_quotes, _bracket_depth} =
@@ -288,7 +331,7 @@ defmodule AttractorEx.Parser do
           char == "]" and is_nil(quote) and bracket_depth > 0 ->
             {parts, current <> char, quote, bracket_depth - 1}
 
-          char == "," and is_nil(quote) and bracket_depth == 0 ->
+          char in [",", ";"] and is_nil(quote) and bracket_depth == 0 ->
             {[current | parts], "", quote, bracket_depth}
 
           true ->
@@ -548,7 +591,7 @@ defmodule AttractorEx.Parser do
   defp statement_label_value({:statement, "graph " <> rest}) do
     rest
     |> String.trim()
-    |> parse_attribute_block()
+    |> parse_attribute_blocks()
     |> Map.get("label")
   end
 
