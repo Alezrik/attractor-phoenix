@@ -16,10 +16,12 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
         result: nil,
         error: nil,
         current_pipeline_id: nil,
+        submit_endpoint: "run",
         events: [],
         checkpoint: nil,
         questions: [],
-        status: nil
+        status: nil,
+        graph_json: nil
       )
 
     {:ok, socket}
@@ -29,17 +31,18 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
   def handle_event("run_pipeline", %{"pipeline" => params}, socket) do
     dot = Map.get(params, "dot", socket.assigns.dot)
     context_json = Map.get(params, "context_json", socket.assigns.context_json)
+    transport = Map.get(params, "transport", "run")
 
     with {:ok, context} <- decode_context(context_json),
-         {:ok, %{"pipeline_id" => pipeline_id}} <-
-           AttractorAPI.create_pipeline(dot, context, logs_root: "tmp/runs"),
+         {:ok, %{"pipeline_id" => pipeline_id}} <- submit_pipeline(dot, context, transport),
          {:ok, socket} <-
            refresh_pipeline(
              assign(socket,
                dot: dot,
                context_json: context_json,
                form: build_form(dot, context_json),
-               current_pipeline_id: pipeline_id
+               current_pipeline_id: pipeline_id,
+               submit_endpoint: transport
              ),
              pipeline_id
            ) do
@@ -52,11 +55,13 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
            context_json: context_json,
            form: build_form(dot, context_json),
            current_pipeline_id: nil,
+           submit_endpoint: transport,
            result: nil,
            status: nil,
            events: [],
            checkpoint: nil,
            questions: [],
+           graph_json: nil,
            error: to_string(message)
          )}
     end
@@ -104,16 +109,19 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
          {:ok, context_payload} <- AttractorAPI.get_pipeline_context(pipeline_id),
          {:ok, checkpoint_payload} <- AttractorAPI.get_pipeline_checkpoint(pipeline_id),
          {:ok, questions_payload} <- AttractorAPI.get_pipeline_questions(pipeline_id),
-         {:ok, events_payload} <- AttractorAPI.get_pipeline_events(pipeline_id) do
+         {:ok, events_payload} <- AttractorAPI.get_pipeline_events(pipeline_id),
+         {:ok, graph_payload} <- AttractorAPI.get_pipeline_graph_json(pipeline_id) do
       result = %{
         status: summary["status"],
         run_id: pipeline_id,
         logs_root: summary["logs_root"],
+        submit_endpoint: socket.assigns.submit_endpoint,
         context: context_payload["context"] || %{},
         checkpoint: checkpoint_payload["checkpoint"],
         pending_questions: questions_payload["questions"] || [],
         events: events_payload["events"] || [],
-        event_count: summary["event_count"]
+        event_count: summary["event_count"],
+        graph: graph_payload["graph"] || %{}
       }
 
       {:ok,
@@ -124,6 +132,7 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
          checkpoint: checkpoint_payload["checkpoint"],
          questions: questions_payload["questions"] || [],
          events: events_payload["events"] || [],
+         graph_json: graph_payload["graph"] || %{},
          error: nil
        )}
     else
@@ -151,5 +160,13 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
       },
       as: :pipeline
     )
+  end
+
+  defp submit_pipeline(dot, context, "pipelines") do
+    AttractorAPI.create_pipeline(dot, context, logs_root: "tmp/runs")
+  end
+
+  defp submit_pipeline(dot, context, _transport) do
+    AttractorAPI.run_pipeline(dot, context, logs_root: "tmp/runs")
   end
 end

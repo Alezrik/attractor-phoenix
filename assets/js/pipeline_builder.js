@@ -5,7 +5,7 @@ const VIEWPORT_PADDING = 24
 const STATUS_VALUES = ["success", "fail", "retry", "partial_success"]
 const NODE_TYPE_TO_SHAPE = {
   start: "Mdiamond",
-  end: "Msquare",
+  exit: "Msquare",
   codergen: "box",
   "wait.human": "hexagon",
   conditional: "diamond",
@@ -99,7 +99,7 @@ const PipelineBuilder = {
 
     this.addStartBtn?.addEventListener("click", () => this.addNode("start"))
     this.addToolBtn?.addEventListener("click", () => this.addNode("tool"))
-    this.addEndBtn?.addEventListener("click", () => this.addNode("end"))
+    this.addEndBtn?.addEventListener("click", () => this.addNode("exit"))
     this.clearEdgesBtn?.addEventListener("click", () => {
       this.state.edges = []
       this.sync()
@@ -207,7 +207,7 @@ const PipelineBuilder = {
             x: 280,
             y: 240,
           },
-          { id: "done", type: "end", attrs: { label: "done" }, x: 500, y: 180 },
+          { id: "done", type: "exit", attrs: { label: "done" }, x: 500, y: 180 },
         ],
         edges: [
           { from: "start", to: "hello", attrs: {} },
@@ -235,7 +235,7 @@ const PipelineBuilder = {
 
   typeFromShape(shape) {
     if (shape === "Mdiamond") return "start"
-    if (shape === "Msquare") return "end"
+    if (shape === "Msquare") return "exit"
     if (shape === "parallelogram") return "tool"
     if (shape === "hexagon") return "wait.human"
     if (shape === "diamond") return "conditional"
@@ -296,7 +296,7 @@ const PipelineBuilder = {
   },
 
   addNode(type) {
-    if ((type === "start" || type === "end") && this.hasType(type)) {
+    if ((type === "start" || type === "exit") && this.hasType(type)) {
       window.alert(`Only one ${type} node is allowed.`)
       return
     }
@@ -391,7 +391,7 @@ const PipelineBuilder = {
       }
 
       if (node.type === "start") return `${label}: this section starts the workflow.`
-      if (node.type === "end") return `${label}: this section finishes the workflow.`
+      if (node.type === "exit") return `${label}: this section finishes the workflow.`
       if (node.type === "wait.human") return `${label}: this section waits for a human choice.`
       if (node.type === "conditional") return `${label}: this section checks conditions to choose a path.`
       if (node.type === "parallel") return `${label}: this section runs multiple paths at the same time.`
@@ -436,7 +436,7 @@ const PipelineBuilder = {
   positionDiamondAnchors() {
     if (!this.state?.nodes?.length) return
     const start = this.state.nodes.find((node) => node.type === "start")
-    const done = this.state.nodes.find((node) => node.type === "end")
+    const done = this.state.nodes.find((node) => node.type === "exit")
     const others = this.state.nodes.filter((node) => node !== start && node !== done)
     if (!start || !done || others.length === 0) return
 
@@ -460,7 +460,7 @@ const PipelineBuilder = {
     const spacingX = NODE_WIDTH + GRID_SIZE * 2
     const spacingY = NODE_HEIGHT + GRID_SIZE * 2
     const protectedIds = new Set(
-      this.state.nodes.filter((node) => node.type === "start" || node.type === "end").map((node) => node.id)
+      this.state.nodes.filter((node) => node.type === "start" || node.type === "exit").map((node) => node.id)
     )
 
     for (let pass = 0; pass < 8; pass++) {
@@ -694,7 +694,7 @@ const PipelineBuilder = {
     attrs.shape = shape
     attrs.label = attrs.label || node.id
     if (node.type === "tool") attrs.tool_command = attrs.tool_command || "echo hello world"
-    if (node.type === "end") delete attrs.type
+    if (node.type === "exit") delete attrs.type
     if (node.type === "start") delete attrs.type
     if (node.type !== "tool") delete attrs.tool_command
     return this.cleanEmptyAttrs(attrs)
@@ -843,7 +843,7 @@ const PipelineBuilder = {
       ;["fidelity", "threadId"].forEach((field) => visible.add(field))
     }
 
-    if (type !== "end") {
+    if (type !== "exit") {
       visible.add("connections")
     }
 
@@ -871,7 +871,7 @@ const PipelineBuilder = {
 
     const requestedType = this.propType?.value || node.type
     if (
-      (requestedType === "start" || requestedType === "end") &&
+      (requestedType === "start" || requestedType === "exit") &&
       this.state.nodes.some((entry) => entry.id !== node.id && entry.type === requestedType)
     ) {
       window.alert(`Only one ${requestedType} node is allowed.`)
@@ -1094,7 +1094,7 @@ const PipelineBuilder = {
 
   updateAddButtons() {
     if (this.addStartBtn) this.addStartBtn.disabled = this.hasType("start")
-    if (this.addEndBtn) this.addEndBtn.disabled = this.hasType("end")
+    if (this.addEndBtn) this.addEndBtn.disabled = this.hasType("exit")
   },
 }
 
