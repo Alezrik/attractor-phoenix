@@ -1,9 +1,9 @@
-<Layouts.app flash={@flash} current_scope={assigns[:current_scope]}>
+<Layouts.app flash={@flash} current_scope={assigns[:current_scope]} current_path={~p"/builder"}>
   <section class="space-y-6" id="pipeline-builder-page">
     <div>
-      <h1 class="text-3xl font-bold tracking-tight">attractor-phoenix</h1>
+      <h1 class="text-3xl font-bold tracking-tight">Pipeline Builder</h1>
       <p class="text-sm text-base-content/70">
-        Live graphical pipeline builder with DOT editing and execution.
+        Live graphical pipeline builder backed by the attractor-ex HTTP API.
       </p>
     </div>
 
@@ -313,25 +313,27 @@
           </div>
         </div>
 
-        <.form for={%{}} id="pipeline-runner-form" phx-submit="run_pipeline" class="space-y-4">
+        <.form for={@form} id="pipeline-runner-form" phx-submit="run_pipeline" class="space-y-4">
           <div class="space-y-2">
             <label class="text-sm font-semibold" for="pipeline-dot">Pipeline DOT</label>
-            <textarea
+            <.input
+              field={@form[:dot]}
               id="pipeline-dot"
-              name="pipeline[dot]"
+              type="textarea"
               rows="16"
               class="w-full rounded-xl border border-base-300 bg-base-100 p-3 font-mono text-xs"
-            >{@dot}</textarea>
+            />
           </div>
 
           <div class="space-y-2">
             <label class="text-sm font-semibold" for="pipeline-context-json">Context JSON</label>
-            <textarea
+            <.input
+              field={@form[:context_json]}
               id="pipeline-context-json"
-              name="pipeline[context_json]"
+              type="textarea"
               rows="6"
               class="w-full rounded-xl border border-base-300 bg-base-100 p-3 font-mono text-xs"
-            >{@context_json}</textarea>
+            />
           </div>
 
           <button
@@ -360,6 +362,34 @@
         <p class="text-sm">Status: <strong>{@result.status}</strong></p>
         <p class="text-sm">Run ID: <code>{@result.run_id}</code></p>
         <p class="text-sm">Logs: <code>{@result.logs_root}</code></p>
+        <p class="text-sm">Events: <strong>{@result.event_count}</strong></p>
+        <p class="text-sm">Pending Questions: <strong>{length(@questions)}</strong></p>
+
+        <%= if @checkpoint do %>
+          <div class="rounded-lg border border-base-300 bg-base-100 p-3 text-sm">
+            <p class="font-semibold">Checkpoint</p>
+            <pre class="mt-2 overflow-x-auto text-xs"><%= Jason.encode_to_iodata!(@checkpoint, pretty: true) %></pre>
+          </div>
+        <% end %>
+
+        <%= if @events != [] do %>
+          <div class="space-y-2 rounded-lg border border-base-300 bg-base-100 p-3">
+            <h3 class="text-sm font-semibold">Recent Events</h3>
+            <div class="space-y-2">
+              <%= for event <- Enum.take(Enum.reverse(@events), 5) do %>
+                <div class="rounded-lg border border-base-300/70 px-3 py-2 text-xs">
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="font-semibold">{event["type"] || "event"}</span>
+                    <span class="text-base-content/60">{event["timestamp"]}</span>
+                  </div>
+                  <%= if event["status"] do %>
+                    <p class="mt-1 text-base-content/70">status: {event["status"]}</p>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
 
         <%= if is_map(get_in(@result, [:context, "tools"])) and map_size(get_in(@result, [:context, "tools"])) > 0 do %>
           <div

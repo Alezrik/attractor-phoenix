@@ -32,3 +32,8 @@ config :junit_formatter,
   report_dir: "test-results",
   report_file: "junit.xml",
   automatic_create_dir?: true
+
+config :attractor_phoenix, :attractor_http,
+  port: 4101,
+  ip: {127, 0, 0, 1},
+  base_url: "http://127.0.0.1:4101"

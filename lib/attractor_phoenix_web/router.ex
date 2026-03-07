@@ -17,7 +17,8 @@ defmodule AttractorPhoenixWeb.Router do
   scope "/", AttractorPhoenixWeb do
     pipe_through :browser
 
-    live "/", PipelineBuilderLive
+    live "/", DashboardLive
+    live "/builder", PipelineBuilderLive
   end
 
   # Other scopes may use custom stacks.

@@ -17,9 +17,9 @@ defmodule Mix.Tasks.Coverage.GateTest do
     %{tmp_dir: tmp_dir}
   end
 
-  test "prints a success message when coverage meets the minimum", %{tmp_dir: tmp_dir} do
+  test "prints a success message when coverage is above the minimum", %{tmp_dir: tmp_dir} do
     write_coveralls_config(tmp_dir, 75)
-    write_excoveralls_report(tmp_dir, [[1, 1, 1, 0, nil]])
+    write_excoveralls_report(tmp_dir, [[1, 1, 1, 1, 0, nil]])
 
     output =
       capture_io(fn ->
@@ -29,14 +29,26 @@ defmodule Mix.Tasks.Coverage.GateTest do
         end)
       end)
 
-    assert output =~ "Coverage gate passed: 75.0% >= 75.0%"
+    assert output =~ "Coverage gate passed: 80.0% > 75.0%"
   end
 
   test "raises when coverage is below the configured minimum", %{tmp_dir: tmp_dir} do
     write_coveralls_config(tmp_dir, 90)
     write_excoveralls_report(tmp_dir, [[1, 0, nil]])
 
-    assert_raise Mix.Error, ~r/Expected minimum coverage of 90.0%, got 50.0%/, fn ->
+    assert_raise Mix.Error, ~r/Expected coverage above 90.0%, got 50.0%/, fn ->
+      in_tmp_dir(tmp_dir, fn ->
+        Mix.Task.reenable("coverage.gate")
+        Mix.Tasks.Coverage.Gate.run([])
+      end)
+    end
+  end
+
+  test "raises when coverage equals the configured minimum", %{tmp_dir: tmp_dir} do
+    write_coveralls_config(tmp_dir, 75)
+    write_excoveralls_report(tmp_dir, [[1, 1, 1, 0, nil]])
+
+    assert_raise Mix.Error, ~r/Expected coverage above 75.0%, got 75.0%/, fn ->
       in_tmp_dir(tmp_dir, fn ->
         Mix.Task.reenable("coverage.gate")
         Mix.Tasks.Coverage.Gate.run([])
@@ -56,9 +68,9 @@ defmodule Mix.Tasks.Coverage.GateTest do
     end
   end
 
-  test "accepts float minimum coverage values", %{tmp_dir: tmp_dir} do
+  test "accepts float minimum coverage values when actual coverage is higher", %{tmp_dir: tmp_dir} do
     write_coveralls_config(tmp_dir, 75.0)
-    write_excoveralls_report(tmp_dir, [[1, 1, 1, 0, nil]])
+    write_excoveralls_report(tmp_dir, [[1, 1, 1, 1, 0, nil]])
 
     output =
       capture_io(fn ->
@@ -68,7 +80,7 @@ defmodule Mix.Tasks.Coverage.GateTest do
         end)
       end)
 
-    assert output =~ "Coverage gate passed: 75.0% >= 75.0%"
+    assert output =~ "Coverage gate passed: 80.0% > 75.0%"
   end
 
   test "raises when minimum_coverage has an invalid type", %{tmp_dir: tmp_dir} do
