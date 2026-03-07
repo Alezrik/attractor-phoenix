@@ -303,6 +303,69 @@ defmodule AttractorEx.HandlersTest do
       assert outcome.failure_reason =~ "No outgoing edges"
     end
 
+    test "wait_for_human supports auto_approve interviewer" do
+      node = Node.new("gate", %{"type" => "wait.human"})
+      graph = %Graph{edges: [Edge.new("gate", "ship_it", %{"label" => "[S] Ship"})]}
+
+      outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{},
+          graph,
+          unique_stage_dir("human_auto_approve"),
+          interviewer: :auto_approve
+        )
+
+      assert outcome.status == :success
+      assert outcome.suggested_next_ids == ["ship_it"]
+    end
+
+    test "wait_for_human supports callback interviewer" do
+      node = Node.new("gate", %{"type" => "wait.human"})
+
+      graph = %Graph{
+        edges: [
+          Edge.new("gate", "ship_it", %{"label" => "[S] Ship"}),
+          Edge.new("gate", "fixes", %{"label" => "[F] Fix"})
+        ]
+      }
+
+      callback = fn _node, _choices, _ctx -> {:ok, "F"} end
+
+      outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{},
+          graph,
+          unique_stage_dir("human_callback"),
+          interviewer: :callback,
+          callback: callback
+        )
+
+      assert outcome.status == :success
+      assert outcome.suggested_next_ids == ["fixes"]
+    end
+
+    test "wait_for_human supports queue interviewer with agent queue" do
+      node = Node.new("gate", %{"type" => "wait.human"})
+      graph = %Graph{edges: [Edge.new("gate", "ship_it", %{"label" => "[S] Ship"})]}
+      queue = start_supervised!({Agent, fn -> ["S"] end})
+
+      outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{},
+          graph,
+          unique_stage_dir("human_queue"),
+          interviewer: :queue,
+          queue: queue
+        )
+
+      assert outcome.status == :success
+      assert outcome.suggested_next_ids == ["ship_it"]
+      assert Agent.get(queue, & &1) == []
+    end
+
     test "tool handler fails when command is missing" do
       node = Node.new("tool", %{"shape" => "parallelogram"})
 

@@ -1,18 +1,21 @@
 defmodule AttractorEx.Handlers.WaitForHuman do
   @moduledoc false
 
-  alias AttractorEx.{Graph, Outcome}
+  alias AttractorEx.{Graph, HumanGate, Outcome}
 
-  def execute(node, context, %Graph{} = graph, _stage_dir, _opts) do
-    choices = choices_for(node.id, graph)
+  def execute(node, context, %Graph{} = graph, _stage_dir, opts) do
+    choices = HumanGate.choices_for(node.id, graph)
 
     cond do
       choices == [] ->
         Outcome.fail("No outgoing edges for human gate")
 
       true ->
-        answer = human_answer(context, node.id)
-        resolve_answer(node, answer, choices)
+        case human_answer(context, node, choices, opts) do
+          {:ok, answer} -> resolve_answer(node, answer, choices)
+          :missing -> resolve_answer(node, nil, choices)
+          {:error, reason} -> Outcome.retry("human gate interviewer error: #{reason}")
+        end
     end
   end
 
@@ -49,13 +52,7 @@ defmodule AttractorEx.Handlers.WaitForHuman do
   defp select_choice(%{} = choice, _choices), do: outcome_for_choice(choice)
 
   defp select_choice(value, choices) do
-    normalized = normalize_token(value)
-
-    Enum.find(choices, fn choice ->
-      normalize_token(choice.key) == normalized or
-        normalize_token(choice.label) == normalized or
-        normalize_token(choice.to) == normalized
-    end)
+    HumanGate.match_choice(value, choices)
     |> case do
       nil -> nil
       choice -> outcome_for_choice(choice)
@@ -78,58 +75,76 @@ defmodule AttractorEx.Handlers.WaitForHuman do
   end
 
   defp human_answer(context, node_id) do
-    get_in(context, ["human", "answers", node_id]) ||
-      get_in(context, ["human", node_id, "answer"])
-  end
-
-  defp choices_for(node_id, graph) do
-    graph.edges
-    |> Enum.filter(&(&1.from == node_id))
-    |> Enum.map(fn edge ->
-      label =
-        edge.attrs["label"]
-        |> case do
-          value when is_binary(value) and value != "" -> value
-          _ -> edge.to
-        end
-
-      %{key: accelerator_key(label), label: label, to: edge.to}
-    end)
-  end
-
-  defp accelerator_key(label) do
-    value = to_string(label)
-
-    cond do
-      Regex.match?(~r/^\[([A-Za-z0-9])\]/, value) ->
-        [_, key] = Regex.run(~r/^\[([A-Za-z0-9])\]/, value)
-        String.upcase(key)
-
-      Regex.match?(~r/^([A-Za-z0-9])\)/, value) ->
-        [_, key] = Regex.run(~r/^([A-Za-z0-9])\)/, value)
-        String.upcase(key)
-
-      Regex.match?(~r/^([A-Za-z0-9])\s*-\s*/, value) ->
-        [_, key] = Regex.run(~r/^([A-Za-z0-9])\s*-\s*/, value)
-        String.upcase(key)
-
-      true ->
-        value
-        |> String.trim()
-        |> String.first()
-        |> case do
-          nil -> ""
-          key -> String.upcase(key)
-        end
+    case get_in(context, ["human", "answers", node_id]) ||
+           get_in(context, ["human", node_id, "answer"]) do
+      nil -> :missing
+      value -> {:ok, value}
     end
   end
 
+  defp human_answer(context, node, choices, opts) do
+    case human_answer(context, node.id) do
+      {:ok, value} -> {:ok, value}
+      :missing -> interviewer_answer(node, choices, context, opts)
+    end
+  end
+
+  defp interviewer_answer(node, choices, context, opts) do
+    with {:ok, module} <- resolve_interviewer(opts),
+         response <- module.ask(node, choices, context, interviewer_opts(opts)) do
+      normalize_interviewer_response(response)
+    else
+      :none -> :missing
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp resolve_interviewer(opts) do
+    case opts[:interviewer] do
+      nil ->
+        :none
+
+      :auto_approve ->
+        {:ok, AttractorEx.Interviewers.AutoApprove}
+
+      :console ->
+        {:ok, AttractorEx.Interviewers.Console}
+
+      :callback ->
+        {:ok, AttractorEx.Interviewers.Callback}
+
+      :queue ->
+        {:ok, AttractorEx.Interviewers.Queue}
+
+      module when is_atom(module) ->
+        if function_exported?(module, :ask, 4) do
+          {:ok, module}
+        else
+          {:error, "interviewer module does not implement ask/4: #{inspect(module)}"}
+        end
+
+      value ->
+        {:error, "invalid interviewer: #{inspect(value)}"}
+    end
+  end
+
+  defp interviewer_opts(opts) do
+    opts
+    |> Keyword.get(:interviewer_opts, [])
+    |> Keyword.merge(Keyword.take(opts, [:callback, :choice, :queue]))
+  end
+
+  defp normalize_interviewer_response({:ok, value}), do: {:ok, value}
+  defp normalize_interviewer_response({:error, reason}), do: {:error, to_string(reason)}
+  defp normalize_interviewer_response({:timeout}), do: {:ok, "timeout"}
+  defp normalize_interviewer_response(:timeout), do: {:ok, "timeout"}
+  defp normalize_interviewer_response({:skip}), do: {:ok, "skip"}
+  defp normalize_interviewer_response(:skip), do: {:ok, "skip"}
+  defp normalize_interviewer_response(nil), do: :missing
+  defp normalize_interviewer_response(value), do: {:ok, value}
   defp normalize_token(nil), do: ""
 
   defp normalize_token(value) do
-    value
-    |> to_string()
-    |> String.trim()
-    |> String.downcase()
+    HumanGate.normalize_token(value)
   end
 end
