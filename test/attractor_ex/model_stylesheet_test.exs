@@ -68,6 +68,23 @@ defmodule AttractorEx.ModelStylesheetTest do
       assert rule.attrs["llm_model"] == "gpt-5.2"
     end
 
+    test "parses CSS stylesheets with comments and quoted separators in values" do
+      css = """
+      /* global defaults */
+      .code {
+        llm_provider: "open;ai";
+        llm_model: 'gpt}5.2';
+      }
+      """
+
+      assert {:ok, rules} = ModelStylesheet.parse(css)
+      assert length(rules) == 1
+      rule = hd(rules)
+      assert rule.selector == ".code"
+      assert rule.attrs["llm_provider"] == "open;ai"
+      assert rule.attrs["llm_model"] == "gpt}5.2"
+    end
+
     test "rejects invalid stylesheet values" do
       assert {:error, _} = ModelStylesheet.parse(123)
       assert {:error, _} = ModelStylesheet.parse("not-json")
@@ -258,6 +275,27 @@ defmodule AttractorEx.ModelStylesheetTest do
                diagnostics,
                &(&1.code == :model_stylesheet_rule_invalid and &1.severity == :warning)
              )
+    end
+
+    test "flags invalid selectors in map, list, and CSS stylesheets" do
+      map_diagnostics =
+        ModelStylesheet.lint(%{
+          "node[type=codergen" => %{"llm_provider" => "openai"}
+        })
+
+      list_diagnostics =
+        ModelStylesheet.lint([
+          %{selector: "bad selector", attrs: %{llm_provider: "openai"}}
+        ])
+
+      css_diagnostics =
+        ModelStylesheet.lint("""
+        node[type=codergen { llm_provider: openai; }
+        """)
+
+      assert Enum.any?(map_diagnostics, &(&1.code == :model_stylesheet_selector_invalid))
+      assert Enum.any?(list_diagnostics, &(&1.code == :model_stylesheet_selector_invalid))
+      assert Enum.any?(css_diagnostics, &(&1.code == :model_stylesheet_selector_invalid))
     end
   end
 end
