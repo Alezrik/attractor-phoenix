@@ -4,6 +4,7 @@ defmodule AttractorEx.Parser do
   alias AttractorEx.{Edge, Graph, ModelStylesheet, Node}
 
   @bare_id_pattern ~r/^[A-Za-z_][A-Za-z0-9_]*$/
+  @numeric_id_pattern ~r/^-?(?:\d+|\d*\.\d+)$/
   @graph_attr_decl_pattern ~r/^([A-Za-z_][A-Za-z0-9_\.]*)\s*=\s*(.+)$/
 
   def parse(dot) when is_binary(dot) do
@@ -30,18 +31,15 @@ defmodule AttractorEx.Parser do
   end
 
   defp parse_root(dot) do
-    case Regex.run(~r/digraph\s+("?[\w\-]+"?)?\s*\{(?<body>.*)\}\s*$/ms, dot, capture: :all_names) do
-      [body] ->
+    case Regex.run(~r/^\s*digraph(?:\s+(?<graph_id>.+?))?\s*\{(?<body>.*)\}\s*$/ms, dot, capture: :all_names) do
+      [graph_id, body] ->
         name =
-          case Regex.run(~r/digraph\s+("?[\w\-]+"?)?\s*\{/m, dot, capture: :all_but_first) do
-            [value] ->
-              candidate =
-                value |> String.trim() |> String.trim_leading("\"") |> String.trim_trailing("\"")
-
-              if candidate != "", do: candidate, else: "pipeline"
-
-            _ ->
-              "pipeline"
+          graph_id
+          |> String.trim()
+          |> normalize_id()
+          |> case do
+            "" -> "pipeline"
+            normalized -> normalized
           end
 
         {:ok, name, body}
@@ -61,19 +59,22 @@ defmodule AttractorEx.Parser do
   end
 
   defp split_unquoted_statements(text) do
-    {parts, current, _in_quotes} =
+    {parts, current, _quote_char} =
       text
       |> String.graphemes()
-      |> Enum.reduce({[], "", false}, fn char, {parts, current, in_quotes} ->
+      |> Enum.reduce({[], "", nil}, fn char, {parts, current, quote_char} ->
         cond do
-          char == "\"" and not escaped_quote?(current) ->
-            {parts, current <> char, not in_quotes}
+          char in ["\"", "'"] and quote_char == nil ->
+            {parts, current <> char, char}
 
-          (char == ";" or char == "\n") and not in_quotes ->
-            {[current | parts], "", in_quotes}
+          char == quote_char and not escaped_quote?(current) ->
+            {parts, current <> char, nil}
+
+          (char == ";" or char == "\n") and quote_char == nil ->
+            {[current | parts], "", quote_char}
 
           true ->
-            {parts, current <> char, in_quotes}
+            {parts, current <> char, quote_char}
         end
       end)
 
@@ -239,19 +240,22 @@ defmodule AttractorEx.Parser do
   defp parse_attribute_block(_), do: %{}
 
   defp split_attr_pairs(text) do
-    {parts, current, _in_quotes} =
+    {parts, current, _quote_char} =
       text
       |> String.graphemes()
-      |> Enum.reduce({[], "", false}, fn char, {parts, current, in_quotes} ->
+      |> Enum.reduce({[], "", nil}, fn char, {parts, current, quote_char} ->
         cond do
-          char == "\"" and not escaped_quote?(current) ->
-            {parts, current <> char, not in_quotes}
+          char in ["\"", "'"] and quote_char == nil ->
+            {parts, current <> char, char}
 
-          char == "," and not in_quotes ->
-            {[current | parts], "", in_quotes}
+          char == quote_char and not escaped_quote?(current) ->
+            {parts, current <> char, nil}
+
+          char == "," and quote_char == nil ->
+            {[current | parts], "", quote_char}
 
           true ->
-            {parts, current <> char, in_quotes}
+            {parts, current <> char, quote_char}
         end
       end)
 
@@ -266,6 +270,7 @@ defmodule AttractorEx.Parser do
       |> String.trim()
       |> strip_wrapping_quotes()
       |> String.replace("\\\"", "\"")
+      |> String.replace("\\'", "'")
       |> String.replace("\\\\", "\\")
 
     cond do
@@ -286,8 +291,14 @@ defmodule AttractorEx.Parser do
     end
   end
 
-  defp strip_wrapping_quotes(<<"\"", rest::binary>>) do
-    if String.ends_with?(rest, "\""), do: binary_part(rest, 0, byte_size(rest) - 1), else: rest
+  defp strip_wrapping_quotes(<<quote, rest::binary>>) when quote in [?", ?'] do
+    terminal = <<quote>>
+
+    if String.ends_with?(rest, terminal) do
+      binary_part(rest, 0, byte_size(rest) - 1)
+    else
+      rest
+    end
   end
 
   defp strip_wrapping_quotes(value), do: value
@@ -306,7 +317,17 @@ defmodule AttractorEx.Parser do
         |> String.replace("\\\"", "\"")
         |> String.replace("\\\\", "\\")
 
+      Regex.match?(~r/^'([^'\\]|\\.)*'$/, trimmed) ->
+        trimmed
+        |> String.trim_leading("'")
+        |> String.trim_trailing("'")
+        |> String.replace("\\'", "'")
+        |> String.replace("\\\\", "\\")
+
       Regex.match?(@bare_id_pattern, trimmed) ->
+        trimmed
+
+      Regex.match?(@numeric_id_pattern, trimmed) ->
         trimmed
 
       true ->
@@ -315,20 +336,23 @@ defmodule AttractorEx.Parser do
   end
 
   defp split_edge_path(text) do
-    {parts, current, _in_quotes} =
+    {parts, current, _quote_char} =
       text
       |> String.graphemes()
-      |> Enum.reduce({[], "", false}, fn char, {parts, current, in_quotes} ->
+      |> Enum.reduce({[], "", nil}, fn char, {parts, current, quote_char} ->
         cond do
-          char == "\"" and not escaped_quote?(current) ->
-            {parts, current <> char, not in_quotes}
+          char in ["\"", "'"] and quote_char == nil ->
+            {parts, current <> char, char}
 
-          char == ">" and not in_quotes and String.ends_with?(current, "-") ->
+          char == quote_char and not escaped_quote?(current) ->
+            {parts, current <> char, nil}
+
+          char == ">" and quote_char == nil and String.ends_with?(current, "-") ->
             segment = String.slice(current, 0, max(String.length(current) - 1, 0))
-            {parts ++ [segment], "", in_quotes}
+            {parts ++ [segment], "", quote_char}
 
           true ->
-            {parts, current <> char, in_quotes}
+            {parts, current <> char, quote_char}
         end
       end)
 

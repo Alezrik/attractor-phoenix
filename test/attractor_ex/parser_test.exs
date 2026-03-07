@@ -106,6 +106,43 @@ defmodule AttractorEx.ParserTest do
       assert Enum.any?(graph.edges, &(&1.from == "plan step" and &1.to == "done-node"))
     end
 
+    test "parses single-quoted identifiers and attribute values" do
+      dot = """
+      digraph 'single-quoted-flow' {
+        'start node' [shape=Mdiamond]
+        plan [shape=box, prompt='Plan in single quotes']
+        done [shape=Msquare]
+        'start node' -> plan -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.id == "single-quoted-flow"
+      assert Map.has_key?(graph.nodes, "start node")
+      assert graph.nodes["plan"].prompt == "Plan in single quotes"
+      assert Enum.any?(graph.edges, &(&1.from == "start node" and &1.to == "plan"))
+    end
+
+    test "parses numeric node identifiers" do
+      dot = """
+      digraph numeric_ids {
+        start [shape=Mdiamond]
+        1 [shape=box, prompt="First"]
+        2 [shape=box, prompt='Second']
+        done [shape=Msquare]
+        start -> 1 -> 2 -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert Map.has_key?(graph.nodes, "1")
+      assert Map.has_key?(graph.nodes, "2")
+      assert graph.nodes["1"].prompt == "First"
+      assert graph.nodes["2"].prompt == "Second"
+      assert Enum.any?(graph.edges, &(&1.from == "start" and &1.to == "1"))
+      assert Enum.any?(graph.edges, &(&1.from == "1" and &1.to == "2"))
+    end
+
     test "preserves comment markers inside quoted values while stripping real comments" do
       dot = """
       digraph attractor {
