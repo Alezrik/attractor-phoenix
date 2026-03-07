@@ -294,7 +294,7 @@ defmodule AttractorEx.Parser do
       char in [?", ?'] and is_nil(quote) ->
         do_take_attribute_block(rest, current <> <<char>>, char, depth)
 
-      char == quote ->
+      char == quote and not escaped_quote?(current) ->
         do_take_attribute_block(rest, current <> <<char>>, nil, depth)
 
       is_nil(quote) and char == ?[ ->
@@ -346,10 +346,7 @@ defmodule AttractorEx.Parser do
     normalized =
       value
       |> String.trim()
-      |> strip_wrapping_quotes()
-      |> String.replace("\\\"", "\"")
-      |> String.replace("\\'", "'")
-      |> String.replace("\\\\", "\\")
+      |> unquote_and_unescape()
 
     cond do
       normalized == "true" ->
@@ -367,6 +364,17 @@ defmodule AttractorEx.Parser do
       true ->
         normalized
     end
+  end
+
+  defp unquote_and_unescape(value) do
+    value
+    |> strip_wrapping_quotes()
+    |> String.replace("\\n", "\n")
+    |> String.replace("\\r", "\r")
+    |> String.replace("\\t", "\t")
+    |> String.replace("\\\"", "\"")
+    |> String.replace("\\'", "'")
+    |> String.replace("\\\\", "\\")
   end
 
   defp strip_wrapping_quotes(<<quote, rest::binary>>) when quote in [?", ?'] do
@@ -556,7 +564,7 @@ defmodule AttractorEx.Parser do
       char in [?", ?'] and is_nil(quote) ->
         take_balanced_block(rest, current <> <<char>>, char, depth)
 
-      char == quote ->
+      char == quote and not escaped_quote?(current) ->
         take_balanced_block(rest, current <> <<char>>, nil, depth)
 
       is_nil(quote) and char == ?{ ->
@@ -675,10 +683,7 @@ defmodule AttractorEx.Parser do
 
       Regex.match?(@quoted_id_pattern, trimmed) ->
         trimmed
-        |> strip_wrapping_quotes()
-        |> String.replace("\\\"", "\"")
-        |> String.replace("\\'", "'")
-        |> String.replace("\\\\", "\\")
+        |> unquote_and_unescape()
         |> String.trim()
 
       true ->

@@ -68,6 +68,29 @@ defmodule AttractorEx.ModelStylesheetTest do
       assert rule.attrs["llm_model"] == "gpt-5.2"
     end
 
+    test "supports single-quoted selector values and escaped CSS strings" do
+      css = """
+      node[type='wait.human'] { prompt: 'Line 1\\nLine 2'; human.input: 'textarea'; human.required: false; }
+      node[shape='box'] { llm_model: 'gpt\\'5'; }
+      """
+
+      assert {:ok, rules} = ModelStylesheet.parse(css)
+
+      human_gate =
+        ModelStylesheet.attrs_for_node(
+          rules,
+          "approve",
+          %{"type" => "wait.human", "shape" => "hexagon"}
+        )
+
+      codergen = ModelStylesheet.attrs_for_node(rules, "plan", %{"shape" => "box"})
+
+      assert human_gate["prompt"] == "Line 1\nLine 2"
+      assert human_gate["human.input"] == "textarea"
+      assert human_gate["human.required"] == "false"
+      assert codergen["llm_model"] == "gpt'5"
+    end
+
     test "parses CSS stylesheets with comments and quoted separators in values" do
       css = """
       /* global defaults */

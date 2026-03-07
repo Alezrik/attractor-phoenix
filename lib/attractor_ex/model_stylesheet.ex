@@ -11,7 +11,9 @@ defmodule AttractorEx.ModelStylesheet do
     "fidelity",
     "goal_gate",
     "human.default_choice",
+    "human.input",
     "human.multiple",
+    "human.required",
     "human.timeout",
     "join_policy",
     "k",
@@ -194,11 +196,33 @@ defmodule AttractorEx.ModelStylesheet do
   end
 
   defp trim_wrapping_quotes(value) do
+    trimmed = String.trim(value)
+
+    case trimmed do
+      <<quote, rest::binary>> when quote in [?", ?'] ->
+        closing = <<quote>>
+
+        if String.ends_with?(rest, closing) do
+          rest
+          |> binary_part(0, byte_size(rest) - 1)
+          |> unescape_string()
+        else
+          trimmed
+        end
+
+      _ ->
+        trimmed
+    end
+  end
+
+  defp unescape_string(value) do
     value
-    |> String.trim_leading("\"")
-    |> String.trim_trailing("\"")
-    |> String.trim_leading("'")
-    |> String.trim_trailing("'")
+    |> String.replace("\\n", "\n")
+    |> String.replace("\\r", "\r")
+    |> String.replace("\\t", "\t")
+    |> String.replace("\\\"", "\"")
+    |> String.replace("\\'", "'")
+    |> String.replace("\\\\", "\\")
   end
 
   defp map_to_rules(map) do
@@ -365,7 +389,9 @@ defmodule AttractorEx.ModelStylesheet do
   end
 
   defp parse_bare_shape_selector(rest, parsed) do
-    case Regex.run(~r/^shape=([A-Za-z_][A-Za-z0-9_\.\-]*|\"[^\"]+\")(.*)$/, rest,
+    case Regex.run(
+           ~r/^shape=([A-Za-z_][A-Za-z0-9_\.\-]*|\"(?:[^\"\\]|\\.)+\"|'(?:[^'\\]|\\.)+')(.*)$/,
+           rest,
            capture: :all_but_first
          ) do
       [raw_shape, remaining] ->
@@ -397,7 +423,9 @@ defmodule AttractorEx.ModelStylesheet do
   end
 
   defp parse_bare_type_selector(rest, parsed) do
-    case Regex.run(~r/^type=([A-Za-z_][A-Za-z0-9_\.\-]*|\"[^\"]+\")(.*)$/, rest,
+    case Regex.run(
+           ~r/^type=([A-Za-z_][A-Za-z0-9_\.\-]*|\"(?:[^\"\\]|\\.)+\"|'(?:[^'\\]|\\.)+')(.*)$/,
+           rest,
            capture: :all_but_first
          ) do
       [raw_type, remaining] ->
@@ -444,8 +472,7 @@ defmodule AttractorEx.ModelStylesheet do
     value =
       raw_value
       |> String.trim()
-      |> String.trim_leading("\"")
-      |> String.trim_trailing("\"")
+      |> trim_wrapping_quotes()
 
     if Regex.match?(@selector_ident, value) do
       {:ok, value}
@@ -491,7 +518,7 @@ defmodule AttractorEx.ModelStylesheet do
       |> String.graphemes()
       |> Enum.reduce({[], "", false, 0}, fn char, {parts, current, in_quotes, bracket_depth} ->
         cond do
-          char == "\"" ->
+          char in ["\"", "'"] and not escaped_quote?(current) ->
             {parts, current <> char, not in_quotes, bracket_depth}
 
           char == "[" and not in_quotes ->
@@ -735,10 +762,10 @@ defmodule AttractorEx.ModelStylesheet do
       |> String.graphemes()
       |> Enum.reduce({[], "", nil}, fn char, {parts, current, quote} ->
         cond do
-          char in ["\"", "'"] and is_nil(quote) ->
+          char in ["\"", "'"] and is_nil(quote) and not escaped_quote?(current) ->
             {parts, current <> char, char}
 
-          char == quote ->
+          char == quote and not escaped_quote?(current) ->
             {parts, current <> char, nil}
 
           char == ";" and is_nil(quote) ->
@@ -778,14 +805,28 @@ defmodule AttractorEx.ModelStylesheet do
       {char, rest} when char in ["\"", "'"] and is_nil(quote) ->
         take_until_closing_brace(rest, current <> char, char)
 
-      {char, rest} when char == quote ->
-        take_until_closing_brace(rest, current <> char, nil)
-
-      {"}", rest} when is_nil(quote) ->
-        {current, rest}
-
       {char, rest} ->
-        take_until_closing_brace(rest, current <> char, quote)
+        cond do
+          char == quote and not escaped_quote?(current) ->
+            take_until_closing_brace(rest, current <> char, nil)
+
+          char == "}" and is_nil(quote) ->
+            {current, rest}
+
+          true ->
+            take_until_closing_brace(rest, current <> char, quote)
+        end
     end
+  end
+
+  defp escaped_quote?(current) do
+    trailing_backslashes =
+      current
+      |> String.reverse()
+      |> String.graphemes()
+      |> Enum.take_while(&(&1 == "\\"))
+      |> length()
+
+    rem(trailing_backslashes, 2) == 1
   end
 end
