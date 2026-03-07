@@ -360,6 +360,71 @@ defmodule AttractorEx.InterviewerServerTest do
     refute Process.alive?(pid)
   end
 
+  test "server interviewer exposes human.required and human.input metadata overrides", %{
+    manager: manager
+  } do
+    {:ok, _id} =
+      Manager.create_pipeline(
+        manager,
+        "digraph { start [shape=Mdiamond] done [shape=Msquare] start -> done }",
+        %{},
+        pipeline_id: "server-metadata-overrides"
+      )
+
+    parent = self()
+
+    node = %Node{
+      id: "gate",
+      attrs: %{
+        "prompt" => "Explain why",
+        "human.timeout" => "1s",
+        "human.required" => "false",
+        "human.input" => "textarea"
+      }
+    }
+
+    pid =
+      spawn(fn ->
+        result =
+          Server.ask(node, [], %{},
+            manager: manager,
+            pipeline_id: "server-metadata-overrides",
+            event_observer: &send(parent, {:event, &1})
+          )
+
+        send(parent, {:metadata_override_result, result})
+      end)
+
+    assert_receive {:event,
+                    %{
+                      type: "InterviewStarted",
+                      question: %{
+                        id: "gate",
+                        type: "FREEFORM",
+                        required: false,
+                        metadata: %{"input_mode" => "textarea", "required" => false}
+                      }
+                    }}
+
+    wait_until(fn ->
+      match?(
+        {:ok, [%{id: "gate"}]},
+        Manager.pending_questions(manager, "server-metadata-overrides")
+      )
+    end)
+
+    assert :ok =
+             Manager.submit_answer(
+               manager,
+               "server-metadata-overrides",
+               "gate",
+               %{"answer" => "details"}
+             )
+
+    assert_receive {:metadata_override_result, {:ok, "details"}}
+    refute Process.alive?(pid)
+  end
+
   test "server interviewer accepts nested structured multiple answers", %{manager: manager} do
     {:ok, _id} =
       Manager.create_pipeline(
@@ -706,6 +771,30 @@ defmodule AttractorEx.InterviewerServerTest do
       Process.sleep(10)
       Process.exit(pid, :kill)
     end
+  end
+
+  test "server interviewer parses day timeout suffixes", %{manager: manager} do
+    {:ok, _id} =
+      Manager.create_pipeline(
+        manager,
+        "digraph { start [shape=Mdiamond] done [shape=Msquare] start -> done }",
+        %{},
+        pipeline_id: "server-day-time-unit"
+      )
+
+    pid =
+      spawn(fn ->
+        Server.ask(
+          %Node{id: "gate-1d", attrs: %{"human.timeout" => "1d"}},
+          [],
+          %{},
+          manager: manager,
+          pipeline_id: "server-day-time-unit"
+        )
+      end)
+
+    Process.sleep(10)
+    Process.exit(pid, :kill)
   end
 
   test "server interviewer falls back to default timeout when none is configured", %{

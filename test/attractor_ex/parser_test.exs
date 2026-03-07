@@ -166,6 +166,20 @@ defmodule AttractorEx.ParserTest do
       assert Enum.at(graph.edges, 0).condition == "result == 'ready'"
     end
 
+    test "unescapes newline and tab characters in quoted DOT values" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond, prompt="Line 1\\nLine 2\\tTabbed"]
+        done [shape=Msquare]
+        start -> done [label='Go\\nNow']
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.nodes["start"].prompt == "Line 1\nLine 2\tTabbed"
+      assert Enum.at(graph.edges, 0).attrs["label"] == "Go\nNow"
+    end
+
     test "parses repeated attribute blocks with semicolon separators" do
       dot = """
       digraph attractor {
