@@ -254,6 +254,65 @@ defmodule AttractorEx.ValidatorTest do
              )
     end
 
+    test "warns on invalid codergen LLM attribute values" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        task [shape=box, prompt="Do work", reasoning_effort="extreme", temperature="nope", max_tokens="zero", llm_provider="openai"]
+        done [shape=Msquare]
+        start -> task
+        task -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :reasoning_effort_invalid and &1.severity == :warning and
+                   &1.node_id == "task")
+             )
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :temperature_invalid and &1.severity == :warning and
+                   &1.node_id == "task")
+             )
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :max_tokens_invalid and &1.severity == :warning and
+                   &1.node_id == "task")
+             )
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :llm_provider_without_model and &1.severity == :warning and
+                   &1.node_id == "task")
+             )
+    end
+
+    test "accepts valid codergen LLM attribute values" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        task [shape=box, prompt="Do work", reasoning_effort="medium", temperature="0.3", max_tokens="256", llm_provider="openai", llm_model="gpt-5.2"]
+        done [shape=Msquare]
+        start -> task
+        task -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      refute Enum.any?(diagnostics, &(&1.code == :reasoning_effort_invalid))
+      refute Enum.any?(diagnostics, &(&1.code == :temperature_invalid))
+      refute Enum.any?(diagnostics, &(&1.code == :max_tokens_invalid))
+      refute Enum.any?(diagnostics, &(&1.code == :llm_provider_without_model))
+    end
+
     test "handles invalid and crashing custom rules gracefully" do
       dot = """
       digraph attractor {

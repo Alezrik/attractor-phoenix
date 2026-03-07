@@ -17,6 +17,7 @@ defmodule AttractorEx.Validator do
     |> validate_codergen_prompt(graph)
     |> validate_human_gate_choices(graph)
     |> validate_human_default_choice(graph)
+    |> validate_codergen_llm_attrs(graph)
     |> apply_custom_rules(graph, opts)
   end
 
@@ -283,6 +284,122 @@ defmodule AttractorEx.Validator do
     end)
   end
 
+  defp validate_codergen_llm_attrs(diags, graph) do
+    Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
+      if node.type == "codergen" do
+        acc
+        |> validate_reasoning_effort(node)
+        |> validate_temperature(node)
+        |> validate_max_tokens(node)
+        |> validate_provider_model_pair(node)
+      else
+        acc
+      end
+    end)
+  end
+
+  defp validate_reasoning_effort(diags, node) do
+    case Map.get(node.attrs, "reasoning_effort") do
+      nil ->
+        diags
+
+      value when is_binary(value) ->
+        normalized = value |> String.trim() |> String.downcase()
+
+        if normalized in ["low", "medium", "high"] do
+          diags
+        else
+          [
+            diag(
+              :warning,
+              :reasoning_effort_invalid,
+              "reasoning_effort should be one of: low, medium, high.",
+              node.id
+            )
+            | diags
+          ]
+        end
+
+      _value ->
+        [
+          diag(
+            :warning,
+            :reasoning_effort_invalid,
+            "reasoning_effort should be one of: low, medium, high.",
+            node.id
+          )
+          | diags
+        ]
+    end
+  end
+
+  defp validate_temperature(diags, node) do
+    case Map.get(node.attrs, "temperature") do
+      nil ->
+        diags
+
+      value ->
+        case to_float(value) do
+          {:ok, number} when number >= 0.0 and number <= 2.0 ->
+            diags
+
+          _ ->
+            [
+              diag(
+                :warning,
+                :temperature_invalid,
+                "temperature should be a number between 0 and 2.",
+                node.id
+              )
+              | diags
+            ]
+        end
+    end
+  end
+
+  defp validate_max_tokens(diags, node) do
+    case Map.get(node.attrs, "max_tokens") do
+      nil ->
+        diags
+
+      value ->
+        case to_positive_integer(value) do
+          {:ok, _parsed} ->
+            diags
+
+          :error ->
+            [
+              diag(
+                :warning,
+                :max_tokens_invalid,
+                "max_tokens should be a positive integer.",
+                node.id
+              )
+              | diags
+            ]
+        end
+    end
+  end
+
+  defp validate_provider_model_pair(diags, node) do
+    provider = blank_to_nil(Map.get(node.attrs, "llm_provider"))
+    model = blank_to_nil(Map.get(node.attrs, "llm_model"))
+
+    if provider && is_nil(model) do
+      [
+        diag(
+          :warning,
+          :llm_provider_without_model,
+          "llm_provider is set but llm_model is missing for codergen node.",
+          node.id
+        )
+        | diags
+      ]
+    else
+      diags
+    end
+  end
+
   defp apply_custom_rules(diags, graph, opts) do
     rules = Keyword.get(opts, :custom_rules, [])
 
@@ -349,6 +466,37 @@ defmodule AttractorEx.Validator do
 
   defp diag(severity, code, message, node_id \\ nil) do
     %{severity: severity, code: code, message: message, node_id: node_id}
+  end
+
+  defp to_float(value) when is_float(value), do: {:ok, value}
+  defp to_float(value) when is_integer(value), do: {:ok, value * 1.0}
+
+  defp to_float(value) when is_binary(value) do
+    case Float.parse(String.trim(value)) do
+      {parsed, ""} -> {:ok, parsed}
+      _ -> :error
+    end
+  end
+
+  defp to_float(_), do: :error
+
+  defp to_positive_integer(value) when is_integer(value),
+    do: if(value > 0, do: {:ok, value}, else: :error)
+
+  defp to_positive_integer(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {parsed, ""} when parsed > 0 -> {:ok, parsed}
+      _ -> :error
+    end
+  end
+
+  defp to_positive_integer(_), do: :error
+
+  defp blank_to_nil(nil), do: nil
+
+  defp blank_to_nil(value) do
+    trimmed = value |> to_string() |> String.trim()
+    if trimmed == "", do: nil, else: trimmed
   end
 
   defp reachable_nodes(start_id, %Graph{} = graph) do
