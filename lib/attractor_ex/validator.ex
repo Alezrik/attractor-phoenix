@@ -9,8 +9,11 @@ defmodule AttractorEx.Validator do
     |> validate_terminal_nodes(graph)
     |> validate_start_incoming(graph)
     |> validate_exit_outgoing(graph)
+    |> validate_unreachable_nodes(graph)
+    |> validate_dead_end_nodes(graph)
     |> validate_condition_expressions(graph)
     |> validate_goal_gate_retry(graph)
+    |> validate_retry_target_nodes(graph)
     |> validate_codergen_prompt(graph)
     |> validate_human_gate_choices(graph)
     |> validate_human_default_choice(graph)
@@ -106,6 +109,46 @@ defmodule AttractorEx.Validator do
     end)
   end
 
+  defp validate_unreachable_nodes(diags, graph) do
+    start_id = start_node_id(graph)
+
+    if is_nil(start_id) do
+      diags
+    else
+      reachable = reachable_nodes(start_id, graph)
+
+      Enum.reduce(graph.nodes, diags, fn {id, _node}, acc ->
+        if id in reachable do
+          acc
+        else
+          [
+            diag(
+              :warning,
+              :unreachable_node,
+              "Node is not reachable from start.",
+              id
+            )
+            | acc
+          ]
+        end
+      end)
+    end
+  end
+
+  defp validate_dead_end_nodes(diags, graph) do
+    Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
+      terminal? = node.type == "exit" or String.downcase(node.id) in ["exit", "end"]
+      has_outgoing? = Enum.any?(graph.edges, &(&1.from == node.id))
+      has_retry_path? = not is_nil(node.retry_target) or not is_nil(node.fallback_retry_target)
+
+      if terminal? or has_outgoing? or has_retry_path? do
+        acc
+      else
+        [diag(:warning, :dead_end_node, "Non-exit node has no outgoing path.", node.id) | acc]
+      end
+    end)
+  end
+
   defp validate_goal_gate_retry(diags, graph) do
     Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
       if node.goal_gate and is_nil(node.retry_target) and is_nil(node.fallback_retry_target) do
@@ -122,6 +165,48 @@ defmodule AttractorEx.Validator do
         acc
       end
     end)
+  end
+
+  defp validate_retry_target_nodes(diags, graph) do
+    node_ids = MapSet.new(Map.keys(graph.nodes))
+
+    Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
+      acc
+      |> maybe_add_missing_retry_target(node, node_ids)
+      |> maybe_add_missing_fallback_retry_target(node, node_ids)
+    end)
+  end
+
+  defp maybe_add_missing_retry_target(diags, node, node_ids) do
+    maybe_add_missing_target_diag(
+      diags,
+      node,
+      node.retry_target,
+      node_ids,
+      :retry_target_missing,
+      "retry_target points to an unknown node."
+    )
+  end
+
+  defp maybe_add_missing_fallback_retry_target(diags, node, node_ids) do
+    maybe_add_missing_target_diag(
+      diags,
+      node,
+      node.fallback_retry_target,
+      node_ids,
+      :fallback_retry_target_missing,
+      "fallback_retry_target points to an unknown node."
+    )
+  end
+
+  defp maybe_add_missing_target_diag(diags, _node, nil, _node_ids, _code, _message), do: diags
+
+  defp maybe_add_missing_target_diag(diags, node, target, node_ids, code, message) do
+    if MapSet.member?(node_ids, target) do
+      diags
+    else
+      [diag(:error, code, message, node.id) | diags]
+    end
   end
 
   defp validate_codergen_prompt(diags, graph) do
@@ -264,5 +349,31 @@ defmodule AttractorEx.Validator do
 
   defp diag(severity, code, message, node_id \\ nil) do
     %{severity: severity, code: code, message: message, node_id: node_id}
+  end
+
+  defp reachable_nodes(start_id, %Graph{} = graph) do
+    adjacency =
+      graph.edges
+      |> Enum.group_by(& &1.from, & &1.to)
+      |> Map.new(fn {from, to_nodes} -> {from, MapSet.new(to_nodes)} end)
+
+    do_reachable_nodes(MapSet.new([start_id]), [start_id], adjacency)
+  end
+
+  defp do_reachable_nodes(visited, [], _adjacency), do: MapSet.to_list(visited)
+
+  defp do_reachable_nodes(visited, [current | queue], adjacency) do
+    next_nodes = Map.get(adjacency, current, MapSet.new())
+
+    {visited, queue} =
+      Enum.reduce(next_nodes, {visited, queue}, fn next, {v, q} ->
+        if MapSet.member?(v, next) do
+          {v, q}
+        else
+          {MapSet.put(v, next), q ++ [next]}
+        end
+      end)
+
+    do_reachable_nodes(visited, queue, adjacency)
   end
 end

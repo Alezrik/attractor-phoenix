@@ -110,6 +110,87 @@ defmodule AttractorEx.ValidatorTest do
       assert Enum.any?(diagnostics, &(&1.code == :codergen_prompt and &1.severity == :warning))
     end
 
+    test "warns when non-exit nodes are unreachable from start" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        done [shape=Msquare]
+        orphan [shape=box, prompt="Orphan work"]
+        start -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :unreachable_node and &1.severity == :warning and
+                   &1.node_id == "orphan")
+             )
+    end
+
+    test "warns for non-exit dead-end nodes" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        task [shape=box, prompt="Do work"]
+        done [shape=Msquare]
+        start -> task
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :dead_end_node and &1.severity == :warning and &1.node_id == "task")
+             )
+    end
+
+    test "flags missing retry_target references" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        task [shape=box, prompt="Do work", retry_target="missing"]
+        done [shape=Msquare]
+        start -> task
+        task -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :retry_target_missing and &1.severity == :error and
+                   &1.node_id == "task")
+             )
+    end
+
+    test "flags missing fallback_retry_target references" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        task [shape=box, prompt="Do work", fallback_retry_target="missing"]
+        done [shape=Msquare]
+        start -> task
+        task -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :fallback_retry_target_missing and &1.severity == :error and
+                   &1.node_id == "task")
+             )
+    end
+
     test "flags wait.human nodes with no outgoing choices" do
       dot = """
       digraph attractor {
