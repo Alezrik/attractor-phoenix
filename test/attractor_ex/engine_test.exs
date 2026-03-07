@@ -394,6 +394,29 @@ defmodule AttractorEx.EngineTest do
                "transformed prompt"
     end
 
+    test "applies built-in variable expansion before execution" do
+      dot = """
+      digraph attractor {
+        graph [goal="Ship release"]
+        start [shape=Mdiamond]
+        task [shape=box, prompt="Plan for $goal"]
+        done [shape=Msquare]
+        start -> task -> done
+      }
+      """
+
+      assert {:ok, result} =
+               AttractorEx.run(dot, %{},
+                 logs_root: unique_logs_root("builtin_variable_expansion"),
+                 codergen_backend: AttractorExTest.EchoBackend
+               )
+
+      assert result.status == :success
+
+      assert File.read!(Path.join([result.logs_root, "task", "prompt.md"])) ==
+               "Plan for Ship release"
+    end
+
     test "supports module graph transforms via transform/1" do
       dot = """
       digraph attractor {

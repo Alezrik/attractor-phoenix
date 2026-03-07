@@ -3,7 +3,7 @@ defmodule AttractorEx.InterviewersTest do
 
   import ExUnit.CaptureIO
 
-  alias AttractorEx.Interviewers.{AutoApprove, Callback, Console, Queue}
+  alias AttractorEx.Interviewers.{AutoApprove, Callback, Console, Queue, Recording}
   alias AttractorEx.Node
 
   describe "auto approve interviewer" do
@@ -21,6 +21,16 @@ defmodule AttractorEx.InterviewersTest do
     test "returns timeout when no choices are available" do
       assert {:timeout} = AutoApprove.ask(%Node{}, [], %{}, [])
     end
+
+    test "supports multi-select responses" do
+      assert {:ok, ["A"]} =
+               AutoApprove.ask_multiple(
+                 %Node{},
+                 [%{key: "A", label: "Approve", to: "done"}],
+                 %{},
+                 []
+               )
+    end
   end
 
   describe "callback interviewer" do
@@ -36,6 +46,17 @@ defmodule AttractorEx.InterviewersTest do
 
     test "returns error when callback is missing" do
       assert {:error, _} = Callback.ask(%Node{}, [], %{}, [])
+    end
+
+    test "supports ask_multiple and inform callbacks" do
+      multiple = fn _node, _choices, _context -> {:ok, ["A", "B"]} end
+      inform = fn _node, payload, _context -> {:ok, payload[:message]} end
+
+      assert {:ok, ["A", "B"]} =
+               Callback.ask_multiple(%Node{}, [], %{}, callback_multiple: multiple)
+
+      assert {:ok, "done"} =
+               Callback.inform(%Node{}, %{message: "done"}, %{}, callback_inform: inform)
     end
   end
 
@@ -91,6 +112,19 @@ defmodule AttractorEx.InterviewersTest do
                    )
         end)
     end
+
+    test "supports comma-separated multi-select answers" do
+      _output =
+        capture_io("A, B\n", fn ->
+          assert {:ok, ["A", "B"]} =
+                   Console.ask_multiple(
+                     %Node{id: "gate"},
+                     [%{key: "A", label: "Approve", to: "done"}],
+                     %{},
+                     []
+                   )
+        end)
+    end
   end
 
   describe "queue interviewer" do
@@ -117,6 +151,38 @@ defmodule AttractorEx.InterviewersTest do
 
     test "returns error when queue is invalid" do
       assert {:error, _} = Queue.ask(%Node{}, [], %{}, queue: :invalid)
+    end
+
+    test "supports multi-select answers from queued lists" do
+      assert {:ok, ["A", "B"]} = Queue.ask_multiple(%Node{}, [], %{}, queue: [["A", "B"]])
+    end
+  end
+
+  describe "recording interviewer" do
+    test "records ask and inform events while delegating to the inner interviewer" do
+      sink = start_supervised!({Agent, fn -> [] end})
+
+      assert {:ok, "A"} =
+               Recording.ask(
+                 %Node{id: "gate"},
+                 [%{key: "A", label: "Approve", to: "done"}],
+                 %{},
+                 inner: :auto_approve,
+                 recording_sink: sink
+               )
+
+      assert :ok =
+               Recording.inform(
+                 %Node{id: "gate"},
+                 %{message: "record this"},
+                 %{},
+                 inner: :auto_approve,
+                 recording_sink: sink
+               )
+
+      events = Agent.get(sink, & &1)
+      assert Enum.any?(events, &(&1.event == :ask and &1.node_id == "gate"))
+      assert Enum.any?(events, &(&1.event == :inform and &1.node_id == "gate"))
     end
   end
 end

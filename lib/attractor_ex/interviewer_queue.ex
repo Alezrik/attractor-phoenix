@@ -19,6 +19,18 @@ defmodule AttractorEx.Interviewers.Queue do
     end
   end
 
+  @impl true
+  def ask_multiple(node, choices, context, opts) do
+    case ask(node, choices, context, opts) do
+      {:ok, values} when is_list(values) -> {:ok, values}
+      {:ok, value} -> {:ok, [value]}
+      other -> other
+    end
+  end
+
+  @impl true
+  def inform(_node, _payload, _context, _opts), do: :ok
+
   defp pop_list([head | _tail]), do: {:ok, head}
   defp pop_list([]), do: {:timeout}
 

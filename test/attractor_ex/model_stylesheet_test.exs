@@ -260,6 +260,24 @@ defmodule AttractorEx.ModelStylesheetTest do
       assert critical_code["max_tokens"] == "256"
     end
 
+    test "supports shape selectors and model alias declarations in CSS stylesheets" do
+      {:ok, rules} =
+        ModelStylesheet.parse("""
+        box { model = gpt-5.2; reasoning_effort = medium; }
+        .critical { reasoning_effort = high; }
+        """)
+
+      plain = ModelStylesheet.attrs_for_node(rules, "plan", %{"shape" => "box"})
+
+      critical =
+        ModelStylesheet.attrs_for_node(rules, "review", %{"shape" => "box", "class" => "critical"})
+
+      assert plain["llm_model"] == "gpt-5.2"
+      assert plain["reasoning_effort"] == "medium"
+      assert critical["llm_model"] == "gpt-5.2"
+      assert critical["reasoning_effort"] == "high"
+    end
+
     test "supports operational node attrs in CSS stylesheets" do
       {:ok, rules} =
         ModelStylesheet.parse("""
@@ -307,6 +325,15 @@ defmodule AttractorEx.ModelStylesheetTest do
                diagnostics,
                &(&1.code == :model_stylesheet_css_declaration_invalid and &1.severity == :warning)
              )
+    end
+
+    test "accepts equals-sign CSS declarations used by the spec examples" do
+      diagnostics =
+        ModelStylesheet.lint("""
+        box { model = gpt-5.2; reasoning_effort = medium; }
+        """)
+
+      refute Enum.any?(diagnostics, &(&1.code == :model_stylesheet_css_declaration_invalid))
     end
 
     test "flags invalid JSON-list rules" do

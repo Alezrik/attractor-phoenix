@@ -8,6 +8,7 @@ defmodule AttractorEx.Engine do
     HandlerRegistry,
     Outcome,
     Parser,
+    Transforms.VariableExpansion,
     Validator
   }
 
@@ -112,15 +113,8 @@ defmodule AttractorEx.Engine do
   end
 
   defp normalized_graph_transforms(opts) do
-    transforms = Keyword.get(opts, :graph_transforms, [])
+    transforms = [VariableExpansion | List.wrap(Keyword.get(opts, :graph_transforms, []))]
     legacy_transform = Keyword.get(opts, :graph_transform)
-
-    transforms =
-      cond do
-        is_list(transforms) -> transforms
-        is_nil(transforms) -> []
-        true -> [transforms]
-      end
 
     if is_nil(legacy_transform), do: transforms, else: transforms ++ [legacy_transform]
   end

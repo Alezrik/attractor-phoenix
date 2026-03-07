@@ -44,6 +44,30 @@ defmodule AttractorEx.Validator do
     |> apply_custom_rules(graph, opts)
   end
 
+  def validate_or_raise(%Graph{} = graph, opts \\ []) do
+    diagnostics = validate(graph, opts)
+    errors = Enum.filter(diagnostics, &(&1.severity == :error))
+
+    if errors == [] do
+      diagnostics
+    else
+      formatted =
+        errors
+        |> Enum.map_join("\n", fn diag ->
+          location =
+            cond do
+              is_binary(diag.node_id) -> " node=#{diag.node_id}"
+              is_tuple(diag.edge) -> " edge=#{elem(diag.edge, 0)}->#{elem(diag.edge, 1)}"
+              true -> ""
+            end
+
+          "[#{diag.code}]#{location} #{diag.message}"
+        end)
+
+      raise ArgumentError, "Attractor validation failed:\n" <> formatted
+    end
+  end
+
   def start_node_id(%Graph{} = graph) do
     graph.nodes
     |> Enum.find_value(fn {id, node} ->
