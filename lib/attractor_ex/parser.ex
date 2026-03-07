@@ -3,10 +3,13 @@ defmodule AttractorEx.Parser do
 
   alias AttractorEx.{Edge, Graph, ModelStylesheet, Node}
 
-  @bare_id_pattern ~r/^[A-Za-z_][A-Za-z0-9_]*$/
+  @bare_id_pattern ~r/^(?:[A-Za-z_][A-Za-z0-9_]*|-?(?:\.\d+|\d+(?:\.\d*)?))$/
   @bare_graph_id_pattern ~r/^[A-Za-z_][A-Za-z0-9_\-]*$/
   @quoted_id_pattern ~r/^"(?:[^"\\]|\\.)+"$|^'(?:[^'\\]|\\.)+'$/
   @graph_attr_decl_pattern ~r/^([A-Za-z_][A-Za-z0-9_\.]*)\s*=\s*(.+)$/
+  @attr_statement_pattern ~r/^(graph|node|edge)\b(.*)$/s
+  @root_pattern ~r/^\s*(?:strict\s+)?digraph\s+((?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[A-Za-z_][A-Za-z0-9_\-]*))?\s*\{(?<body>.*)\}\s*$/ms
+  @root_name_pattern ~r/^\s*(?:strict\s+)?digraph\s+((?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[A-Za-z_][A-Za-z0-9_\-]*))?\s*\{/m
   @type parse_scope :: %{
           node_defaults: map(),
           edge_defaults: map(),
@@ -30,14 +33,14 @@ defmodule AttractorEx.Parser do
 
   defp parse_root(dot) do
     case Regex.run(
-           ~r/digraph\s+((?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[A-Za-z_][A-Za-z0-9_\-]*))?\s*\{(?<body>.*)\}\s*$/ms,
+           @root_pattern,
            dot,
            capture: :all_names
          ) do
       [body] ->
         name =
           case Regex.run(
-                 ~r/digraph\s+((?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[A-Za-z_][A-Za-z0-9_\-]*))?\s*\{/m,
+                 @root_name_pattern,
                  dot,
                  capture: :all_but_first
                ) do
@@ -107,39 +110,43 @@ defmodule AttractorEx.Parser do
     rem(trailing_backslashes, 2) == 1
   end
 
-  defp parse_statement("graph " <> rest, graph, scope, opts) do
-    attrs = rest |> String.trim() |> parse_attribute_blocks()
-
-    if opts[:top_level?] do
-      {:ok, %{graph | attrs: Map.merge(graph.attrs, attrs)}, scope}
-    else
-      {:ok, graph, %{scope | graph_attrs: Map.merge(scope.graph_attrs, attrs)}}
-    end
-  end
-
-  defp parse_statement("node " <> rest, graph, scope, opts) do
-    attrs = rest |> String.trim() |> parse_attribute_blocks()
-    next_scope = %{scope | node_defaults: Map.merge(scope.node_defaults, attrs)}
-
-    if opts[:top_level?] do
-      {:ok, %{graph | node_defaults: Map.merge(graph.node_defaults, attrs)}, next_scope}
-    else
-      {:ok, graph, next_scope}
-    end
-  end
-
-  defp parse_statement("edge " <> rest, graph, scope, opts) do
-    attrs = rest |> String.trim() |> parse_attribute_blocks()
-    next_scope = %{scope | edge_defaults: Map.merge(scope.edge_defaults, attrs)}
-
-    if opts[:top_level?] do
-      {:ok, %{graph | edge_defaults: Map.merge(graph.edge_defaults, attrs)}, next_scope}
-    else
-      {:ok, graph, next_scope}
-    end
-  end
-
   defp parse_statement(statement, graph, scope, opts) do
+    case Regex.run(@attr_statement_pattern, statement, capture: :all_but_first) do
+      ["graph", rest] ->
+        attrs = rest |> String.trim() |> parse_attribute_blocks()
+
+        if opts[:top_level?] do
+          {:ok, %{graph | attrs: Map.merge(graph.attrs, attrs)}, scope}
+        else
+          {:ok, graph, %{scope | graph_attrs: Map.merge(scope.graph_attrs, attrs)}}
+        end
+
+      ["node", rest] ->
+        attrs = rest |> String.trim() |> parse_attribute_blocks()
+        next_scope = %{scope | node_defaults: Map.merge(scope.node_defaults, attrs)}
+
+        if opts[:top_level?] do
+          {:ok, %{graph | node_defaults: Map.merge(graph.node_defaults, attrs)}, next_scope}
+        else
+          {:ok, graph, next_scope}
+        end
+
+      ["edge", rest] ->
+        attrs = rest |> String.trim() |> parse_attribute_blocks()
+        next_scope = %{scope | edge_defaults: Map.merge(scope.edge_defaults, attrs)}
+
+        if opts[:top_level?] do
+          {:ok, %{graph | edge_defaults: Map.merge(graph.edge_defaults, attrs)}, next_scope}
+        else
+          {:ok, graph, next_scope}
+        end
+
+      _ ->
+        parse_non_attr_statement(statement, graph, scope, opts)
+    end
+  end
+
+  defp parse_non_attr_statement(statement, graph, scope, opts) do
     cond do
       String.contains?(statement, "--") ->
         {:error, "Undirected edges are not supported. Use `->`."}
