@@ -61,6 +61,32 @@ defmodule AttractorEx.DotSchemaTest do
       assert graph.nodes["1"].attrs["timeout"] == "900s"
       assert Enum.all?(graph.edges, &(&1.attrs["label"] == "next"))
     end
+
+    test "accepts HTML-like ids, port syntax, and subgraph edge endpoints" do
+      dot = """
+      digraph <attractor-flow> {
+        start [shape=Mdiamond]
+        done [shape=Msquare]
+        subgraph cluster_stage {
+          plan [shape=box]
+          review [shape=box]
+        }
+        start:out -> subgraph cluster_stage {
+          plan
+          review
+        } -> done:in
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.id == "<attractor-flow>"
+      assert Enum.any?(graph.edges, &(&1.from == "start" and &1.to == "plan"))
+      assert Enum.any?(graph.edges, &(&1.from == "start" and &1.to == "review"))
+      assert Enum.any?(graph.edges, &(&1.from == "plan" and &1.to == "done"))
+      assert Enum.any?(graph.edges, &(&1.from == "review" and &1.to == "done"))
+      assert Enum.any?(graph.edges, &(&1.attrs["tailport"] == "out"))
+      assert Enum.any?(graph.edges, &(&1.attrs["headport"] == "in"))
+    end
   end
 
   describe "2.3 key constraints" do

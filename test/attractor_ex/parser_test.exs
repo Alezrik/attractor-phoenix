@@ -134,6 +134,23 @@ defmodule AttractorEx.ParserTest do
       assert Enum.any?(graph.edges, &(&1.from == "plan step" and &1.to == "done-node"))
     end
 
+    test "parses HTML-like graph and node identifiers" do
+      dot = """
+      digraph <flow> {
+        start [shape=Mdiamond]
+        <task-node> [shape=box, prompt="Plan"]
+        done [shape=Msquare]
+        start -> <task-node> -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.id == "<flow>"
+      assert graph.nodes["<task-node>"].prompt == "Plan"
+      assert Enum.any?(graph.edges, &(&1.from == "start" and &1.to == "<task-node>"))
+      assert Enum.any?(graph.edges, &(&1.from == "<task-node>" and &1.to == "done"))
+    end
+
     test "preserves bare graph identifiers that include hyphens" do
       dot = """
       digraph attractor-flow {
@@ -292,6 +309,54 @@ defmodule AttractorEx.ParserTest do
       assert graph.nodes["task"].attrs["timeout"] == "900s"
       assert Enum.all?(graph.edges, &(&1.attrs["label"] == "next"))
       assert Enum.all?(graph.edges, &(&1.attrs["fidelity"] == "compact"))
+    end
+
+    test "preserves node port syntax on edge endpoints as edge attrs" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        plan [shape=box]
+        done [shape=Msquare]
+        start:out -> plan:in:nw -> done:sw
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+
+      assert Enum.at(graph.edges, 0).from == "start"
+      assert Enum.at(graph.edges, 0).to == "plan"
+      assert Enum.at(graph.edges, 0).attrs["tailport"] == "out"
+      assert Enum.at(graph.edges, 0).attrs["headport"] == "in:nw"
+
+      assert Enum.at(graph.edges, 1).from == "plan"
+      assert Enum.at(graph.edges, 1).to == "done"
+      assert Enum.at(graph.edges, 1).attrs["tailport"] == "in:nw"
+      assert Enum.at(graph.edges, 1).attrs["headport"] == "sw"
+    end
+
+    test "expands subgraph edge endpoints into edges for member nodes" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        done [shape=Msquare]
+        subgraph cluster_stage {
+          label="Stage"
+          plan [shape=box]
+          build [shape=box]
+        } -> done
+        start -> subgraph cluster_stage {
+          label="Stage"
+          plan
+          build
+        }
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert Enum.any?(graph.edges, &(&1.from == "plan" and &1.to == "done"))
+      assert Enum.any?(graph.edges, &(&1.from == "build" and &1.to == "done"))
+      assert Enum.any?(graph.edges, &(&1.from == "start" and &1.to == "plan"))
+      assert Enum.any?(graph.edges, &(&1.from == "start" and &1.to == "build"))
     end
 
     test "applies model_stylesheet rules with selector precedence" do
