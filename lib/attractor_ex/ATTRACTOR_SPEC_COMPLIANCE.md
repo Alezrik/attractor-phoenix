@@ -33,7 +33,7 @@ Legend: `implemented`, `partial`, `not implemented`.
 
 | Upstream section | Status | Notes |
 |---|---|---|
-| `2. DOT DSL Schema` | `partial` | Supports directed graphs, attrs, chained edges, defaults, class attr, shape mapping, quoted node identifiers, value parsing, quote-aware statement splitting (so `;` and newlines inside quoted values are preserved), quote-aware comment stripping (so `//` and `/* */` inside quoted attr values are preserved), and recursive inline/nested `subgraph` flattening. Full grammar coverage is not fully implemented. |
+| `2. DOT DSL Schema` | `partial` | Supports directed graphs, attrs, chained edges, defaults, class attr, shape mapping, quoted node identifiers (double and single quote), numeric identifiers, value parsing (including single-quoted values), quote-aware statement splitting (so `;` and newlines inside quoted values are preserved), quote-aware comment stripping (so `//` and `/* */` inside quoted attr values are preserved), and recursive inline/nested `subgraph` flattening. Full grammar coverage is not fully implemented. |
 | `3. Pipeline Execution Engine` | `implemented` | Start-to-exit loop, edge selection priority, goal gates, retries/backoff, failure routing, loop restart, checkpoint/manifest/status artifacts are implemented. |
 | `4. Node Handlers` | `implemented` | Built-ins present: `start`, `exit`, `codergen`, `wait.human`, `conditional`, `parallel`, `parallel.fan_in`, `tool`, `stack.manager_loop`, default fallback. |
 | `5. State and Context` | `implemented` | Context merge and per-node artifacts/checkpoints implemented. First-class resume API is available via `AttractorEx.resume/3` using a checkpoint struct/map or `checkpoint.json` path. |
@@ -47,7 +47,7 @@ Legend: `implemented`, `partial`, `not implemented`.
 
 ## Evidence Highlights
 
-1. DOT parsing + schema: `dot_schema_test.exs` and `parser_test.exs`.
+1. DOT parsing + schema: `dot_schema_test.exs` and `parser_test.exs` (including single-quoted and numeric identifier coverage).
 2. Validation diagnostics: `validator_test.exs`.
 3. Engine routing/retry/goal-gate: `engine_test.exs`.
 4. Condition language semantics: `condition_test.exs`.

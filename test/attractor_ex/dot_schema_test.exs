@@ -97,6 +97,25 @@ defmodule AttractorEx.DotSchemaTest do
       assert {:error, message} = Parser.parse(dot)
       assert message =~ "Invalid node declaration"
     end
+
+    test "supports numeric and single-quoted identifiers" do
+      dot = """
+      digraph 'schema-quoted' {
+        start [shape=Mdiamond]
+        'task one' [shape=box]
+        2 [shape=box]
+        done [shape=Msquare]
+        start -> 'task one' -> 2 -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.id == "schema-quoted"
+      assert Map.has_key?(graph.nodes, "task one")
+      assert Map.has_key?(graph.nodes, "2")
+      assert Enum.any?(graph.edges, &(&1.from == "start" and &1.to == "task one"))
+      assert Enum.any?(graph.edges, &(&1.from == "task one" and &1.to == "2"))
+    end
   end
 
   describe "2.4 value types" do
