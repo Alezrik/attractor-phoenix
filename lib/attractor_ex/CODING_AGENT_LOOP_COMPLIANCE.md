@@ -1,127 +1,67 @@
 # Coding Agent Loop Spec Compliance (AttractorEx)
 
-This document records how `AttractorEx.Agent.Session` and related modules map to the upstream strongDM coding-agent-loop behavior and where that behavior is validated by tests.
+This file maps `AttractorEx.Agent.*` behavior to the upstream coding-agent-loop specification.
+
+## Source Documents
+
+- Coding-agent loop spec: https://github.com/strongdm/attractor/blob/main/coding-agent-loop-spec.md
+- Related unified LLM spec: https://github.com/strongdm/attractor/blob/main/unified-llm-spec.md
+- Upstream HEAD reviewed: `2f892efd63ee7c11f038856b90aae57c067b77c2` (checked 2026-03-06)
 
 ## Scope
 
-Implementation scope:
+Implementation:
 
 1. `lib/attractor_ex/agent/session.ex`
 2. `lib/attractor_ex/agent/session_config.ex`
 3. `lib/attractor_ex/agent/provider_profile.ex`
-4. `lib/attractor_ex/agent/tool*.ex`
+4. `lib/attractor_ex/agent/tool.ex`
+5. `lib/attractor_ex/agent/tool_registry.ex`
+6. `lib/attractor_ex/agent/execution_environment.ex`
+7. `lib/attractor_ex/agent/local_execution_environment.ex`
 
-Primary verification tests:
+Tests:
 
 1. `test/attractor_ex/agent/session_test.exs`
 2. `test/attractor_ex/agent/primitives_test.exs`
 
-## Compliance Matrix
+## Section-by-Section Status
 
-### Session lifecycle and loop execution
+Legend: `implemented`, `partial`, `not implemented`.
 
-1. Session states (`:idle`, `:processing`, `:awaiting_input`, `:closed`) and state transitions are implemented in `Session` (`new`, `submit`, `close`, `abort`).
-2. Per-input processing runs iterative request/tool rounds through `run_rounds/2`.
-3. `session_end` is emitted after each completed submit cycle.
+| Upstream section | Status | Notes |
+|---|---|---|
+| `2. Agentic Loop` | `implemented` | Session lifecycle, loop rounds, natural completion, limits, steering/follow-up, loop detection, event emission are covered. |
+| `3. Provider-Aligned Toolsets` | `partial` | Generic tool/profile model exists. Full OpenAI/Anthropic/Gemini profile bundles and spec-level parity are not fully implemented in this library. |
+| `4. Tool Execution Environment` | `partial` | Abstraction exists, but current environment interface is minimal (`working_directory`, `platform`) vs full file/command contract in spec. |
+| `5. Tool Output and Context Management` | `implemented` | Character-first then line truncation, per-tool limits, timeout controls, and bounded event payload behavior are implemented/tested. |
+| `6. System Prompts and Environment Context` | `partial` | Layered prompt with environment/doc discovery and provider builder hooks exists, but not all spec context fields and provider-specific doc loading behavior are fully implemented. |
+| `7. Subagents` | `not implemented` | No spawn/send/wait/close subagent tooling in current code. |
+| `8. Out of Scope` | `n/a` | Informational section. |
+| `9. Definition of Done` | `partial` | Large coverage for core loop/tool behavior; provider parity, full environment contract, and subagents remain open. |
+| `Appendix A (apply_patch v4a)` | `not implemented` | Spec appendix documented upstream; no built-in parser/enforcer module here. |
+| `Appendix B (error handling)` | `partial` | Tool/session error propagation and recovery behaviors are implemented, but full cross-provider SDK retry hierarchy is delegated to Unified LLM layer. |
 
-Tests:
+## Verified Behaviors (with tests)
 
-- `natural completion when response has no tool calls`
-- `returns unchanged session for submit when state is closed`
-- `abort marks session as closed`
-- `abort_signaled short-circuits tool loop execution`
+1. Session lifecycle and closure/abort behavior.
+2. Tool call normalization and robust argument parsing.
+3. Unknown tool error results (model-recoverable).
+4. Steering and follow-up sequencing.
+5. Loop detection and turn/tool-round limits.
+6. Parallel tool call execution when enabled by profile.
+7. Timeout handling including late message drainage.
+8. Character+line truncation behavior and bounded event output.
+9. Tool failure capture (`raise`/`throw`/`exit`) and LLM error shutdown.
+10. Reasoning effort default/override and working-dir fallback logic.
 
-### Tool-call execution flow
+## Known Gaps vs Spec
 
-1. Tool call payload normalization supports struct, atom-keyed map, and string-keyed map forms.
-2. Tool arguments support map inputs and JSON-string decoding fallback.
-3. Unknown tools are converted to structured error tool results and surfaced to the model in the next round.
-4. Tool lifecycle emits `:tool_call_start` / `:tool_call_end` events.
-
-Tests:
-
-- `runs tool round and then finishes`
-- `handles string-keyed tool call maps from provider payloads`
-- `handles atom-keyed tool call maps`
-- `parses JSON string arguments for tool calls`
-- `falls back to empty map when tool arguments are invalid JSON`
-- `falls back to empty map when tool arguments are non-map non-binary`
-- `unknown tool returns error result and model can recover`
-
-### Steering, follow-up, and history wiring
-
-1. Steering messages are queued and injected into history before model calls.
-2. Follow-up prompts are queued and executed after current input cycle completion.
-3. History is serialized into chat messages across `user`, `assistant`, `system`, `steering`, and `tool_results` turns.
-
-Tests:
-
-- `steering message is injected before processing`
-- `follow_up runs after current input completes`
-
-### Loop and turn-limit controls
-
-1. Global turn cap (`max_turns`) is supported.
-2. Tool round cap (`max_tool_rounds_per_input`) is supported.
-3. Loop detection is supported via repeated round-signature matching.
-4. Loop detection emits steering feedback and ends the current processing cycle.
-
-Tests:
-
-- `loop detection emits warning when identical tool call repeats`
-- `loop detection terminates current processing cycle`
-- `batched repeated tool calls in one round do not trigger loop detection`
-- `max turns emits limit event`
-- `max tool rounds emits limit event`
-- `max tool rounds still allows post-tool assistant completion`
-
-### Parallel tool calls
-
-1. Parallel tool dispatch uses `Task.async_stream/3` when provider profile allows it.
-2. Task exits are transformed into tool error results.
-
-Tests:
-
-- `parallel tool calls execute concurrently when profile allows it`
-
-### Timeouts, truncation, and failure handling
-
-1. Tool execution timeout is enforced with per-call override for `shell_command.timeout_ms` capped by config max.
-2. Tool output truncation enforces both character and optional line budgets.
-3. Timeout path drains late worker messages to avoid mailbox growth.
-4. Tool failures from raise/throw/exit are captured as error tool results.
-5. LLM completion errors are recorded and close the session.
-
-Tests:
-
-- `tool execution times out using default session timeout`
-- `shell timeout_ms argument overrides default timeout within max cap`
-- `invalid shell timeout argument falls back to default timeout`
-- `late tool reply after timeout is treated as timeout`
-- `repeated tool timeouts do not accumulate mailbox messages`
-- `repeated tool timeouts do not leave stale messages after final run`
-- `tool output truncation applies character and line limits`
-- `character truncation never exceeds configured limit`
-- `line truncation fallback keeps original output when limit is not integer`
-- `line truncation still respects final character limit`
-- `tool_call_end event output is bounded by truncation limit`
-- `records tool errors when tool raises`
-- `records tool errors when tool throws`
-- `records tool errors when tool exits`
-- `closes session on llm error`
-- `llm error does not drop queued follow-up input`
-
-### Prompt/context wiring
-
-1. System prompt is composed from provider profile plus environment metadata.
-2. Project guidance files are discovered in the working directory (`AGENTS.md` and provider-specific docs).
-3. Reasoning effort defaults to `"high"` and supports override.
-
-Tests:
-
-- `uses high reasoning effort by default`
-- `uses configured reasoning effort override`
-- `uses cwd fallback when execution env is not local env struct`
+1. Provider-packaged toolsets aligned exactly to codex-rs, Claude Code, gemini-cli.
+2. Rich execution environment contract (full FS/command APIs and env filtering behaviors as spec defines).
+3. Subagent lifecycle and related tools (`spawn_agent`, `send_input`, `wait`, `close_agent`).
+4. Full event surface parity and cross-provider integration matrix.
+5. Built-in apply_patch grammar enforcement utility as a first-class profile tool.
 
 ## Verification Commands
 
@@ -129,9 +69,3 @@ Tests:
 mix test test/attractor_ex/agent/primitives_test.exs test/attractor_ex/agent/session_test.exs
 mix precommit
 ```
-
-## Upstream Spec Link
-
-- https://github.com/strongdm/attractor/blob/main/coding-agent-loop-spec.md
-
-Keep this document in sync with any upstream loop-spec changes and add/adjust tests first before implementation changes.

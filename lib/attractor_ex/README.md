@@ -108,8 +108,19 @@ Artifacts written by codergen stage:
 Coding-agent loop behavior is implemented in the Agent session modules and tracked in:
 
 1. `lib/attractor_ex/CODING_AGENT_LOOP_COMPLIANCE.md`
+2. Source spec: https://github.com/strongdm/attractor/blob/main/coding-agent-loop-spec.md
 
-That document maps implementation details to automated tests and should be updated whenever upstream loop-spec behavior changes.
+Unified LLM behavior is tracked in:
+
+1. `lib/attractor_ex/UNIFIED_LLM_SPEC_COMPLIANCE.md`
+2. Source spec: https://github.com/strongdm/attractor/blob/main/unified-llm-spec.md
+
+Core Attractor engine behavior is tracked in:
+
+1. `lib/attractor_ex/ATTRACTOR_SPEC_COMPLIANCE.md`
+2. Source spec: https://github.com/strongdm/attractor/blob/main/attractor-spec.md
+
+These compliance docs use `implemented` / `partial` / `not implemented` status per upstream section and should be updated whenever upstream spec content changes.
 
 ## How to Extract into Another Project
 
@@ -133,9 +144,14 @@ Coverage is configured to enforce a 90% minimum for AttractorEx scope.
 
 1. https://github.com/strongdm/attractor
 2. https://github.com/strongdm/attractor/blob/main/attractor-spec.md
-3. Local compliance matrix: `lib/attractor_ex/ATTRACTOR_SPEC_COMPLIANCE.md`
-4. Baseline commit currently implemented/tested against:
-   `2f892efd63ee7c11f038856b90aae57c067b77c2` (2026-02-19)
+3. https://github.com/strongdm/attractor/blob/main/coding-agent-loop-spec.md
+4. https://github.com/strongdm/attractor/blob/main/unified-llm-spec.md
+5. Local compliance docs:
+   - `lib/attractor_ex/ATTRACTOR_SPEC_COMPLIANCE.md`
+   - `lib/attractor_ex/CODING_AGENT_LOOP_COMPLIANCE.md`
+   - `lib/attractor_ex/UNIFIED_LLM_SPEC_COMPLIANCE.md`
+6. Baseline commit currently implemented/tested against:
+   `2f892efd63ee7c11f038856b90aae57c067b77c2` (verified 2026-03-06)
 
 ## Keeping Up with Upstream
 
