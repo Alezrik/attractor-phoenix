@@ -153,6 +153,16 @@ Artifacts written by codergen stage:
 2. `response.md`
 3. `status.json`
 
+`status.json` follows the Appendix C contract:
+
+1. `outcome`
+2. `preferred_next_label`
+3. `suggested_next_ids`
+4. `context_updates`
+5. `notes`
+
+Backward-compatible aliases such as `status` and `preferred_label` are still emitted.
+
 
 ## Coding Agent Loop Spec Compliance
 

@@ -722,6 +722,24 @@ defmodule AttractorEx.HandlersTest do
       assert get_in(outcome.context_updates, ["tool.output"]) =~ "ok"
     end
 
+    test "tool handler runs graph-level pre and post hooks" do
+      node = Node.new("tool", %{"shape" => "parallelogram", "tool_command" => "echo ok"})
+      stage_dir = unique_stage_dir("tool_hooks")
+
+      graph = %Graph{
+        attrs: %{
+          "tool_hooks.pre" => "echo pre-hook",
+          "tool_hooks.post" => "echo post-hook"
+        }
+      }
+
+      outcome = AttractorEx.Handlers.Tool.execute(node, %{}, graph, stage_dir, [])
+
+      assert outcome.status == :success
+      assert File.read!(Path.join(stage_dir, "tool_hook_pre.log")) =~ "pre-hook"
+      assert File.read!(Path.join(stage_dir, "tool_hook_post.log")) =~ "post-hook"
+    end
+
     test "tool handler returns fail on non-zero exit status" do
       cmd =
         case :os.type() do
@@ -1146,6 +1164,40 @@ defmodule AttractorEx.HandlersTest do
 
         assert outcome.status == :fail
       end
+    end
+
+    test "manager loop passes stack.child_workdir to 2-arity child starter" do
+      test_pid = self()
+
+      node =
+        Node.new("manager", %{
+          "shape" => "house",
+          "manager.max_cycles" => 1,
+          "manager.actions" => "observe",
+          "manager.poll_interval" => 0,
+          "stack.child_autostart" => true
+        })
+
+      outcome =
+        AttractorEx.Handlers.StackManagerLoop.execute(
+          node,
+          %{},
+          %Graph{
+            attrs: %{
+              "stack.child_dotfile" => "child.dot",
+              "stack.child_workdir" => "C:/tmp/child"
+            }
+          },
+          unique_stage_dir("manager_child_workdir"),
+          manager_start_child: fn dotfile, workdir ->
+            send(test_pid, {:child_started, dotfile, workdir})
+            :ok
+          end,
+          manager_observe: fn _ctx -> %{"context.stack.child.status" => "failed"} end
+        )
+
+      assert outcome.status == :fail
+      assert_receive {:child_started, "child.dot", "C:/tmp/child"}
     end
 
     test "manager loop handles parse fallbacks and non-binary truthy path" do

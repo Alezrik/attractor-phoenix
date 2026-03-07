@@ -8,6 +8,7 @@ defmodule AttractorEx.Engine do
     HandlerRegistry,
     Outcome,
     Parser,
+    StatusContract,
     Transforms.VariableExpansion,
     Validator
   }
@@ -26,8 +27,8 @@ defmodule AttractorEx.Engine do
         Keyword.put(opts, :_initial_context, normalized_initial_context)
       )
     else
-      {:error, reason} -> {:error, %{error: reason}}
-      errors when is_list(errors) -> {:error, %{diagnostics: errors}}
+      {:error, reason} -> {:error, %{error: reason, error_category: "pipeline"}}
+      errors when is_list(errors) -> {:error, %{diagnostics: errors, error_category: "pipeline"}}
     end
   end
 
@@ -52,9 +53,14 @@ defmodule AttractorEx.Engine do
         Keyword.put(resume_opts, :_initial_context, checkpoint_context)
       )
     else
-      {:error, reason} when is_binary(reason) -> {:error, %{error: reason}}
-      {:error, %{error: _} = error} -> {:error, error}
-      errors when is_list(errors) -> {:error, %{diagnostics: errors}}
+      {:error, reason} when is_binary(reason) ->
+        {:error, %{error: reason, error_category: "pipeline"}}
+
+      {:error, %{error: _} = error} ->
+        {:error, error}
+
+      errors when is_list(errors) ->
+        {:error, %{diagnostics: errors, error_category: "pipeline"}}
     end
   end
 
@@ -69,10 +75,12 @@ defmodule AttractorEx.Engine do
       {:ok, checkpoint, inferred_opts}
     else
       {:error, :enoent} ->
-        {:error, %{error: "Checkpoint file not found: #{checkpoint_path}"}}
+        {:error,
+         %{error: "Checkpoint file not found: #{checkpoint_path}", error_category: "pipeline"}}
 
       {:error, reason} ->
-        {:error, %{error: "Checkpoint read/decode failed: #{inspect(reason)}"}}
+        {:error,
+         %{error: "Checkpoint read/decode failed: #{inspect(reason)}", error_category: "pipeline"}}
     end
   end
 
@@ -82,7 +90,12 @@ defmodule AttractorEx.Engine do
     do: {:ok, normalize_checkpoint(checkpoint), []}
 
   defp load_checkpoint(_value),
-    do: {:error, %{error: "Checkpoint must be a file path, map, or %AttractorEx.Checkpoint{}"}}
+    do:
+      {:error,
+       %{
+         error: "Checkpoint must be a file path, map, or %AttractorEx.Checkpoint{}",
+         error_category: "pipeline"
+       }}
 
   defp normalize_checkpoint(checkpoint) do
     %Checkpoint{
@@ -209,6 +222,7 @@ defmodule AttractorEx.Engine do
       run_id: context["run_id"],
       status: :fail,
       reason: "Max steps exceeded",
+      error_category: :pipeline,
       context: context,
       outcomes: normalize_outcomes(outcomes),
       history: history,
@@ -251,13 +265,14 @@ defmodule AttractorEx.Engine do
     {outcome, stage_dir} =
       execute_with_retry(runtime_node, context, graph, run_root, retry_policy, opts)
 
-    _ = write_json(Path.join(stage_dir, "status.json"), serialize_outcome(outcome))
+    _ = StatusContract.write_status_file(Path.join(stage_dir, "status.json"), outcome)
 
     next_context =
       context
       |> deep_merge(normalize_context(outcome.context_updates))
       |> Map.put("outcome", Atom.to_string(outcome.status))
       |> maybe_put("preferred_label", outcome.preferred_label)
+      |> maybe_put("preferred_next_label", outcome.preferred_label)
       |> maybe_put("suggested_next_ids", outcome.suggested_next_ids)
 
     next_outcomes = Map.put(outcomes, node.id, outcome)
@@ -320,6 +335,7 @@ defmodule AttractorEx.Engine do
           name: node.id,
           index: stage_index,
           error: outcome.failure_reason,
+          error_category: normalize_failure_category(outcome.failure_category),
           will_retry: false,
           status: "fail",
           context: context
@@ -634,6 +650,7 @@ defmodule AttractorEx.Engine do
       run_id: context["run_id"],
       status: status,
       reason: reason,
+      error_category: final_error_category(status, reason, outcomes),
       context: context,
       outcomes: normalize_outcomes(outcomes),
       history: history,
@@ -651,16 +668,16 @@ defmodule AttractorEx.Engine do
 
     case handler.execute(node, context, graph, stage_dir, opts) do
       %Outcome{} = outcome -> outcome
-      _ -> Outcome.fail("Handler returned invalid outcome")
+      _ -> Outcome.fail("Handler returned invalid outcome", :pipeline)
     end
   rescue
-    error -> Outcome.fail("Handler exception: #{Exception.message(error)}")
+    error -> Outcome.fail("Handler exception: #{Exception.message(error)}", :terminal)
   end
 
   defp execute_with_retry(node, context, graph, run_root, retry_policy, opts) do
     Enum.reduce_while(
       1..retry_policy.max_attempts,
-      {Outcome.fail("max retries exceeded"), nil},
+      {Outcome.fail("max retries exceeded", :retryable), nil},
       fn attempt, _acc ->
         stage_dir = stage_dir_for_attempt(run_root, node.id, attempt)
         _ = File.mkdir_p(stage_dir)
@@ -675,26 +692,26 @@ defmodule AttractorEx.Engine do
                 maybe_sleep(delay, opts)
                 :retry_exception
               else
-                Outcome.fail(Exception.message(error))
+                Outcome.fail(Exception.message(error), :terminal)
               end
           end
 
         cond do
           outcome == :retry_exception ->
             _ =
-              write_json(
+              StatusContract.write_status_file(
                 Path.join(stage_dir, "status.json"),
-                serialize_outcome(Outcome.retry("retrying after exception"))
+                Outcome.retry("retrying after exception", :retryable)
               )
 
-            {:cont, {Outcome.fail("retrying after exception"), stage_dir}}
+            {:cont, {Outcome.fail("retrying after exception", :retryable), stage_dir}}
 
           outcome.status in [:success, :partial_success] ->
-            _ = write_json(Path.join(stage_dir, "status.json"), serialize_outcome(outcome))
+            _ = StatusContract.write_status_file(Path.join(stage_dir, "status.json"), outcome)
             {:halt, {outcome, stage_dir}}
 
           outcome.status == :retry and attempt < retry_policy.max_attempts ->
-            _ = write_json(Path.join(stage_dir, "status.json"), serialize_outcome(outcome))
+            _ = StatusContract.write_status_file(Path.join(stage_dir, "status.json"), outcome)
             delay = retry_delay_ms(retry_policy.backoff, attempt)
 
             emit_event(opts, %{
@@ -702,7 +719,8 @@ defmodule AttractorEx.Engine do
               name: node.id,
               index: nil,
               attempt: attempt,
-              delay_ms: delay
+              delay_ms: delay,
+              error_category: normalize_failure_category(outcome.failure_category)
             })
 
             maybe_sleep(delay, opts)
@@ -710,20 +728,20 @@ defmodule AttractorEx.Engine do
 
           outcome.status == :retry and node_allows_partial?(node) ->
             final = Outcome.partial_success(%{}, "retries exhausted, partial accepted")
-            _ = write_json(Path.join(stage_dir, "status.json"), serialize_outcome(final))
+            _ = StatusContract.write_status_file(Path.join(stage_dir, "status.json"), final)
             {:halt, {final, stage_dir}}
 
           outcome.status == :retry ->
-            final = Outcome.fail("max retries exceeded")
-            _ = write_json(Path.join(stage_dir, "status.json"), serialize_outcome(final))
+            final = Outcome.fail("max retries exceeded", :retryable)
+            _ = StatusContract.write_status_file(Path.join(stage_dir, "status.json"), final)
             {:halt, {final, stage_dir}}
 
           outcome.status == :fail ->
-            _ = write_json(Path.join(stage_dir, "status.json"), serialize_outcome(outcome))
+            _ = StatusContract.write_status_file(Path.join(stage_dir, "status.json"), outcome)
             {:halt, {outcome, stage_dir}}
 
           true ->
-            _ = write_json(Path.join(stage_dir, "status.json"), serialize_outcome(outcome))
+            _ = StatusContract.write_status_file(Path.join(stage_dir, "status.json"), outcome)
             {:halt, {outcome, stage_dir}}
         end
       end
@@ -944,20 +962,9 @@ defmodule AttractorEx.Engine do
     end)
   end
 
-  defp serialize_outcome(outcome) do
-    %{
-      status: outcome.status,
-      notes: outcome.notes,
-      failure_reason: outcome.failure_reason,
-      context_updates: outcome.context_updates,
-      preferred_label: outcome.preferred_label,
-      suggested_next_ids: outcome.suggested_next_ids
-    }
-  end
-
   defp normalize_outcomes(outcomes) do
     outcomes
-    |> Enum.map(fn {id, outcome} -> {id, serialize_outcome(outcome)} end)
+    |> Enum.map(fn {id, outcome} -> {id, StatusContract.serialize_outcome(outcome)} end)
     |> Map.new()
   end
 
@@ -1009,9 +1016,45 @@ defmodule AttractorEx.Engine do
         type: type,
         status: Atom.to_string(final.status),
         pipeline_id: final.run_id,
+        error_category: normalize_failure_category(final.error_category),
         context: final.context
       }
       |> Map.merge(extra)
     )
   end
+
+  defp final_error_category(:success, _reason, _outcomes), do: nil
+  defp final_error_category(_status, nil, _outcomes), do: nil
+
+  defp final_error_category(_status, reason, outcomes) do
+    reason_text = to_string(reason)
+
+    cond do
+      reason_text in ["Max steps exceeded", "Goal gate unsatisfied and no retry target"] ->
+        :pipeline
+
+      String.contains?(reason_text, "Retry target `") ->
+        :pipeline
+
+      String.contains?(reason_text, "No outgoing edge selected") ->
+        :pipeline
+
+      String.contains?(reason_text, "Stage failed with no outgoing fail edge") ->
+        :pipeline
+
+      true ->
+        last_failure_category(outcomes) || :terminal
+    end
+  end
+
+  defp last_failure_category(outcomes) do
+    outcomes
+    |> Enum.reverse()
+    |> Enum.find_value(fn {_node_id, outcome} ->
+      if outcome.status in [:fail, :retry], do: outcome.failure_category, else: nil
+    end)
+  end
+
+  defp normalize_failure_category(nil), do: nil
+  defp normalize_failure_category(category), do: Atom.to_string(category)
 end

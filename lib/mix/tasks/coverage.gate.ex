@@ -15,13 +15,13 @@ defmodule Mix.Tasks.Coverage.Gate do
     minimum = minimum_coverage!("coveralls.json")
     actual = actual_coverage!("cover/excoveralls.json")
 
-    if actual <= minimum + 1.0e-9 do
+    if actual + 1.0e-9 < minimum do
       Mix.raise(
-        "Expected coverage above #{format_percent(minimum)}%, got #{format_percent(actual)}%."
+        "Expected coverage at least #{format_percent(minimum)}%, got #{format_percent(actual)}%."
       )
     else
       Mix.shell().info(
-        "Coverage gate passed: #{format_percent(actual)}% > #{format_percent(minimum)}%."
+        "Coverage gate passed: #{format_percent(actual)}% >= #{format_percent(minimum)}%."
       )
     end
   end
