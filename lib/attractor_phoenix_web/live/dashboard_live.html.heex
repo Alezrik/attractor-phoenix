@@ -1,17 +1,32 @@
 <Layouts.app flash={@flash} current_scope={assigns[:current_scope]} current_path={~p"/"}>
   <section class="space-y-8" id="dashboard-page">
     <div class="dashboard-hero">
-      <div class="space-y-3">
-        <p class="dashboard-kicker">Live Operations</p>
-        <h1 class="max-w-3xl text-4xl font-black tracking-tight sm:text-5xl">
-          Real-time attractor-ex pipeline telemetry over LiveView.
-        </h1>
-        <p class="max-w-2xl text-sm leading-6 text-base-content/70 sm:text-base">
-          The dashboard reads the attractor-ex HTTP API and pushes live updates over the Phoenix
-          websocket. Use the builder to launch flows, then inspect status, events, questions,
-          checkpoints, and rendered graphs here.
-        </p>
+      <div class="space-y-4">
+        <div class="space-y-3">
+          <p class="dashboard-kicker">HTTP Surface</p>
+          <h1 class="max-w-3xl text-4xl font-black tracking-tight sm:text-5xl">
+            Real-time attractor-ex pipeline telemetry over LiveView.
+          </h1>
+          <p class="max-w-2xl text-sm leading-6 text-base-content/70 sm:text-base">
+            The dashboard now mirrors the attractor-ex HTTP surface directly: run inspection,
+            graph formats, question answering, cancellation, and endpoint aliases are all visible
+            here.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <%= for endpoint <- endpoint_catalog() do %>
+            <div class="rounded-full border border-base-300 bg-base-100/80 px-3 py-1.5 text-xs">
+              <span class="font-bold text-primary">{endpoint.method}</span>
+              <span class="mx-1 text-base-content/45">•</span>
+              <span class="font-mono">{endpoint.path}</span>
+              <span class="mx-1 text-base-content/45">•</span>
+              <span class="text-base-content/70">{endpoint.label}</span>
+            </div>
+          <% end %>
+        </div>
       </div>
+
       <div class="dashboard-status-panel">
         <div class="dashboard-status-row">
           <span>Total pipelines</span>
@@ -56,22 +71,22 @@
       <article class="dashboard-card">
         <p class="dashboard-card-label">Live Runs</p>
         <p class="dashboard-card-value">{@running_pipelines}</p>
-        <p class="dashboard-card-note">Currently executing through the API manager.</p>
+        <p class="dashboard-card-note">Tracked from `GET /pipelines`.</p>
       </article>
       <article class="dashboard-card">
         <p class="dashboard-card-label">Successful</p>
         <p class="dashboard-card-value">{@successful_pipelines}</p>
-        <p class="dashboard-card-note">Completed pipelines with terminal success.</p>
+        <p class="dashboard-card-note">Terminal success across the HTTP manager.</p>
       </article>
       <article class="dashboard-card">
         <p class="dashboard-card-label">Attention</p>
         <p class="dashboard-card-value">{@failed_pipelines + @cancelled_pipelines}</p>
-        <p class="dashboard-card-note">Failed or cancelled runs that may need review.</p>
+        <p class="dashboard-card-note">Failed or cancelled runs that need review.</p>
       </article>
       <article class="dashboard-card">
-        <p class="dashboard-card-label">Human Loop</p>
+        <p class="dashboard-card-label">Question Queue</p>
         <p class="dashboard-card-value">{@total_questions}</p>
-        <p class="dashboard-card-note">Open wait.human prompts waiting on answers.</p>
+        <p class="dashboard-card-note">Open `wait.human` prompts across all pipelines.</p>
       </article>
     </div>
 
@@ -86,12 +101,22 @@
 
     <div class="dashboard-shell">
       <aside class="dashboard-sidebar">
-        <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold">Pipelines</h2>
-          <.link navigate={~p"/builder"} class="builder-btn">Open Builder</.link>
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-semibold">Pipelines</h2>
+            <.link navigate={~p"/builder"} class="builder-btn">Open Builder</.link>
+          </div>
+
+          <div class="rounded-2xl border border-base-300 bg-base-200/35 p-4">
+            <p class="dashboard-card-label">Submit Endpoints</p>
+            <p class="mt-2 text-sm leading-6 text-base-content/70">
+              The builder exposes both `POST /pipelines` and `POST /run`, then this dashboard
+              inspects the rest of the HTTP contract.
+            </p>
+          </div>
         </div>
 
-        <div class="space-y-3" id="pipeline-list">
+        <div class="mt-4 space-y-3" id="pipeline-list">
           <%= if @pipelines == [] do %>
             <div class="rounded-2xl border border-dashed border-base-300 px-4 py-6 text-sm text-base-content/60">
               No pipelines have been submitted yet.
@@ -129,40 +154,55 @@
         <%= if @selected_pipeline do %>
           <section class="dashboard-detail-grid">
             <article class="dashboard-panel lg:col-span-2">
-              <div class="flex items-center justify-between gap-3">
+              <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p class="dashboard-card-label">Selected Pipeline</p>
                   <h2 class="text-2xl font-bold">{@selected_pipeline["pipeline_id"]}</h2>
                 </div>
-                <span class="rounded-full bg-base-200 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]">
-                  {@selected_pipeline["status"]}
-                </span>
+                <div class="flex items-center gap-2">
+                  <span class="rounded-full bg-base-200 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]">
+                    {@selected_pipeline["status"]}
+                  </span>
+                  <button
+                    id="cancel-pipeline"
+                    type="button"
+                    class="builder-btn"
+                    phx-click="cancel_pipeline"
+                    disabled={@selected_pipeline["status"] in ["success", "fail", "cancelled"]}
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
-              <div class="mt-4 grid gap-3 sm:grid-cols-3">
+              <div class="mt-4 grid gap-3 sm:grid-cols-4">
                 <div class="rounded-2xl bg-base-200/70 p-3">
-                  <p class="dashboard-card-label">Events</p>
-                  <p class="text-2xl font-bold">{@selected_pipeline["event_count"]}</p>
+                  <p class="dashboard-card-label">GET /pipelines/:id</p>
+                  <p class="mt-2 text-2xl font-bold">{@selected_pipeline["event_count"]}</p>
+                  <p class="mt-1 text-xs text-base-content/65">events recorded</p>
+                </div>
+                <div class="rounded-2xl bg-base-200/70 p-3">
+                  <p class="dashboard-card-label">GET /status</p>
+                  <p class="mt-2 text-2xl font-bold">{@selected_status_alias["status"]}</p>
+                  <p class="mt-1 text-xs text-base-content/65">alias payload status</p>
                 </div>
                 <div class="rounded-2xl bg-base-200/70 p-3">
                   <p class="dashboard-card-label">Questions</p>
-                  <p class="text-2xl font-bold">{@selected_pipeline["pending_questions"]}</p>
+                  <p class="mt-2 text-2xl font-bold">{@selected_pipeline["pending_questions"]}</p>
+                  <p class="mt-1 text-xs text-base-content/65">open human prompts</p>
                 </div>
                 <div class="rounded-2xl bg-base-200/70 p-3">
-                  <p class="dashboard-card-label">Logs</p>
-                  <p class="truncate text-sm font-medium">{@selected_pipeline["logs_root"]}</p>
+                  <p class="dashboard-card-label">Logs Root</p>
+                  <p class="mt-2 truncate text-sm font-semibold">
+                    {@selected_pipeline["logs_root"]}
+                  </p>
+                  <p class="mt-1 text-xs text-base-content/65">runtime output path</p>
                 </div>
               </div>
             </article>
 
             <article class="dashboard-panel">
-              <p class="dashboard-card-label">Checkpoint</p>
-              <%= if @selected_checkpoint do %>
-                <pre class="mt-3 overflow-x-auto text-xs"><%= preview_json(@selected_checkpoint) %></pre>
-              <% else %>
-                <p class="mt-3 text-sm text-base-content/60">
-                  No checkpoint has been published yet.
-                </p>
-              <% end %>
+              <p class="dashboard-card-label">Status Alias Payload</p>
+              <pre class="mt-3 overflow-x-auto text-xs"><%= preview_json(@selected_status_alias) %></pre>
             </article>
 
             <article class="dashboard-panel lg:col-span-2">
@@ -171,7 +211,7 @@
                 <span class="text-xs text-base-content/60">GET /pipelines/:id/graph</span>
               </div>
               <div class="dashboard-graph-frame">
-                {graph_markup(@graph_svg)}
+                {graph_markup(@selected_graphs["svg"])}
               </div>
             </article>
 
@@ -182,6 +222,58 @@
           </section>
 
           <section class="grid gap-4 xl:grid-cols-2">
+            <article class="dashboard-panel">
+              <div class="flex items-center justify-between">
+                <p class="dashboard-card-label">Pending Questions</p>
+                <span class="text-xs text-base-content/60">GET /pipelines/:id/questions</span>
+              </div>
+              <div class="mt-3 space-y-3">
+                <%= if @selected_questions == [] do %>
+                  <p class="text-sm text-base-content/60">No open human-in-the-loop questions.</p>
+                <% end %>
+
+                <%= for question <- @selected_questions do %>
+                  <div class="rounded-2xl border border-base-300/70 px-4 py-3">
+                    <div class="flex items-center justify-between gap-3">
+                      <strong class="text-sm">{question["id"]}</strong>
+                      <span class="text-xs text-base-content/55">
+                        {question["type"] || "QUESTION"}
+                      </span>
+                    </div>
+                    <p class="mt-2 text-sm leading-6">{question_prompt(question)}</p>
+
+                    <%= if question_options(question) != [] do %>
+                      <div class="mt-3 flex flex-wrap gap-2 text-xs">
+                        <%= for option <- question_options(question) do %>
+                          <div class="rounded-full border border-base-300 px-2 py-1">
+                            <span class="font-semibold">{option["key"]}</span>
+                            <span class="mx-1 text-base-content/40">•</span>
+                            <span>{option["label"]}</span>
+                          </div>
+                        <% end %>
+                      </div>
+                    <% end %>
+
+                    <.form
+                      for={Map.get(@answer_forms, question["id"])}
+                      id={"answer-form-#{question["id"]}"}
+                      phx-submit="answer_question"
+                      class="mt-4 space-y-3"
+                    >
+                      <input type="hidden" name="question_id" value={question["id"]} />
+                      <.input
+                        field={Map.get(@answer_forms, question["id"])[:answer]}
+                        type="text"
+                        label="POST /answer value"
+                        placeholder="Enter option key or answer payload"
+                      />
+                      <button type="submit" class="builder-btn">Submit Answer</button>
+                    </.form>
+                  </div>
+                <% end %>
+              </div>
+            </article>
+
             <article class="dashboard-panel">
               <div class="flex items-center justify-between">
                 <p class="dashboard-card-label">Recent Events</p>
@@ -207,29 +299,55 @@
                 <% end %>
               </div>
             </article>
+          </section>
+
+          <section class="grid gap-4 xl:grid-cols-2">
+            <article class="dashboard-panel">
+              <div class="flex items-center justify-between">
+                <p class="dashboard-card-label">Checkpoint Payload</p>
+                <span class="text-xs text-base-content/60">GET /pipelines/:id/checkpoint</span>
+              </div>
+              <%= if @selected_checkpoint do %>
+                <pre class="mt-3 overflow-x-auto text-xs"><%= preview_json(@selected_checkpoint) %></pre>
+              <% else %>
+                <p class="mt-3 text-sm text-base-content/60">
+                  No checkpoint has been published yet.
+                </p>
+              <% end %>
+            </article>
 
             <article class="dashboard-panel">
               <div class="flex items-center justify-between">
-                <p class="dashboard-card-label">Pending Questions</p>
-                <span class="text-xs text-base-content/60">GET /pipelines/:id/questions</span>
+                <p class="dashboard-card-label">Graph JSON</p>
+                <span class="text-xs text-base-content/60">format=json</span>
               </div>
-              <div class="mt-3 space-y-3">
-                <%= if @selected_questions == [] do %>
-                  <p class="text-sm text-base-content/60">No open human-in-the-loop questions.</p>
-                <% end %>
+              <pre class="mt-3 overflow-x-auto text-xs"><%= preview_json(@selected_graphs["json"]) %></pre>
+            </article>
+          </section>
 
-                <%= for question <- @selected_questions do %>
-                  <div class="rounded-2xl border border-base-300/70 px-4 py-3">
-                    <div class="flex items-center justify-between gap-3">
-                      <strong class="text-sm">{question["id"]}</strong>
-                      <span class="text-xs text-base-content/55">{question["node_id"]}</span>
-                    </div>
-                    <p class="mt-2 text-sm leading-6">
-                      {question["prompt"] || question["question"]}
-                    </p>
-                  </div>
-                <% end %>
+          <section class="grid gap-4 xl:grid-cols-3">
+            <article class="dashboard-panel">
+              <div class="flex items-center justify-between">
+                <p class="dashboard-card-label">DOT</p>
+                <span class="text-xs text-base-content/60">format=dot</span>
               </div>
+              <pre class="mt-3 overflow-x-auto text-xs">{@selected_graphs["dot"]}</pre>
+            </article>
+
+            <article class="dashboard-panel">
+              <div class="flex items-center justify-between">
+                <p class="dashboard-card-label">Mermaid</p>
+                <span class="text-xs text-base-content/60">format=mermaid</span>
+              </div>
+              <pre class="mt-3 overflow-x-auto text-xs">{@selected_graphs["mermaid"]}</pre>
+            </article>
+
+            <article class="dashboard-panel">
+              <div class="flex items-center justify-between">
+                <p class="dashboard-card-label">Text Summary</p>
+                <span class="text-xs text-base-content/60">format=text</span>
+              </div>
+              <pre class="mt-3 overflow-x-auto text-xs">{@selected_graphs["text"]}</pre>
             </article>
           </section>
         <% else %>

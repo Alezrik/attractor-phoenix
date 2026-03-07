@@ -12,7 +12,9 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLiveTest do
     assert html =~ "pipeline-builder"
     assert html =~ "echo hello world"
     assert html =~ "goodbye"
-    assert html =~ "Run Pipeline"
+    assert html =~ "Run via /run"
+    assert html =~ "Submit via /pipelines"
+    assert html =~ "Graph Contract"
   end
 
   test "submits pipeline through the HTTP API from the builder", %{conn: conn} do
@@ -41,6 +43,8 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLiveTest do
 
     assert has_element?(view, "#run-result")
     assert render(view) =~ "Run ID:"
+    assert render(view) =~ "Graph JSON"
+    assert render(view) =~ "POST /run"
   end
 
   test "dashboard renders API-backed pipeline data", %{conn: conn} do
@@ -54,6 +58,9 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLiveTest do
     assert html =~ "Real-time attractor-ex pipeline telemetry"
     assert html =~ pipeline_id
     assert html =~ "Open Builder"
+    assert html =~ "POST /run"
+    assert html =~ "/status?pipeline_id="
+    assert html =~ "/answer"
   end
 
   defp sample_dot do

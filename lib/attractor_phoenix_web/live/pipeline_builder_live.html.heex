@@ -104,7 +104,7 @@
                   <option value="parallel.fan_in">parallel.fan_in</option>
                   <option value="stack.manager_loop">stack.manager_loop</option>
                   <option value="codergen">codergen</option>
-                  <option value="end">exit</option>
+                  <option value="exit">exit</option>
                 </select>
               </label>
             </div>
@@ -313,6 +313,26 @@
           </div>
         </div>
 
+        <div class="space-y-3 rounded-lg border border-base-300 bg-base-100 p-3">
+          <h3 class="text-sm font-semibold">Graph Contract</h3>
+          <div class="space-y-3 text-xs leading-6 text-base-content/75">
+            <div>
+              <p class="font-semibold text-base-content">Node JSON</p>
+              <p class="font-mono">
+                id, type, shape, prompt, goal_gate, retry_target, fallback_retry_target, attrs
+              </p>
+            </div>
+            <div>
+              <p class="font-semibold text-base-content">Edge JSON</p>
+              <p class="font-mono">from, to, condition, status, attrs</p>
+            </div>
+            <p>
+              The builder keeps authoring DOT, but the live contract is the parsed
+              `GET /pipelines/:id/graph?format=json` payload shown below after each run.
+            </p>
+          </div>
+        </div>
+
         <.form for={@form} id="pipeline-runner-form" phx-submit="run_pipeline" class="space-y-4">
           <div class="space-y-2">
             <label class="text-sm font-semibold" for="pipeline-dot">Pipeline DOT</label>
@@ -336,13 +356,26 @@
             />
           </div>
 
-          <button
-            id="run-pipeline"
-            type="submit"
-            class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
-          >
-            Run Pipeline
-          </button>
+          <div class="flex flex-wrap gap-2">
+            <button
+              id="run-pipeline"
+              name="pipeline[transport]"
+              value="run"
+              type="submit"
+              class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
+            >
+              Run via /run
+            </button>
+            <button
+              id="submit-pipeline"
+              name="pipeline[transport]"
+              value="pipelines"
+              type="submit"
+              class="rounded-lg border border-base-300 bg-base-100 px-4 py-2 text-sm font-semibold transition hover:bg-base-200"
+            >
+              Submit via /pipelines
+            </button>
+          </div>
         </.form>
       </aside>
     </div>
@@ -361,6 +394,12 @@
         <h2 class="text-lg font-semibold">Run Result</h2>
         <p class="text-sm">Status: <strong>{@result.status}</strong></p>
         <p class="text-sm">Run ID: <code>{@result.run_id}</code></p>
+        <p class="text-sm">
+          Endpoint:
+          <strong>
+            {if @result.submit_endpoint == "pipelines", do: "POST /pipelines", else: "POST /run"}
+          </strong>
+        </p>
         <p class="text-sm">Logs: <code>{@result.logs_root}</code></p>
         <p class="text-sm">Events: <strong>{@result.event_count}</strong></p>
         <p class="text-sm">Pending Questions: <strong>{length(@questions)}</strong></p>
@@ -403,6 +442,22 @@
                 <pre class="overflow-x-auto rounded border border-base-300 bg-base-100 p-2 text-xs">{output}</pre>
               </div>
             <% end %>
+          </div>
+        <% end %>
+
+        <%= if is_map(@graph_json) and map_size(@graph_json) > 0 do %>
+          <div class="space-y-2 rounded-lg border border-base-300 bg-base-100 p-3">
+            <h3 class="text-sm font-semibold">Graph JSON</h3>
+            <p class="text-xs text-base-content/65">
+              Canonical node contract:
+              <code>
+                id, type, shape, prompt, goal_gate, retry_target, fallback_retry_target, attrs
+              </code>
+            </p>
+            <p class="text-xs text-base-content/65">
+              Canonical edge contract: <code>from, to, condition, status, attrs</code>
+            </p>
+            <pre class="overflow-x-auto rounded border border-base-300 bg-base-100 p-2 text-xs"><%= Jason.encode_to_iodata!(@graph_json, pretty: true) %></pre>
           </div>
         <% end %>
 
