@@ -1,7 +1,16 @@
 defmodule AttractorEx.Validator do
   @moduledoc false
 
-  alias AttractorEx.{Condition, Graph, HumanGate, ModelStylesheet}
+  alias AttractorEx.{Condition, Graph, HandlerRegistry, HumanGate, ModelStylesheet}
+
+  @valid_fidelity_values [
+    "full",
+    "truncate",
+    "compact",
+    "summary:low",
+    "summary:medium",
+    "summary:high"
+  ]
 
   def validate(%Graph{} = graph, opts \\ []) do
     []
@@ -9,17 +18,21 @@ defmodule AttractorEx.Validator do
     |> validate_terminal_nodes(graph)
     |> validate_start_incoming(graph)
     |> validate_exit_outgoing(graph)
+    |> validate_edge_targets(graph)
     |> validate_unreachable_nodes(graph)
     |> validate_dead_end_nodes(graph)
     |> validate_condition_expressions(graph)
     |> validate_goal_gate_retry(graph)
     |> validate_retry_target_nodes(graph)
     |> validate_codergen_prompt(graph)
+    |> validate_known_node_types(graph)
+    |> validate_fidelity_values(graph)
     |> validate_human_gate_choices(graph)
     |> validate_human_default_choice(graph)
     |> validate_human_timeout_default(graph)
     |> validate_human_choice_key_collisions(graph)
     |> validate_codergen_llm_attrs(graph)
+    |> validate_model_stylesheet_syntax(graph)
     |> validate_model_stylesheet_lints(graph)
     |> apply_custom_rules(graph, opts)
   end
@@ -103,12 +116,34 @@ defmodule AttractorEx.Validator do
             :error,
             :condition_parse,
             "Edge condition is invalid: #{edge.condition}",
-            edge.from
+            edge.from,
+            {edge.from, edge.to}
           )
           | acc
         ]
       else
         acc
+      end
+    end)
+  end
+
+  defp validate_edge_targets(diags, graph) do
+    node_ids = MapSet.new(Map.keys(graph.nodes))
+
+    Enum.reduce(graph.edges, diags, fn edge, acc ->
+      if MapSet.member?(node_ids, edge.to) do
+        acc
+      else
+        [
+          diag(
+            :error,
+            :edge_target_exists,
+            "Edge target references an unknown node.",
+            edge.from,
+            {edge.from, edge.to}
+          )
+          | acc
+        ]
       end
     end)
   end
@@ -127,8 +162,8 @@ defmodule AttractorEx.Validator do
         else
           [
             diag(
-              :warning,
-              :unreachable_node,
+              :error,
+              :reachability,
               "Node is not reachable from start.",
               id
             )
@@ -221,6 +256,79 @@ defmodule AttractorEx.Validator do
         acc
       end
     end)
+  end
+
+  defp validate_known_node_types(diags, graph) do
+    Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
+      explicit_type = blank_to_nil(Map.get(node.attrs, "type"))
+
+      if explicit_type && not HandlerRegistry.known_type?(explicit_type) do
+        [
+          diag(
+            :warning,
+            :type_known,
+            "Node type `#{explicit_type}` is not recognized by the handler registry.",
+            node.id
+          )
+          | acc
+        ]
+      else
+        acc
+      end
+    end)
+  end
+
+  defp validate_fidelity_values(diags, graph) do
+    diags
+    |> maybe_add_invalid_fidelity_diag(
+      Map.get(graph.attrs, "default_fidelity"),
+      :fidelity_valid,
+      "Graph default_fidelity must be one of: #{Enum.join(@valid_fidelity_values, ", ")}."
+    )
+    |> validate_node_fidelity_values(graph)
+    |> validate_edge_fidelity_values(graph)
+  end
+
+  defp validate_node_fidelity_values(diags, graph) do
+    Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
+      maybe_add_invalid_fidelity_diag(
+        acc,
+        Map.get(node.attrs, "fidelity"),
+        :fidelity_valid,
+        "Node fidelity must be one of: #{Enum.join(@valid_fidelity_values, ", ")}.",
+        node.id
+      )
+    end)
+  end
+
+  defp validate_edge_fidelity_values(diags, graph) do
+    Enum.reduce(graph.edges, diags, fn edge, acc ->
+      maybe_add_invalid_fidelity_diag(
+        acc,
+        Map.get(edge.attrs, "fidelity"),
+        :fidelity_valid,
+        "Edge fidelity must be one of: #{Enum.join(@valid_fidelity_values, ", ")}.",
+        edge.from,
+        {edge.from, edge.to}
+      )
+    end)
+  end
+
+  defp maybe_add_invalid_fidelity_diag(diags, value, _code, _message, node_id \\ nil, edge \\ nil)
+
+  defp maybe_add_invalid_fidelity_diag(diags, value, _code, _message, _node_id, _edge)
+       when value in [nil, ""] do
+    diags
+  end
+
+  defp maybe_add_invalid_fidelity_diag(diags, value, code, message, node_id, edge) do
+    normalized = value |> to_string() |> String.trim()
+
+    if normalized in @valid_fidelity_values do
+      diags
+    else
+      [diag(:warning, code, message, node_id, edge) | diags]
+    end
   end
 
   defp validate_human_gate_choices(diags, graph) do
@@ -464,6 +572,23 @@ defmodule AttractorEx.Validator do
     Enum.reverse(style_diags) ++ diags
   end
 
+  defp validate_model_stylesheet_syntax(diags, graph) do
+    case ModelStylesheet.parse(Map.get(graph.attrs, "model_stylesheet")) do
+      {:ok, _rules} ->
+        diags
+
+      {:error, _reason} ->
+        [
+          diag(
+            :error,
+            :stylesheet_syntax,
+            "The model_stylesheet attribute must parse as valid stylesheet rules."
+          )
+          | diags
+        ]
+    end
+  end
+
   defp apply_custom_rules(diags, graph, opts) do
     rules = Keyword.get(opts, :custom_rules, [])
 
@@ -522,14 +647,15 @@ defmodule AttractorEx.Validator do
       severity: severity,
       code: code,
       message: message,
-      node_id: Map.get(diag_map, :node_id)
+      node_id: Map.get(diag_map, :node_id),
+      edge: Map.get(diag_map, :edge)
     }
   end
 
   defp normalize_custom_diag(_), do: nil
 
-  defp diag(severity, code, message, node_id \\ nil) do
-    %{severity: severity, code: code, message: message, node_id: node_id}
+  defp diag(severity, code, message, node_id \\ nil, edge \\ nil) do
+    %{severity: severity, code: code, message: message, node_id: node_id, edge: edge}
   end
 
   defp to_float(value) when is_float(value), do: {:ok, value}
@@ -572,10 +698,30 @@ defmodule AttractorEx.Validator do
   end
 
   defp reachable_nodes(start_id, %Graph{} = graph) do
-    adjacency =
+    edge_adjacency =
       graph.edges
       |> Enum.group_by(& &1.from, & &1.to)
       |> Map.new(fn {from, to_nodes} -> {from, MapSet.new(to_nodes)} end)
+
+    retry_adjacency =
+      graph.nodes
+      |> Enum.reduce(%{}, fn {_id, node}, acc ->
+        targets =
+          [node.retry_target, node.fallback_retry_target]
+          |> Enum.reject(&is_nil/1)
+          |> MapSet.new()
+
+        if MapSet.size(targets) == 0 do
+          acc
+        else
+          Map.update(acc, node.id, targets, &MapSet.union(&1, targets))
+        end
+      end)
+
+    adjacency =
+      Map.merge(edge_adjacency, retry_adjacency, fn _key, left, right ->
+        MapSet.union(left, right)
+      end)
 
     do_reachable_nodes(MapSet.new([start_id]), [start_id], adjacency)
   end
