@@ -5,6 +5,7 @@ defmodule AttractorEx.ModelStylesheet do
 
   def parse(nil), do: {:ok, []}
   def parse(%{} = stylesheet), do: {:ok, map_to_rules(stylesheet)}
+  def parse(stylesheet) when is_list(stylesheet), do: {:ok, list_to_rules(stylesheet)}
 
   def parse(stylesheet) when is_binary(stylesheet) do
     trimmed = String.trim(stylesheet)

@@ -110,5 +110,19 @@ defmodule AttractorEx.ParserTest do
       assert graph.nodes["summarize"].attrs["reasoning_effort"] == "low"
       assert graph.nodes["review"].attrs["reasoning_effort"] == "high"
     end
+
+    test "returns an error when model_stylesheet is invalid JSON" do
+      dot = """
+      digraph attractor {
+        graph [model_stylesheet="not-json"]
+        start [shape=Mdiamond]
+        done [shape=Msquare]
+        start -> done
+      }
+      """
+
+      assert {:error, message} = Parser.parse(dot)
+      assert message =~ "model_stylesheet is not valid JSON"
+    end
   end
 end
