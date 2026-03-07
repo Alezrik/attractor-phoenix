@@ -172,5 +172,49 @@ defmodule AttractorEx.ValidatorTest do
                &(&1.code == :custom_example and &1.severity == :warning and &1.node_id == "start")
              )
     end
+
+    test "handles invalid and crashing custom rules gracefully" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        done [shape=Msquare]
+        start -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+
+      crashing_rule = fn _graph -> raise "boom" end
+      invalid_rule = fn _graph -> :invalid end
+
+      diagnostics =
+        Validator.validate(graph,
+          custom_rules: [crashing_rule, invalid_rule, AttractorEx.Validator]
+        )
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :custom_rule_invalid and &1.severity == :warning)
+             )
+    end
+
+    test "accepts custom rule modules implementing validate/1" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        done [shape=Msquare]
+        start -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph, custom_rules: [AttractorExTest.ValidatorRule])
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :custom_module_rule and &1.severity == :warning and
+                   &1.node_id == "done")
+             )
+    end
   end
 end

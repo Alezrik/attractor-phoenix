@@ -229,7 +229,7 @@ defmodule AttractorEx.Validator do
   defp apply_custom_rule(rule, graph) when is_function(rule, 1), do: safe_custom_rule(rule, graph)
 
   defp apply_custom_rule(rule, graph) when is_atom(rule) do
-    if function_exported?(rule, :validate, 1) do
+    if Code.ensure_loaded?(rule) and function_exported?(rule, :validate, 1) do
       safe_custom_rule(rule, graph)
     else
       nil

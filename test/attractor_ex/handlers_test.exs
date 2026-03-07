@@ -366,6 +366,102 @@ defmodule AttractorEx.HandlersTest do
       assert Agent.get(queue, & &1) == []
     end
 
+    test "wait_for_human maps interviewer timeout to retry without default" do
+      node = Node.new("gate", %{"type" => "wait.human"})
+      graph = %Graph{edges: [Edge.new("gate", "ship_it", %{"label" => "[S] Ship"})]}
+      callback = fn _node, _choices, _ctx -> :timeout end
+
+      outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{},
+          graph,
+          unique_stage_dir("human_callback_timeout"),
+          interviewer: :callback,
+          callback: callback
+        )
+
+      assert outcome.status == :retry
+      assert outcome.failure_reason =~ "timeout"
+    end
+
+    test "wait_for_human maps interviewer skip to failure" do
+      node = Node.new("gate", %{"type" => "wait.human"})
+      graph = %Graph{edges: [Edge.new("gate", "ship_it", %{"label" => "[S] Ship"})]}
+      callback = fn _node, _choices, _ctx -> {:skip} end
+
+      outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{},
+          graph,
+          unique_stage_dir("human_callback_skip"),
+          interviewer: :callback,
+          callback: callback
+        )
+
+      assert outcome.status == :fail
+      assert outcome.failure_reason =~ "skipped"
+    end
+
+    test "wait_for_human returns interviewer error for invalid interviewer config" do
+      node = Node.new("gate", %{"type" => "wait.human"})
+      graph = %Graph{edges: [Edge.new("gate", "ship_it", %{"label" => "[S] Ship"})]}
+
+      invalid_type =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{},
+          graph,
+          unique_stage_dir("human_invalid_interviewer_type"),
+          interviewer: "bad"
+        )
+
+      missing_ask =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{},
+          graph,
+          unique_stage_dir("human_invalid_interviewer_module"),
+          interviewer: AttractorEx.Graph
+        )
+
+      missing_callback =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{},
+          graph,
+          unique_stage_dir("human_invalid_callback"),
+          interviewer: :callback
+        )
+
+      assert invalid_type.status == :retry
+      assert invalid_type.failure_reason =~ "invalid interviewer"
+      assert missing_ask.status == :retry
+      assert missing_ask.failure_reason =~ "does not implement ask/4"
+      assert missing_callback.status == :retry
+      assert missing_callback.failure_reason =~ "requires :callback function"
+    end
+
+    test "wait_for_human treats nil interviewer response as missing answer" do
+      node = Node.new("gate", %{"type" => "wait.human"})
+      graph = %Graph{edges: [Edge.new("gate", "ship_it", %{"label" => "[S] Ship"})]}
+      callback = fn _node, _choices, _ctx -> nil end
+
+      outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{},
+          graph,
+          unique_stage_dir("human_callback_nil"),
+          interviewer: :callback,
+          callback: callback
+        )
+
+      assert outcome.status == :retry
+      assert outcome.failure_reason =~ "requires answer"
+    end
+
     test "tool handler fails when command is missing" do
       node = Node.new("tool", %{"shape" => "parallelogram"})
 
