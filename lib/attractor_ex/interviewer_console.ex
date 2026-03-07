@@ -25,6 +25,33 @@ defmodule AttractorEx.Interviewers.Console do
     end
   end
 
+  @impl true
+  def ask_multiple(node, choices, context, opts) do
+    case ask(node, choices, context, opts) do
+      {:ok, value} ->
+        selections =
+          value
+          |> String.split(",", trim: true)
+          |> Enum.map(&String.trim/1)
+          |> Enum.reject(&(&1 == ""))
+
+        {:ok, selections}
+
+      other ->
+        other
+    end
+  end
+
+  @impl true
+  def inform(node, payload, _context, _opts) do
+    message =
+      payload
+      |> Map.get("message", Map.get(payload, :message, inspect(payload)))
+
+    _ = IO.puts("Info for `#{node.id}`: #{message}")
+    :ok
+  end
+
   defp prompt_line(value) when is_binary(value) and value != "", do: "Prompt: #{value}"
   defp prompt_line(_value), do: nil
 

@@ -3,7 +3,7 @@ defmodule AttractorEx.InterviewersTest do
 
   import ExUnit.CaptureIO
 
-  alias AttractorEx.Interviewers.{AutoApprove, Callback, Console, Queue}
+  alias AttractorEx.Interviewers.{AutoApprove, Callback, Console, Queue, Recording}
   alias AttractorEx.Node
 
   describe "auto approve interviewer" do
@@ -21,6 +21,16 @@ defmodule AttractorEx.InterviewersTest do
     test "returns timeout when no choices are available" do
       assert {:timeout} = AutoApprove.ask(%Node{}, [], %{}, [])
     end
+
+    test "supports multi-select responses" do
+      assert {:ok, ["A"]} =
+               AutoApprove.ask_multiple(
+                 %Node{},
+                 [%{key: "A", label: "Approve", to: "done"}],
+                 %{},
+                 []
+               )
+    end
   end
 
   describe "callback interviewer" do
@@ -36,6 +46,41 @@ defmodule AttractorEx.InterviewersTest do
 
     test "returns error when callback is missing" do
       assert {:error, _} = Callback.ask(%Node{}, [], %{}, [])
+    end
+
+    test "supports ask_multiple and inform callbacks" do
+      multiple = fn _node, _choices, _context -> {:ok, ["A", "B"]} end
+      inform = fn _node, payload, _context -> {:ok, payload[:message]} end
+
+      assert {:ok, ["A", "B"]} =
+               Callback.ask_multiple(%Node{}, [], %{}, callback_multiple: multiple)
+
+      assert {:ok, "done"} =
+               Callback.inform(%Node{}, %{message: "done"}, %{}, callback_inform: inform)
+    end
+
+    test "supports arity-4 ask_multiple and inform callbacks" do
+      multiple = fn _node, _choices, _context, opts -> {:ok, opts[:choices]} end
+
+      inform = fn _node, payload, _context, opts ->
+        {:ok, "#{payload[:message]}-#{opts[:suffix]}"}
+      end
+
+      assert {:ok, ["A", "B"]} =
+               Callback.ask_multiple(%Node{}, [], %{},
+                 callback_multiple: multiple,
+                 choices: ["A", "B"]
+               )
+
+      assert {:ok, "done-ok"} =
+               Callback.inform(%Node{}, %{message: "done"}, %{},
+                 callback_inform: inform,
+                 suffix: "ok"
+               )
+    end
+
+    test "returns error when ask_multiple callback is missing" do
+      assert {:error, _} = Callback.ask_multiple(%Node{}, [], %{}, [])
     end
   end
 
@@ -91,6 +136,28 @@ defmodule AttractorEx.InterviewersTest do
                    )
         end)
     end
+
+    test "supports comma-separated multi-select answers" do
+      _output =
+        capture_io("A, B\n", fn ->
+          assert {:ok, ["A", "B"]} =
+                   Console.ask_multiple(
+                     %Node{id: "gate"},
+                     [%{key: "A", label: "Approve", to: "done"}],
+                     %{},
+                     []
+                   )
+        end)
+    end
+
+    test "prints informational messages" do
+      output =
+        capture_io(fn ->
+          assert :ok = Console.inform(%Node{id: "gate"}, %{message: "Heads up"}, %{}, [])
+        end)
+
+      assert output =~ "Info for `gate`: Heads up"
+    end
   end
 
   describe "queue interviewer" do
@@ -117,6 +184,143 @@ defmodule AttractorEx.InterviewersTest do
 
     test "returns error when queue is invalid" do
       assert {:error, _} = Queue.ask(%Node{}, [], %{}, queue: :invalid)
+    end
+
+    test "supports multi-select answers from queued lists" do
+      assert {:ok, ["A", "B"]} = Queue.ask_multiple(%Node{}, [], %{}, queue: [["A", "B"]])
+    end
+
+    test "wraps single queued answers for ask_multiple and supports inform" do
+      assert {:ok, ["A"]} = Queue.ask_multiple(%Node{}, [], %{}, queue: ["A"])
+      assert :ok = Queue.inform(%Node{}, %{message: "ignored"}, %{}, [])
+    end
+  end
+
+  describe "recording interviewer" do
+    test "records ask and inform events while delegating to the inner interviewer" do
+      sink = start_supervised!({Agent, fn -> [] end})
+
+      assert {:ok, "A"} =
+               Recording.ask(
+                 %Node{id: "gate"},
+                 [%{key: "A", label: "Approve", to: "done"}],
+                 %{},
+                 inner: :auto_approve,
+                 recording_sink: sink
+               )
+
+      assert :ok =
+               Recording.inform(
+                 %Node{id: "gate"},
+                 %{message: "record this"},
+                 %{},
+                 inner: :auto_approve,
+                 recording_sink: sink
+               )
+
+      events = Agent.get(sink, & &1)
+      assert Enum.any?(events, &(&1.event == :ask and &1.node_id == "gate"))
+      assert Enum.any?(events, &(&1.event == :inform and &1.node_id == "gate"))
+    end
+
+    test "records ask_multiple and falls back to inner ask when needed" do
+      sink = start_supervised!({Agent, fn -> [] end})
+
+      assert {:ok, ["A"]} =
+               Recording.ask_multiple(
+                 %Node{id: "gate"},
+                 [%{key: "A", label: "Approve", to: "done"}],
+                 %{},
+                 inner: :auto_approve,
+                 recording_sink: sink
+               )
+
+      events = Agent.get(sink, & &1)
+      assert Enum.any?(events, &(&1.event == :ask_multiple and &1.node_id == "gate"))
+    end
+
+    test "supports function recording sinks and callback inner delegates" do
+      parent = self()
+
+      sink = fn event ->
+        send(parent, {:recorded, event})
+      end
+
+      callback = fn _node, _choices, _context -> {:ok, "F"} end
+
+      assert {:ok, "F"} =
+               Recording.ask(
+                 %Node{id: "gate"},
+                 [%{key: "F", label: "Fix", to: "fixes"}],
+                 %{},
+                 inner: :callback,
+                 callback: callback,
+                 recording_sink: sink
+               )
+
+      assert_receive {:recorded, %{event: :ask, node_id: "gate"}}
+    end
+
+    test "supports recording_inner module option and native ask_multiple delegates" do
+      sink = start_supervised!({Agent, fn -> [] end})
+
+      assert {:ok, ["A", "B"]} =
+               Recording.ask_multiple(
+                 %Node{id: "gate"},
+                 [],
+                 %{},
+                 recording_inner: AttractorEx.Interviewers.Queue,
+                 queue: [["A", "B"]],
+                 recording_sink: sink
+               )
+
+      events = Agent.get(sink, & &1)
+      assert Enum.any?(events, &(&1.event == :ask_multiple))
+    end
+
+    test "supports queue alias for ask and callback alias for inform" do
+      callback = fn _node, payload, _context -> {:ok, payload[:message]} end
+
+      assert {:ok, "A"} =
+               Recording.ask(
+                 %Node{id: "gate"},
+                 [%{key: "A", label: "Approve", to: "done"}],
+                 %{},
+                 inner: :queue,
+                 queue: ["A"]
+               )
+
+      assert {:ok, "done"} =
+               Recording.inform(
+                 %Node{id: "gate"},
+                 %{message: "done"},
+                 %{},
+                 inner: :callback,
+                 callback: callback
+               )
+    end
+
+    test "returns :ok when the inner interviewer does not implement inform" do
+      assert :ok =
+               Recording.inform(
+                 %Node{id: "gate"},
+                 %{message: "noop"},
+                 %{},
+                 inner: AttractorEx.Node
+               )
+    end
+
+    test "ignores recording sink failures" do
+      bad_sink = fn _event -> raise "boom" end
+
+      assert :ok =
+               Recording.inform(
+                 %Node{id: "gate"},
+                 %{message: "noop"},
+                 %{},
+                 inner: AttractorEx.Node,
+                 recording_sink: bad_sink
+               )
     end
   end
 end

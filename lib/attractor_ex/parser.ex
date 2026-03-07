@@ -5,26 +5,23 @@ defmodule AttractorEx.Parser do
 
   @bare_id_pattern ~r/^[A-Za-z_][A-Za-z0-9_]*$/
   @graph_attr_decl_pattern ~r/^([A-Za-z_][A-Za-z0-9_\.]*)\s*=\s*(.+)$/
+  @type parse_scope :: %{
+          node_defaults: map(),
+          edge_defaults: map(),
+          classes: [String.t()],
+          graph_attrs: map()
+        }
 
   def parse(dot) when is_binary(dot) do
     cleaned = strip_comments(dot)
 
     with {:ok, graph_name, body} <- parse_root(cleaned) do
       graph = %Graph{id: graph_name}
+      scope = %{node_defaults: %{}, edge_defaults: %{}, classes: [], graph_attrs: %{}}
 
-      parsed =
-        body
-        |> split_statements()
-        |> Enum.reduce_while(graph, fn statement, acc ->
-          case parse_statement(statement, acc) do
-            {:ok, next_graph} -> {:cont, next_graph}
-            {:error, reason} -> {:halt, {:error, reason}}
-          end
-        end)
-
-      case parsed do
+      case parse_block(body, graph, scope, top_level?: true) do
         {:error, reason} -> {:error, reason}
-        graph_value -> finalize_graph(graph_value)
+        {:ok, graph_value, _scope} -> finalize_graph(graph_value)
       end
     end
   end
@@ -51,35 +48,43 @@ defmodule AttractorEx.Parser do
     end
   end
 
-  defp split_statements(body) do
-    body
-    |> flatten_subgraphs()
-    |> String.replace("\r", "")
-    |> split_unquoted_statements()
-    |> Enum.map(&String.trim/1)
-    |> Enum.reject(&(&1 in ["", "{", "}"] or String.starts_with?(&1, "subgraph ")))
-  end
+  defp parse_block(body, graph, scope, opts) do
+    with {:ok, items} <- split_items(body) do
+      subgraph_class = derived_subgraph_class(items)
 
-  defp split_unquoted_statements(text) do
-    {parts, current, _in_quotes} =
-      text
-      |> String.graphemes()
-      |> Enum.reduce({[], "", false}, fn char, {parts, current, in_quotes} ->
-        cond do
-          char == "\"" and not escaped_quote?(current) ->
-            {parts, current <> char, not in_quotes}
+      scope =
+        if opts[:top_level?] or is_nil(subgraph_class) do
+          scope
+        else
+          %{scope | classes: scope.classes ++ [subgraph_class]}
+        end
 
-          (char == ";" or char == "\n") and not in_quotes ->
-            {[current | parts], "", in_quotes}
-
-          true ->
-            {parts, current <> char, in_quotes}
+      Enum.reduce_while(items, {:ok, graph, scope}, fn item, {:ok, acc_graph, acc_scope} ->
+        case parse_item(item, acc_graph, acc_scope, opts) do
+          {:ok, next_graph, next_scope} -> {:cont, {:ok, next_graph, next_scope}}
+          {:error, reason} -> {:halt, {:error, reason}}
         end
       end)
+    end
+  end
 
-    [current | parts]
-    |> Enum.reverse()
-    |> Enum.reject(&(String.trim(&1) == ""))
+  defp parse_item({:statement, statement}, graph, scope, opts) do
+    parse_statement(statement, graph, scope, opts)
+  end
+
+  defp parse_item({:subgraph, body}, graph, scope, _opts) do
+    subgraph_scope = %{
+      node_defaults: scope.node_defaults,
+      edge_defaults: scope.edge_defaults,
+      classes: scope.classes,
+      graph_attrs: %{}
+    }
+
+    parse_block(body, graph, subgraph_scope, top_level?: false)
+  end
+
+  defp split_items(body) do
+    do_split_items(String.replace(body, "\r", ""), [])
   end
 
   defp escaped_quote?(current) do
@@ -93,64 +98,81 @@ defmodule AttractorEx.Parser do
     rem(trailing_backslashes, 2) == 1
   end
 
-  defp parse_statement("graph " <> rest, graph),
-    do: parse_default_block(rest, fn attrs -> %{graph | attrs: Map.merge(graph.attrs, attrs)} end)
+  defp parse_statement("graph " <> rest, graph, scope, opts) do
+    attrs = rest |> String.trim() |> parse_attribute_block()
 
-  defp parse_statement("node " <> rest, graph),
-    do:
-      parse_default_block(rest, fn attrs ->
-        %{graph | node_defaults: Map.merge(graph.node_defaults, attrs)}
-      end)
+    if opts[:top_level?] do
+      {:ok, %{graph | attrs: Map.merge(graph.attrs, attrs)}, scope}
+    else
+      {:ok, graph, %{scope | graph_attrs: Map.merge(scope.graph_attrs, attrs)}}
+    end
+  end
 
-  defp parse_statement("edge " <> rest, graph),
-    do:
-      parse_default_block(rest, fn attrs ->
-        %{graph | edge_defaults: Map.merge(graph.edge_defaults, attrs)}
-      end)
+  defp parse_statement("node " <> rest, graph, scope, opts) do
+    attrs = rest |> String.trim() |> parse_attribute_block()
+    next_scope = %{scope | node_defaults: Map.merge(scope.node_defaults, attrs)}
 
-  defp parse_statement(statement, graph) do
+    if opts[:top_level?] do
+      {:ok, %{graph | node_defaults: Map.merge(graph.node_defaults, attrs)}, next_scope}
+    else
+      {:ok, graph, next_scope}
+    end
+  end
+
+  defp parse_statement("edge " <> rest, graph, scope, opts) do
+    attrs = rest |> String.trim() |> parse_attribute_block()
+    next_scope = %{scope | edge_defaults: Map.merge(scope.edge_defaults, attrs)}
+
+    if opts[:top_level?] do
+      {:ok, %{graph | edge_defaults: Map.merge(graph.edge_defaults, attrs)}, next_scope}
+    else
+      {:ok, graph, next_scope}
+    end
+  end
+
+  defp parse_statement(statement, graph, scope, opts) do
     cond do
       String.contains?(statement, "--") ->
         {:error, "Undirected edges are not supported. Use `->`."}
 
       String.contains?(statement, "->") ->
-        parse_edge_statement(statement, graph)
+        parse_edge_statement(statement, graph, scope)
 
       Regex.match?(@graph_attr_decl_pattern, statement) ->
-        parse_graph_attr_decl(statement, graph)
+        parse_graph_attr_decl(statement, graph, scope, opts)
 
       true ->
-        parse_node_statement(statement, graph)
+        parse_node_statement(statement, graph, scope)
     end
   end
 
-  defp parse_graph_attr_decl(statement, graph) do
+  defp parse_graph_attr_decl(statement, graph, scope, opts) do
     case Regex.run(@graph_attr_decl_pattern, statement, capture: :all_but_first) do
       [key, value] ->
-        {:ok, %{graph | attrs: Map.put(graph.attrs, key, parse_value(value))}}
+        parsed = parse_value(value)
+
+        if opts[:top_level?] do
+          {:ok, %{graph | attrs: Map.put(graph.attrs, key, parsed)}, scope}
+        else
+          {:ok, graph, %{scope | graph_attrs: Map.put(scope.graph_attrs, key, parsed)}}
+        end
 
       _ ->
         {:error, "Invalid graph attribute declaration: #{statement}"}
     end
   end
 
-  defp parse_default_block(statement_tail, updater) do
-    attrs =
-      statement_tail
-      |> String.trim()
-      |> parse_attribute_block()
-
-    {:ok, updater.(attrs)}
-  end
-
-  defp parse_node_statement(statement, graph) do
+  defp parse_node_statement(statement, graph, scope) do
     {id_part, attrs_part} = split_attrs(statement)
     id = normalize_id(id_part)
 
     if id == "" do
       {:error, "Invalid node declaration: #{statement}"}
     else
-      attrs = parse_attribute_block(attrs_part)
+      attrs =
+        scope.node_defaults
+        |> Map.merge(parse_attribute_block(attrs_part))
+        |> merge_class_attr(scope.classes)
 
       existing =
         case Map.get(graph.nodes, id) do
@@ -158,12 +180,17 @@ defmodule AttractorEx.Parser do
           node -> node
         end
 
-      merged = %{existing | attrs: Map.merge(existing.attrs, attrs)}
-      {:ok, %{graph | nodes: Map.put(graph.nodes, id, merged)}}
+      merged_attrs =
+        existing.attrs
+        |> Map.merge(attrs)
+        |> merge_class_attr(class_tokens(existing.attrs["class"]))
+
+      merged = %{existing | attrs: merged_attrs}
+      {:ok, %{graph | nodes: Map.put(graph.nodes, id, merged)}, scope}
     end
   end
 
-  defp parse_edge_statement(statement, graph) do
+  defp parse_edge_statement(statement, graph, scope) do
     {path_part, attrs_part} = split_attrs(statement)
 
     ids =
@@ -175,7 +202,7 @@ defmodule AttractorEx.Parser do
     if length(ids) < 2 do
       {:error, "Invalid edge declaration: #{statement}"}
     else
-      attrs = Map.merge(graph.edge_defaults, parse_attribute_block(attrs_part))
+      attrs = Map.merge(scope.edge_defaults, parse_attribute_block(attrs_part))
 
       next_graph =
         ids
@@ -187,7 +214,7 @@ defmodule AttractorEx.Parser do
           %{with_nodes | edges: with_nodes.edges ++ [edge]}
         end)
 
-      {:ok, next_graph}
+      {:ok, next_graph, scope}
     end
   end
 
@@ -204,7 +231,7 @@ defmodule AttractorEx.Parser do
         graph.nodes
         |> Enum.map(fn {id, node} ->
           style_attrs = ModelStylesheet.attrs_for_node(stylesheet_rules, id, node.attrs)
-          attrs = graph.node_defaults |> Map.merge(style_attrs) |> Map.merge(node.attrs)
+          attrs = Map.merge(style_attrs, node.attrs)
           {id, Node.new(id, attrs)}
         end)
         |> Map.new()
@@ -239,19 +266,25 @@ defmodule AttractorEx.Parser do
   defp parse_attribute_block(_), do: %{}
 
   defp split_attr_pairs(text) do
-    {parts, current, _in_quotes} =
+    {parts, current, _in_quotes, _bracket_depth} =
       text
       |> String.graphemes()
-      |> Enum.reduce({[], "", false}, fn char, {parts, current, in_quotes} ->
+      |> Enum.reduce({[], "", false, 0}, fn char, {parts, current, in_quotes, bracket_depth} ->
         cond do
           char == "\"" and not escaped_quote?(current) ->
-            {parts, current <> char, not in_quotes}
+            {parts, current <> char, not in_quotes, bracket_depth}
 
-          char == "," and not in_quotes ->
-            {[current | parts], "", in_quotes}
+          char == "[" and not in_quotes ->
+            {parts, current <> char, in_quotes, bracket_depth + 1}
+
+          char == "]" and not in_quotes and bracket_depth > 0 ->
+            {parts, current <> char, in_quotes, bracket_depth - 1}
+
+          char == "," and not in_quotes and bracket_depth == 0 ->
+            {[current | parts], "", in_quotes, bracket_depth}
 
           true ->
-            {parts, current <> char, in_quotes}
+            {parts, current <> char, in_quotes, bracket_depth}
         end
       end)
 
@@ -382,14 +415,190 @@ defmodule AttractorEx.Parser do
     do_strip_comments(rest, acc, quote, false, :block_comment)
   end
 
-  defp flatten_subgraphs(body) do
-    flattened =
-      Regex.replace(
-        ~r/subgraph\s+("?[\w\-]+"?)?\s*\{([^{}]*)\}/ms,
-        body,
-        "\\2"
-      )
+  defp do_split_items(text, acc) do
+    trimmed = String.trim_leading(text)
 
-    if flattened == body, do: body, else: flatten_subgraphs(flattened)
+    cond do
+      trimmed == "" ->
+        {:ok, Enum.reverse(acc)}
+
+      String.starts_with?(trimmed, "subgraph") ->
+        with {:ok, body, rest} <- take_subgraph(trimmed),
+             {:ok, next_rest} <- consume_statement_separator(rest) do
+          do_split_items(next_rest, [{:subgraph, body} | acc])
+        end
+
+      true ->
+        with {:ok, statement, rest} <- take_statement(trimmed),
+             {:ok, next_rest} <- consume_statement_separator(rest) do
+          case String.trim(statement) do
+            "" -> do_split_items(next_rest, acc)
+            value -> do_split_items(next_rest, [{:statement, value} | acc])
+          end
+        end
+    end
+  end
+
+  defp take_statement(text) do
+    do_take_statement(text, "", nil, false, 0)
+  end
+
+  defp do_take_statement(<<>>, current, _quote, _escaped, _bracket_depth),
+    do: {:ok, current, ""}
+
+  defp do_take_statement(<<char, rest::binary>>, current, quote, escaped, bracket_depth) do
+    cond do
+      char in [?", ?'] and is_nil(quote) ->
+        do_take_statement(rest, current <> <<char>>, char, false, bracket_depth)
+
+      char == quote and not escaped ->
+        do_take_statement(rest, current <> <<char>>, nil, false, bracket_depth)
+
+      quote != nil ->
+        next_escaped = char == ?\\ and not escaped
+        do_take_statement(rest, current <> <<char>>, quote, next_escaped, bracket_depth)
+
+      char == ?[ ->
+        do_take_statement(rest, current <> <<char>>, quote, false, bracket_depth + 1)
+
+      char == ?] and bracket_depth > 0 ->
+        do_take_statement(rest, current <> <<char>>, quote, false, bracket_depth - 1)
+
+      bracket_depth == 0 and char in [?\n, ?;] ->
+        {:ok, current, rest}
+
+      true ->
+        do_take_statement(rest, current <> <<char>>, quote, false, bracket_depth)
+    end
+  end
+
+  defp take_subgraph(text) do
+    with {:ok, body_start, rest} <- take_until_open_brace(text),
+         true <- String.trim(body_start) =~ ~r/^subgraph(\s+("?[\w\-]+"?))?$/ do
+      take_balanced_block(rest, "", nil, 1)
+    else
+      false -> {:error, "Invalid subgraph declaration."}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp take_until_open_brace(text), do: do_take_until_open_brace(text, "", nil, false)
+
+  defp do_take_until_open_brace(<<>>, _current, _quote, _escaped),
+    do: {:error, "Invalid subgraph declaration."}
+
+  defp do_take_until_open_brace(<<char, rest::binary>>, current, quote, escaped) do
+    cond do
+      char in [?", ?'] and is_nil(quote) ->
+        do_take_until_open_brace(rest, current <> <<char>>, char, false)
+
+      char == quote and not escaped ->
+        do_take_until_open_brace(rest, current <> <<char>>, nil, false)
+
+      quote != nil ->
+        next_escaped = char == ?\\ and not escaped
+        do_take_until_open_brace(rest, current <> <<char>>, quote, next_escaped)
+
+      char == ?{ ->
+        {:ok, current, rest}
+
+      true ->
+        do_take_until_open_brace(rest, current <> <<char>>, quote, false)
+    end
+  end
+
+  defp take_balanced_block(text, current, _quote, 0), do: {:ok, current, text}
+  defp take_balanced_block(<<>>, _current, _quote, _depth), do: {:error, "Unterminated subgraph."}
+
+  defp take_balanced_block(<<char, rest::binary>>, current, quote, depth) do
+    cond do
+      char in [?", ?'] and is_nil(quote) ->
+        take_balanced_block(rest, current <> <<char>>, char, depth)
+
+      char == quote ->
+        take_balanced_block(rest, current <> <<char>>, nil, depth)
+
+      is_nil(quote) and char == ?{ ->
+        take_balanced_block(rest, current <> <<char>>, quote, depth + 1)
+
+      is_nil(quote) and char == ?} and depth == 1 ->
+        {:ok, current, rest}
+
+      is_nil(quote) and char == ?} ->
+        take_balanced_block(rest, current <> <<char>>, quote, depth - 1)
+
+      true ->
+        take_balanced_block(rest, current <> <<char>>, quote, depth)
+    end
+  end
+
+  defp consume_statement_separator(text) do
+    case String.trim_leading(text) do
+      <<";", rest::binary>> -> {:ok, rest}
+      other -> {:ok, other}
+    end
+  end
+
+  defp derived_subgraph_class(items) do
+    items
+    |> Enum.find_value(&statement_label_value/1)
+    |> normalize_class_name()
+  end
+
+  defp statement_label_value({:statement, "graph " <> rest}) do
+    rest
+    |> String.trim()
+    |> parse_attribute_block()
+    |> Map.get("label")
+  end
+
+  defp statement_label_value({:statement, statement}) do
+    case Regex.run(@graph_attr_decl_pattern, statement, capture: :all_but_first) do
+      ["label", value] -> parse_value(value)
+      _ -> nil
+    end
+  end
+
+  defp statement_label_value(_item), do: nil
+
+  defp normalize_class_name(nil), do: nil
+
+  defp normalize_class_name(value) do
+    value
+    |> to_string()
+    |> String.downcase()
+    |> String.replace(~r/\s+/, "-")
+    |> String.replace(~r/[^a-z0-9\-]/, "")
+    |> String.replace(~r/-+/, "-")
+    |> String.trim("-")
+    |> case do
+      "" -> nil
+      class_name -> class_name
+    end
+  end
+
+  defp merge_class_attr(attrs, classes) do
+    merged_classes =
+      attrs["class"]
+      |> class_tokens()
+      |> Kernel.++(classes)
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.uniq()
+
+    if merged_classes == [] do
+      attrs
+    else
+      Map.put(attrs, "class", Enum.join(merged_classes, ","))
+    end
+  end
+
+  defp class_tokens(nil), do: []
+
+  defp class_tokens(value) do
+    value
+    |> to_string()
+    |> String.split(~r/[,\s]+/, trim: true)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
   end
 end

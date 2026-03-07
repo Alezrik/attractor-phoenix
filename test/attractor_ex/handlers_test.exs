@@ -406,6 +406,28 @@ defmodule AttractorEx.HandlersTest do
       assert Agent.get(queue, & &1) == []
     end
 
+    test "wait_for_human supports recording interviewer with sink" do
+      node = Node.new("gate", %{"type" => "wait.human"})
+      graph = %Graph{edges: [Edge.new("gate", "ship_it", %{"label" => "[S] Ship"})]}
+      sink = start_supervised!({Agent, fn -> [] end})
+
+      outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{},
+          graph,
+          unique_stage_dir("human_recording"),
+          interviewer: :recording,
+          recording_sink: sink
+        )
+
+      assert outcome.status == :success
+      assert outcome.suggested_next_ids == ["ship_it"]
+
+      events = Agent.get(sink, & &1)
+      assert Enum.any?(events, &(&1.event == :ask and &1.node_id == "gate"))
+    end
+
     test "wait_for_human maps interviewer timeout to retry without default" do
       node = Node.new("gate", %{"type" => "wait.human"})
       graph = %Graph{edges: [Edge.new("gate", "ship_it", %{"label" => "[S] Ship"})]}
@@ -475,12 +497,22 @@ defmodule AttractorEx.HandlersTest do
           interviewer: :callback
         )
 
+      recording_inner =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{},
+          graph,
+          unique_stage_dir("human_recording_inner"),
+          interviewer: {:recording, AttractorEx.Interviewers.AutoApprove}
+        )
+
       assert invalid_type.status == :retry
       assert invalid_type.failure_reason =~ "invalid interviewer"
       assert missing_ask.status == :retry
       assert missing_ask.failure_reason =~ "does not implement ask/4"
       assert missing_callback.status == :retry
       assert missing_callback.failure_reason =~ "requires :callback function"
+      assert recording_inner.status == :success
     end
 
     test "wait_for_human treats nil interviewer response as missing answer" do

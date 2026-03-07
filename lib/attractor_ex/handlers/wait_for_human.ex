@@ -131,6 +131,12 @@ defmodule AttractorEx.Handlers.WaitForHuman do
       :queue ->
         {:ok, AttractorEx.Interviewers.Queue}
 
+      :recording ->
+        {:ok, AttractorEx.Interviewers.Recording}
+
+      {:recording, module} when is_atom(module) ->
+        {:ok, AttractorEx.Interviewers.Recording}
+
       module when is_atom(module) ->
         if function_exported?(module, :ask, 4) do
           {:ok, module}
@@ -146,8 +152,14 @@ defmodule AttractorEx.Handlers.WaitForHuman do
   defp interviewer_opts(opts) do
     opts
     |> Keyword.get(:interviewer_opts, [])
-    |> Keyword.merge(Keyword.take(opts, [:callback, :choice, :queue]))
+    |> Keyword.merge(Keyword.take(opts, [:callback, :choice, :choices, :queue, :recording_sink]))
+    |> maybe_put_recording_inner(opts[:interviewer])
   end
+
+  defp maybe_put_recording_inner(opts, {:recording, module}) when is_atom(module),
+    do: Keyword.put(opts, :inner, module)
+
+  defp maybe_put_recording_inner(opts, _interviewer), do: opts
 
   defp normalize_interviewer_response({:ok, value}), do: {:ok, value}
   defp normalize_interviewer_response({:error, reason}), do: {:error, to_string(reason)}

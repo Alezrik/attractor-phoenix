@@ -87,6 +87,33 @@ defmodule AttractorEx.ParserTest do
       assert Enum.any?(graph.edges, &(&1.from == "build" and &1.to == "done"))
     end
 
+    test "applies subgraph-scoped defaults and derived classes to nodes inside the subgraph" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        done [shape=Msquare]
+
+        subgraph cluster_loop {
+          label = "Loop A"
+          node [thread_id="loop-a", timeout="900s"]
+
+          plan [shape=box, prompt="Plan"]
+          implement [shape=box, prompt="Implement", timeout="1800s"]
+        }
+
+        start -> plan -> implement -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.nodes["plan"].attrs["thread_id"] == "loop-a"
+      assert graph.nodes["plan"].attrs["timeout"] == "900s"
+      assert graph.nodes["plan"].attrs["class"] == "loop-a"
+      assert graph.nodes["implement"].attrs["thread_id"] == "loop-a"
+      assert graph.nodes["implement"].attrs["timeout"] == "1800s"
+      assert graph.nodes["implement"].attrs["class"] == "loop-a"
+    end
+
     test "parses quoted node identifiers in node declarations and chained edges" do
       dot = """
       digraph "attractor-flow" {

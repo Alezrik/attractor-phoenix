@@ -865,5 +865,19 @@ defmodule AttractorEx.ValidatorTest do
                    &1.node_id == "done")
              )
     end
+
+    test "validate_or_raise raises when error-severity diagnostics are present" do
+      dot = """
+      digraph attractor {
+        done [shape=Msquare]
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+
+      assert_raise ArgumentError, ~r/Attractor validation failed/, fn ->
+        Validator.validate_or_raise(graph)
+      end
+    end
   end
 end
