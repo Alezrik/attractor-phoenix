@@ -958,6 +958,7 @@ const PipelineBuilder = {
     row.className = "grid grid-cols-12 gap-2 rounded border border-base-300 p-2"
     row.dataset.kind = "connection-row"
 
+    const sourceId = this.currentEditingNodeId
     const selectedTo = edge?.to || availableTargets[0].id
     const attrs = edge?.attrs || {}
     const edgeCondition = (attrs.condition || "").trim().toLowerCase()
@@ -975,11 +976,20 @@ const PipelineBuilder = {
       .join("")
 
     row.innerHTML = `
-      <div class="col-span-4 space-y-1">
-        <label class="text-[10px] font-semibold uppercase text-base-content/70">Target</label>
-        <select class="conn-target w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-xs">
-          ${targetOptions}
-        </select>
+      <div class="col-span-5 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2">
+        <div class="space-y-1">
+          <label class="text-[10px] font-semibold uppercase text-base-content/70">Source</label>
+          <div class="rounded border border-base-300 bg-base-200 px-2 py-1 text-xs font-medium text-base-content/80">
+            ${sourceId}
+          </div>
+        </div>
+        <div class="pb-1 text-xs font-semibold text-base-content/50">-&gt;</div>
+        <div class="space-y-1">
+          <label class="text-[10px] font-semibold uppercase text-base-content/70">Target</label>
+          <select class="conn-target w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-xs">
+            ${targetOptions}
+          </select>
+        </div>
       </div>
       <div class="col-span-3 space-y-1">
         <label class="text-[10px] font-semibold uppercase text-base-content/70">Rule</label>
@@ -989,7 +999,7 @@ const PipelineBuilder = {
           <option value="condition" ${mode === "condition" ? "selected" : ""}>condition</option>
         </select>
       </div>
-      <div class="col-span-4 space-y-1">
+      <div class="col-span-3 space-y-1">
         <label class="text-[10px] font-semibold uppercase text-base-content/70">Value</label>
         <input class="conn-value-input w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-xs font-mono" value="${value.replace(/"/g, "&quot;")}" />
         <select class="conn-value-status w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-xs">
