@@ -72,7 +72,7 @@ bash scripts/setup-githooks.sh
 Installed hooks (platform-independent dispatcher with PowerShell or POSIX shell):
 
 1. `pre-commit`: `mix format --check-formatted`, `mix compile --warnings-as-errors`, and `mix credo --strict`
-2. `pre-push`: `mix test --warnings-as-errors`, `mix credo --strict`, `mix dialyzer --format short`, and `mix coveralls.json`
+2. `pre-push`: `mix precommit` (including the coverage gate) and `mix dialyzer --format short`
 
 ## Default Pipeline
 
@@ -185,7 +185,7 @@ mix coveralls
 mix coveralls.html
 ```
 
-Current `AttractorEx`-focused coverage is configured via `coveralls.json` and targets >= `90%`.
+Current `AttractorEx`-focused coverage is configured via `coveralls.json` and is enforced locally by `mix precommit` via `mix coverage.gate`, targeting >= `90%`.
 
 ## Notes (Windows)
 
