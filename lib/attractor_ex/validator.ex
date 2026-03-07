@@ -24,6 +24,7 @@ defmodule AttractorEx.Validator do
     |> validate_dead_end_nodes(graph)
     |> validate_condition_expressions(graph)
     |> validate_goal_gate_retry(graph)
+    |> validate_graph_retry_target_nodes(graph)
     |> validate_retry_target_nodes(graph)
     |> validate_codergen_prompt(graph)
     |> validate_known_node_types(graph)
@@ -241,6 +242,24 @@ defmodule AttractorEx.Validator do
     end)
   end
 
+  defp validate_graph_retry_target_nodes(diags, graph) do
+    node_ids = MapSet.new(Map.keys(graph.nodes))
+
+    diags
+    |> maybe_add_missing_graph_target_diag(
+      Map.get(graph.attrs, "retry_target"),
+      node_ids,
+      :graph_retry_target_missing,
+      "Graph retry_target points to an unknown node."
+    )
+    |> maybe_add_missing_graph_target_diag(
+      Map.get(graph.attrs, "fallback_retry_target"),
+      node_ids,
+      :graph_fallback_retry_target_missing,
+      "Graph fallback_retry_target points to an unknown node."
+    )
+  end
+
   defp maybe_add_missing_retry_target(diags, node, node_ids) do
     maybe_add_missing_target_diag(
       diags,
@@ -270,6 +289,16 @@ defmodule AttractorEx.Validator do
       diags
     else
       [diag(:error, code, message, node.id) | diags]
+    end
+  end
+
+  defp maybe_add_missing_graph_target_diag(diags, nil, _node_ids, _code, _message), do: diags
+
+  defp maybe_add_missing_graph_target_diag(diags, target, node_ids, code, message) do
+    if MapSet.member?(node_ids, target) do
+      diags
+    else
+      [diag(:error, code, message) | diags]
     end
   end
 

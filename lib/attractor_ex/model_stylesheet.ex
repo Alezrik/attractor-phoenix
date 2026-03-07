@@ -3,12 +3,38 @@ defmodule AttractorEx.ModelStylesheet do
 
   @type rule :: %{selector: String.t(), attrs: map(), rank: integer(), order: integer()}
   @type lint_diagnostic :: %{severity: :warning, code: atom(), message: String.t(), node_id: nil}
-  @selector_ident ~r/^[A-Za-z_][A-Za-z0-9_\-]*$/
+  @selector_ident ~r/^[A-Za-z_][A-Za-z0-9_\.\-]*$/
   @supported_css_properties [
+    "allow_partial",
+    "class",
+    "command",
+    "fidelity",
+    "goal_gate",
+    "human.default_choice",
+    "human.timeout",
+    "join_policy",
+    "k",
     "llm_model",
     "llm_provider",
+    "label",
+    "manager.actions",
+    "manager.max_cycles",
+    "manager.poll_interval",
+    "manager.stop_condition",
+    "max_parallel",
+    "max_retries",
     "reasoning_effort",
+    "retry_target",
+    "fallback_retry_target",
+    "prompt",
+    "quorum_ratio",
+    "shape",
+    "stack.child_autostart",
+    "stack.child_dotfile",
     "temperature",
+    "timeout",
+    "tool_command",
+    "type",
     "max_tokens"
   ]
 
@@ -315,7 +341,7 @@ defmodule AttractorEx.ModelStylesheet do
   end
 
   defp parse_bare_type_selector(rest, parsed) do
-    case Regex.run(~r/^type=([A-Za-z_][A-Za-z0-9_\-]*|\"[^\"]+\")(.*)$/, rest,
+    case Regex.run(~r/^type=([A-Za-z_][A-Za-z0-9_\.\-]*|\"[^\"]+\")(.*)$/, rest,
            capture: :all_but_first
          ) do
       [raw_type, remaining] ->
@@ -560,7 +586,38 @@ defmodule AttractorEx.ModelStylesheet do
   defp valid_selector_list?(_selector_text), do: false
 
   defp strip_css_comments(stylesheet) do
-    String.replace(stylesheet, ~r/\/\*[\s\S]*?\*\//, "")
+    stylesheet
+    |> do_strip_css_comments([], nil, false, :normal)
+    |> IO.iodata_to_binary()
+  end
+
+  defp do_strip_css_comments(<<>>, acc, _quote, _escaped, :normal), do: Enum.reverse(acc)
+  defp do_strip_css_comments(<<>>, acc, _quote, _escaped, :block_comment), do: Enum.reverse(acc)
+
+  defp do_strip_css_comments(<<char, rest::binary>>, acc, quote, escaped, :normal) do
+    cond do
+      quote == nil and char == ?/ and match?(<<?*, _::binary>>, rest) ->
+        <<_star, next::binary>> = rest
+        do_strip_css_comments(next, acc, nil, false, :block_comment)
+
+      char in [?", ?'] and quote == nil ->
+        do_strip_css_comments(rest, [<<char>> | acc], char, false, :normal)
+
+      char == quote and not escaped ->
+        do_strip_css_comments(rest, [<<char>> | acc], nil, false, :normal)
+
+      true ->
+        next_escaped = quote != nil and char == ?\\ and not escaped
+        do_strip_css_comments(rest, [<<char>> | acc], quote, next_escaped, :normal)
+    end
+  end
+
+  defp do_strip_css_comments(<<"*/", rest::binary>>, acc, quote, _escaped, :block_comment) do
+    do_strip_css_comments(rest, acc, quote, false, :normal)
+  end
+
+  defp do_strip_css_comments(<<_char, rest::binary>>, acc, quote, _escaped, :block_comment) do
+    do_strip_css_comments(rest, acc, quote, false, :block_comment)
   end
 
   defp split_css_declarations(text) do

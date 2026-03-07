@@ -280,6 +280,50 @@ defmodule AttractorEx.ValidatorTest do
              )
     end
 
+    test "flags missing graph retry_target references" do
+      dot = """
+      digraph attractor {
+        graph [retry_target="missing"]
+        start [shape=Mdiamond]
+        task [shape=box, prompt="Do work"]
+        done [shape=Msquare]
+        start -> task
+        task -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :graph_retry_target_missing and &1.severity == :error and
+                   is_nil(&1.node_id))
+             )
+    end
+
+    test "flags missing graph fallback_retry_target references" do
+      dot = """
+      digraph attractor {
+        graph [fallback_retry_target="missing"]
+        start [shape=Mdiamond]
+        task [shape=box, prompt="Do work"]
+        done [shape=Msquare]
+        start -> task
+        task -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :graph_fallback_retry_target_missing and &1.severity == :error and
+                   is_nil(&1.node_id))
+             )
+    end
+
     test "flags wait.human nodes with no outgoing choices" do
       dot = """
       digraph attractor {

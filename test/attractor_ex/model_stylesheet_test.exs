@@ -85,6 +85,21 @@ defmodule AttractorEx.ModelStylesheetTest do
       assert rule.attrs["llm_model"] == "gpt}5.2"
     end
 
+    test "preserves comment markers inside quoted CSS values" do
+      css = """
+      .code {
+        prompt: "Keep /* literal */ text";
+        tool_command: 'echo /* not a comment */';
+      }
+      """
+
+      assert {:ok, rules} = ModelStylesheet.parse(css)
+      assert length(rules) == 1
+      rule = hd(rules)
+      assert rule.attrs["prompt"] == "Keep /* literal */ text"
+      assert rule.attrs["tool_command"] == "echo /* not a comment */"
+    end
+
     test "rejects invalid stylesheet values" do
       assert {:error, _} = ModelStylesheet.parse(123)
       assert {:error, _} = ModelStylesheet.parse("not-json")
@@ -243,6 +258,35 @@ defmodule AttractorEx.ModelStylesheetTest do
       assert critical_code["reasoning_effort"] == "high"
       assert critical_code["temperature"] == "0.1"
       assert critical_code["max_tokens"] == "256"
+    end
+
+    test "supports operational node attrs in CSS stylesheets" do
+      {:ok, rules} =
+        ModelStylesheet.parse("""
+        node[type=tool] { timeout: 90s; command: mix test; retry_target: retry; }
+        node[type=wait.human] { prompt: "Choose path"; human.timeout: 30s; human.default_choice: done; }
+        """)
+
+      tool =
+        ModelStylesheet.attrs_for_node(
+          rules,
+          "ship",
+          %{"type" => "tool", "shape" => "parallelogram"}
+        )
+
+      human_gate =
+        ModelStylesheet.attrs_for_node(
+          rules,
+          "approve",
+          %{"type" => "wait.human", "shape" => "hexagon"}
+        )
+
+      assert tool["timeout"] == "90s"
+      assert tool["command"] == "mix test"
+      assert tool["retry_target"] == "retry"
+      assert human_gate["prompt"] == "Choose path"
+      assert human_gate["human.timeout"] == "30s"
+      assert human_gate["human.default_choice"] == "done"
     end
   end
 
