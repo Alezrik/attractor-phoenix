@@ -25,6 +25,7 @@ Dependency boundary:
 ```elixir
 AttractorEx.run(dot_source, context_map, opts)
 AttractorEx.resume(dot_source, checkpoint_or_path, opts)
+AttractorEx.start_http_server(port: 4041)
 ```
 
 Example:
@@ -44,7 +45,32 @@ digraph attractor {
 
 checkpoint_path = Path.join(result.logs_root, "checkpoint.json")
 {:ok, resumed} = AttractorEx.resume(dot, checkpoint_path, codergen_backend: MyApp.LLMBackend)
+
+{:ok, server_pid} = AttractorEx.start_http_server(port: 4041)
 ```
+
+## HTTP Server Mode
+
+`AttractorEx.start_http_server/1` starts a lightweight Bandit-backed HTTP service around the engine.
+
+Implemented endpoints:
+
+1. `POST /pipelines`
+2. `GET /pipelines/:id`
+3. `GET /pipelines/:id/events`
+4. `POST /pipelines/:id/cancel`
+5. `GET /pipelines/:id/graph`
+6. `GET /pipelines/:id/questions`
+7. `POST /pipelines/:id/questions/:qid/answer`
+8. `GET /pipelines/:id/checkpoint`
+9. `GET /pipelines/:id/context`
+
+Human-in-the-loop web flow:
+
+1. Submit a pipeline containing `wait.human`.
+2. Poll `GET /pipelines/:id/questions` for pending questions.
+3. Send a choice to `POST /pipelines/:id/questions/:qid/answer`.
+4. Subscribe to `GET /pipelines/:id/events` for SSE status updates.
 
 ## Configuring LLM Nodes (`codergen`)
 

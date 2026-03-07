@@ -170,6 +170,13 @@ defmodule AttractorEx.Engine do
       |> Map.put_new("run_id", run_id)
       |> Map.put_new("graph", normalize_context(graph.attrs))
 
+    emit_event(opts, %{
+      type: "PipelineStarted",
+      id: run_id,
+      name: graph.id,
+      context: context
+    })
+
     case start_id do
       nil ->
         {:error,
@@ -180,7 +187,7 @@ defmodule AttractorEx.Engine do
     end
   end
 
-  defp loop(_graph, _node_id, context, outcomes, history, run_root, diagnostics, 0, _opts) do
+  defp loop(_graph, _node_id, context, outcomes, history, run_root, diagnostics, 0, opts) do
     final = %{
       run_id: context["run_id"],
       status: :fail,
@@ -192,6 +199,7 @@ defmodule AttractorEx.Engine do
       diagnostics: diagnostics
     }
 
+    emit_pipeline_terminal_event(final, "PipelineFailed", %{error: final.reason}, opts)
     {:ok, final}
   end
 
@@ -199,6 +207,15 @@ defmodule AttractorEx.Engine do
     node = Map.fetch!(graph.nodes, node_id)
     context = Map.put(context, "current_node", node.id)
     retry_policy = build_retry_policy(node, graph, opts)
+    stage_index = length(history)
+
+    emit_event(opts, %{
+      type: "StageStarted",
+      name: node.id,
+      index: stage_index,
+      context: context
+    })
+
     {outcome, stage_dir} = execute_with_retry(node, context, graph, run_root, retry_policy, opts)
     _ = write_json(Path.join(stage_dir, "status.json"), serialize_outcome(outcome))
 
@@ -215,116 +232,229 @@ defmodule AttractorEx.Engine do
     checkpoint = Checkpoint.new(node.id, Map.keys(next_outcomes), next_context)
     _ = write_json(Path.join(run_root, "checkpoint.json"), Map.from_struct(checkpoint))
 
+    emit_event(opts, %{
+      type: "CheckpointSaved",
+      node_id: node.id,
+      checkpoint: Map.from_struct(checkpoint),
+      context: next_context
+    })
+
+    emit_stage_outcome_event(opts, node, outcome, stage_index, next_context)
+
     if node.type == "exit" do
-      case pick_retry_target(graph, next_outcomes) do
-        nil ->
-          status = if all_goal_gates_satisfied?(graph, next_outcomes), do: :success, else: :fail
-
-          reason =
-            if status == :fail and not all_goal_gates_satisfied?(graph, next_outcomes),
-              do: "Goal gate unsatisfied and no retry target",
-              else: nil
-
-          {:ok,
-           %{
-             run_id: next_context["run_id"],
-             status: status,
-             reason: reason,
-             context: next_context,
-             outcomes: normalize_outcomes(next_outcomes),
-             history: next_history,
-             logs_root: run_root,
-             diagnostics: diagnostics
-           }}
-
-        retry_target ->
-          if Map.has_key?(graph.nodes, retry_target) do
-            loop(
-              graph,
-              retry_target,
-              next_context,
-              next_outcomes,
-              next_history,
-              run_root,
-              diagnostics,
-              steps_left - 1,
-              opts
-            )
-          else
-            {:ok,
-             %{
-               run_id: next_context["run_id"],
-               status: :fail,
-               reason: "Retry target `#{retry_target}` not found",
-               context: next_context,
-               outcomes: normalize_outcomes(next_outcomes),
-               history: next_history,
-               logs_root: run_root,
-               diagnostics: diagnostics
-             }}
-          end
-      end
+      handle_exit_node(
+        graph,
+        next_context,
+        next_outcomes,
+        next_history,
+        run_root,
+        diagnostics,
+        steps_left,
+        opts
+      )
     else
-      case select_next_edge(graph, node.id, next_context, outcome) do
-        nil ->
-          case failure_route_target(node, graph, outcome.status) do
-            nil ->
-              reason =
-                if outcome.status == :fail do
-                  outcome.failure_reason || "Stage failed with no outgoing fail edge"
-                else
-                  "No outgoing edge selected from node `#{node.id}`"
-                end
+      handle_non_exit_node(
+        graph,
+        node,
+        outcome,
+        next_context,
+        next_outcomes,
+        next_history,
+        run_root,
+        diagnostics,
+        steps_left,
+        opts
+      )
+    end
+  end
 
-              {:ok,
-               %{
-                 run_id: next_context["run_id"],
-                 status: :fail,
-                 reason: reason,
-                 context: next_context,
-                 outcomes: normalize_outcomes(next_outcomes),
-                 history: next_history,
-                 logs_root: run_root,
-                 diagnostics: diagnostics
-               }}
+  defp emit_stage_outcome_event(opts, node, outcome, stage_index, context) do
+    case outcome.status do
+      status when status in [:success, :partial_success] ->
+        emit_event(opts, %{
+          type: "StageCompleted",
+          name: node.id,
+          index: stage_index,
+          status: Atom.to_string(status),
+          context: context
+        })
 
-            target ->
-              loop(
-                graph,
-                target,
-                next_context,
-                next_outcomes,
-                next_history,
-                run_root,
-                diagnostics,
-                steps_left - 1,
-                opts
-              )
-          end
+      :fail ->
+        emit_event(opts, %{
+          type: "StageFailed",
+          name: node.id,
+          index: stage_index,
+          error: outcome.failure_reason,
+          will_retry: false,
+          status: "fail",
+          context: context
+        })
 
-        edge ->
-          if edge_loop_restart?(edge) do
-            restart_opts =
+      _ ->
+        :ok
+    end
+  end
+
+  defp handle_exit_node(
+         graph,
+         context,
+         outcomes,
+         history,
+         run_root,
+         diagnostics,
+         steps_left,
+         opts
+       ) do
+    case pick_retry_target(graph, outcomes) do
+      nil ->
+        status = if all_goal_gates_satisfied?(graph, outcomes), do: :success, else: :fail
+
+        reason =
+          if status == :fail and not all_goal_gates_satisfied?(graph, outcomes),
+            do: "Goal gate unsatisfied and no retry target",
+            else: nil
+
+        terminal_result(status, reason, context, outcomes, history, run_root, diagnostics, opts)
+
+      retry_target ->
+        if Map.has_key?(graph.nodes, retry_target) do
+          loop(
+            graph,
+            retry_target,
+            context,
+            outcomes,
+            history,
+            run_root,
+            diagnostics,
+            steps_left - 1,
+            opts
+          )
+        else
+          terminal_result(
+            :fail,
+            "Retry target `#{retry_target}` not found",
+            context,
+            outcomes,
+            history,
+            run_root,
+            diagnostics,
+            opts
+          )
+        end
+    end
+  end
+
+  defp handle_non_exit_node(
+         graph,
+         node,
+         outcome,
+         context,
+         outcomes,
+         history,
+         run_root,
+         diagnostics,
+         steps_left,
+         opts
+       ) do
+    case select_next_edge(graph, node.id, context, outcome) do
+      nil ->
+        case failure_route_target(node, graph, outcome.status) do
+          nil ->
+            reason =
+              if outcome.status == :fail do
+                outcome.failure_reason || "Stage failed with no outgoing fail edge"
+              else
+                "No outgoing edge selected from node `#{node.id}`"
+              end
+
+            terminal_result(
+              :fail,
+              reason,
+              context,
+              outcomes,
+              history,
+              run_root,
+              diagnostics,
               opts
-              |> Keyword.delete(:run_id)
-              |> Keyword.put(:start_at, edge.to)
+            )
 
-            execute(graph, Keyword.get(opts, :_initial_context, %{}), diagnostics, restart_opts)
-          else
+          target ->
             loop(
               graph,
-              edge.to,
-              next_context,
-              next_outcomes,
-              next_history,
+              target,
+              context,
+              outcomes,
+              history,
               run_root,
               diagnostics,
               steps_left - 1,
               opts
             )
-          end
-      end
+        end
+
+      edge ->
+        continue_from_edge(
+          graph,
+          edge,
+          context,
+          outcomes,
+          history,
+          run_root,
+          diagnostics,
+          steps_left,
+          opts
+        )
     end
+  end
+
+  defp continue_from_edge(
+         graph,
+         edge,
+         context,
+         outcomes,
+         history,
+         run_root,
+         diagnostics,
+         steps_left,
+         opts
+       ) do
+    if edge_loop_restart?(edge) do
+      restart_opts =
+        opts
+        |> Keyword.delete(:run_id)
+        |> Keyword.put(:start_at, edge.to)
+
+      execute(graph, Keyword.get(opts, :_initial_context, %{}), diagnostics, restart_opts)
+    else
+      loop(
+        graph,
+        edge.to,
+        context,
+        outcomes,
+        history,
+        run_root,
+        diagnostics,
+        steps_left - 1,
+        opts
+      )
+    end
+  end
+
+  defp terminal_result(status, reason, context, outcomes, history, run_root, diagnostics, opts) do
+    final = %{
+      run_id: context["run_id"],
+      status: status,
+      reason: reason,
+      context: context,
+      outcomes: normalize_outcomes(outcomes),
+      history: history,
+      logs_root: run_root,
+      diagnostics: diagnostics
+    }
+
+    event_type = if status == :success, do: "PipelineCompleted", else: "PipelineFailed"
+    emit_pipeline_terminal_event(final, event_type, %{error: final.reason}, opts)
+    {:ok, final}
   end
 
   defp execute_node(node, context, graph, stage_dir, opts) do
@@ -377,6 +507,15 @@ defmodule AttractorEx.Engine do
           outcome.status == :retry and attempt < retry_policy.max_attempts ->
             _ = write_json(Path.join(stage_dir, "status.json"), serialize_outcome(outcome))
             delay = retry_delay_ms(retry_policy.backoff, attempt)
+
+            emit_event(opts, %{
+              type: "StageRetrying",
+              name: node.id,
+              index: nil,
+              attempt: attempt,
+              delay_ms: delay
+            })
+
             maybe_sleep(delay, opts)
             {:cont, {outcome, stage_dir}}
 
@@ -658,5 +797,25 @@ defmodule AttractorEx.Engine do
     with {:ok, encoded} <- Jason.encode(value, pretty: true) do
       File.write(path, encoded)
     end
+  end
+
+  defp emit_event(opts, event) do
+    case Keyword.get(opts, :event_observer) do
+      fun when is_function(fun, 1) -> fun.(event)
+      _ -> :ok
+    end
+  end
+
+  defp emit_pipeline_terminal_event(final, type, extra, opts) do
+    emit_event(
+      opts,
+      %{
+        type: type,
+        status: Atom.to_string(final.status),
+        pipeline_id: final.run_id,
+        context: final.context
+      }
+      |> Map.merge(extra)
+    )
   end
 end

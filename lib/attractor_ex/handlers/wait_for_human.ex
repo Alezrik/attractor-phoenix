@@ -140,7 +140,7 @@ defmodule AttractorEx.Handlers.WaitForHuman do
         {:ok, AttractorEx.Interviewers.Recording}
 
       module when is_atom(module) ->
-        if function_exported?(module, :ask, 4) do
+        if Code.ensure_loaded?(module) and function_exported?(module, :ask, 4) do
           {:ok, module}
         else
           {:error, "interviewer module does not implement ask/4: #{inspect(module)}"}
