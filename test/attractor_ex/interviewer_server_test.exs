@@ -40,7 +40,21 @@ defmodule AttractorEx.InterviewerServerTest do
       end)
 
     assert_receive {:event,
-                    %{type: "InterviewStarted", question: %{id: "gate", type: "CONFIRMATION"}}}
+                    %{
+                      type: "InterviewStarted",
+                      question: %{
+                        id: "gate",
+                        type: "CONFIRMATION",
+                        multiple: false,
+                        required: true,
+                        metadata: %{
+                          "choice_count" => 1,
+                          "input_mode" => "confirmation",
+                          "multiple" => false
+                        },
+                        options: [%{"key" => "A", "label" => "Approve", "to" => "done"}]
+                      }
+                    }}
 
     wait_until(fn ->
       match?({:ok, [_]}, Manager.pending_questions(manager, "server-interviewer"))
@@ -175,6 +189,85 @@ defmodule AttractorEx.InterviewerServerTest do
     refute Process.alive?(pid)
   end
 
+  test "server interviewer normalizes string yes/no and confirmation answers", %{manager: manager} do
+    {:ok, _id} =
+      Manager.create_pipeline(
+        manager,
+        "digraph { start [shape=Mdiamond] done [shape=Msquare] start -> done }",
+        %{},
+        pipeline_id: "server-string-normalization"
+      )
+
+    parent = self()
+
+    yes_no_pid =
+      spawn(fn ->
+        result =
+          Server.ask(
+            %Node{id: "yes-no", attrs: %{"prompt" => "Ship?", "human.timeout" => "1s"}},
+            [
+              %{key: "Y", label: "[Y] Yes", to: "done"},
+              %{key: "N", label: "[N] No", to: "retry"}
+            ],
+            %{},
+            manager: manager,
+            pipeline_id: "server-string-normalization"
+          )
+
+        send(parent, {:yes_no_string_result, result})
+      end)
+
+    wait_until(fn ->
+      match?(
+        {:ok, [%{id: "yes-no"}]},
+        Manager.pending_questions(manager, "server-string-normalization")
+      )
+    end)
+
+    assert :ok =
+             Manager.submit_answer(
+               manager,
+               "server-string-normalization",
+               "yes-no",
+               %{"answer" => " approve "}
+             )
+
+    assert_receive {:yes_no_string_result, {:ok, "yes"}}
+    refute Process.alive?(yes_no_pid)
+
+    confirmation_pid =
+      spawn(fn ->
+        result =
+          Server.ask(
+            %Node{id: "confirm", attrs: %{"prompt" => "Confirm?", "human.timeout" => "1s"}},
+            [%{key: "C", label: "[C] Confirm", to: "done"}],
+            %{},
+            manager: manager,
+            pipeline_id: "server-string-normalization"
+          )
+
+        send(parent, {:confirmation_string_result, result})
+      end)
+
+    wait_until(fn ->
+      case Manager.pending_questions(manager, "server-string-normalization") do
+        {:ok, questions} -> Enum.any?(questions, &(&1.id == "confirm"))
+        _ -> false
+      end
+    end)
+
+    assert :ok =
+             Manager.submit_answer(
+               manager,
+               "server-string-normalization",
+               "confirm",
+               %{"value" => " cancel "}
+             )
+
+    assert_receive {:confirmation_string_result, {:ok, "cancel"}}
+    refute Process.alive?(confirmation_pid)
+  end
+
   test "server interviewer exposes freeform questions and normalizes map answers", %{
     manager: manager
   } do
@@ -264,6 +357,50 @@ defmodule AttractorEx.InterviewerServerTest do
 
     assert_receive {:event, %{type: "InterviewCompleted", answer: ["A", "B"]}}
     assert_receive {:multiple_choice_result, {:ok, ["A", "B"]}}
+    refute Process.alive?(pid)
+  end
+
+  test "server interviewer accepts nested structured multiple answers", %{manager: manager} do
+    {:ok, _id} =
+      Manager.create_pipeline(
+        manager,
+        "digraph { start [shape=Mdiamond] done [shape=Msquare] start -> done }",
+        %{},
+        pipeline_id: "server-nested-multiple"
+      )
+
+    parent = self()
+
+    pid =
+      spawn(fn ->
+        result =
+          Server.ask_multiple(
+            %Node{
+              id: "gate",
+              attrs: %{"prompt" => "Choose", "human.timeout" => "1s", "human.multiple" => true}
+            },
+            [
+              %{key: "A", label: "[A] Approve", to: "done"},
+              %{key: "B", label: "[B] Block", to: "retry"}
+            ],
+            %{},
+            manager: manager,
+            pipeline_id: "server-nested-multiple"
+          )
+
+        send(parent, {:nested_multiple_result, result})
+      end)
+
+    wait_until(fn ->
+      match?({:ok, [%{id: "gate"}]}, Manager.pending_questions(manager, "server-nested-multiple"))
+    end)
+
+    assert :ok =
+             Manager.submit_answer(manager, "server-nested-multiple", "gate", %{
+               "selected" => [%{"key" => "A"}, %{"answer" => " B "}]
+             })
+
+    assert_receive {:nested_multiple_result, {:ok, ["A", "B"]}}
     refute Process.alive?(pid)
   end
 

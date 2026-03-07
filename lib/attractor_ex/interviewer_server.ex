@@ -61,6 +61,8 @@ defmodule AttractorEx.Interviewers.Server do
 
   defp build_question(node, choices, timeout_ms) do
     question_type = question_type(node, choices)
+    multiple? = multiple_choice?(node)
+    normalized_choices = Enum.map(choices, &normalize_choice/1)
 
     %{
       id: node.id,
@@ -68,15 +70,20 @@ defmodule AttractorEx.Interviewers.Server do
       waiter: self(),
       text: Map.get(node.attrs, "prompt", "Choose a path"),
       type: question_type,
-      options: choices,
+      options: normalized_choices,
       default: Map.get(node.attrs, "human.default_choice"),
       timeout_seconds: timeout_ms / 1000,
       stage: node.id,
+      multiple: multiple?,
+      required: true,
       metadata: %{
         "node_id" => node.id,
         "question_type" => question_type,
         "timeout" => Map.get(node.attrs, "human.timeout"),
-        "default_choice" => Map.get(node.attrs, "human.default_choice")
+        "default_choice" => Map.get(node.attrs, "human.default_choice"),
+        "multiple" => multiple?,
+        "choice_count" => length(normalized_choices),
+        "input_mode" => input_mode(question_type, normalized_choices)
       }
     }
   end
@@ -114,7 +121,7 @@ defmodule AttractorEx.Interviewers.Server do
 
   defp question_type(node, choices) do
     cond do
-      truthy?(Map.get(node.attrs, "human.multiple")) ->
+      multiple_choice?(node) ->
         "MULTIPLE_CHOICE"
 
       choices == [] ->
@@ -160,8 +167,34 @@ defmodule AttractorEx.Interviewers.Server do
   defp truthy?(value) when is_binary(value), do: normalize_token(value) in ["true", "1", "yes"]
   defp truthy?(_value), do: false
 
+  defp normalize_answer(answer, %{type: "YES_NO"}) when is_binary(answer) do
+    case normalize_token(answer) do
+      value when value in ["true", "yes", "y", "approve", "approved", "confirm", "confirmed"] ->
+        "yes"
+
+      value when value in ["false", "no", "n", "reject", "rejected", "cancel", "cancelled"] ->
+        "no"
+
+      _ ->
+        String.trim(answer)
+    end
+  end
+
   defp normalize_answer(answer, %{type: "YES_NO"}) when is_boolean(answer) do
     if answer, do: "yes", else: "no"
+  end
+
+  defp normalize_answer(answer, %{type: "CONFIRMATION"}) when is_binary(answer) do
+    case normalize_token(answer) do
+      value when value in ["true", "yes", "y", "approve", "approved", "confirm", "confirmed"] ->
+        "confirm"
+
+      value when value in ["false", "no", "n", "reject", "rejected", "cancel", "cancelled"] ->
+        "cancel"
+
+      _ ->
+        String.trim(answer)
+    end
   end
 
   defp normalize_answer(answer, %{type: "CONFIRMATION"}) when is_boolean(answer) do
@@ -170,8 +203,22 @@ defmodule AttractorEx.Interviewers.Server do
 
   defp normalize_answer(answer, question) when is_map(answer) do
     candidate =
-      answer["answer"] || answer[:answer] || answer["value"] || answer[:value] || answer["key"] ||
-        answer[:key]
+      answer["answers"] ||
+        answer[:answers] ||
+        answer["values"] ||
+        answer[:values] ||
+        answer["selected"] ||
+        answer[:selected] ||
+        answer["selection"] ||
+        answer[:selection] ||
+        answer["answer"] ||
+        answer[:answer] ||
+        answer["value"] ||
+        answer[:value] ||
+        answer["key"] ||
+        answer[:key] ||
+        answer["keys"] ||
+        answer[:keys]
 
     normalize_answer(candidate, question)
   end
@@ -182,4 +229,22 @@ defmodule AttractorEx.Interviewers.Server do
 
   defp normalize_answer(answer, _question) when is_binary(answer), do: String.trim(answer)
   defp normalize_answer(answer, _question), do: answer
+
+  defp multiple_choice?(node), do: truthy?(Map.get(node.attrs, "human.multiple"))
+
+  defp input_mode("FREEFORM", _choices), do: "text"
+  defp input_mode("YES_NO", _choices), do: "boolean"
+  defp input_mode("CONFIRMATION", _choices), do: "confirmation"
+  defp input_mode("MULTIPLE_CHOICE", [_]), do: "single_select"
+  defp input_mode("MULTIPLE_CHOICE", _choices), do: "multi_select"
+
+  defp normalize_choice(choice) when is_map(choice) do
+    %{
+      "key" => Map.get(choice, :key) || Map.get(choice, "key"),
+      "label" => Map.get(choice, :label) || Map.get(choice, "label"),
+      "to" => Map.get(choice, :to) || Map.get(choice, "to")
+    }
+  end
+
+  defp normalize_choice(choice), do: %{"value" => choice}
 end
