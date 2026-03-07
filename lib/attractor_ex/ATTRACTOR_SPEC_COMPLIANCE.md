@@ -36,7 +36,7 @@ Legend: `implemented`, `partial`, `not implemented`.
 | `2. DOT DSL Schema` | `partial` | Supports directed graphs, attrs, chained edges, defaults, class attr, shape mapping, comments, value parsing. `subgraph` flattening and full grammar coverage are not fully implemented. |
 | `3. Pipeline Execution Engine` | `implemented` | Start-to-exit loop, edge selection priority, goal gates, retries/backoff, failure routing, loop restart, checkpoint/manifest/status artifacts are implemented. |
 | `4. Node Handlers` | `implemented` | Built-ins present: `start`, `exit`, `codergen`, `wait.human`, `conditional`, `parallel`, `parallel.fan_in`, `tool`, `stack.manager_loop`, default fallback. |
-| `5. State and Context` | `partial` | Context merge and per-node artifacts/checkpoints implemented. Resume-from-checkpoint flow is not exposed as a first-class API. |
+| `5. State and Context` | `implemented` | Context merge and per-node artifacts/checkpoints implemented. First-class resume API is available via `AttractorEx.resume/3` using a checkpoint struct/map or `checkpoint.json` path. |
 | `6. Human-in-the-Loop` | `partial` | `wait.human` behavior is implemented through context-driven answer selection and timeout/default handling. Full interviewer interface/types matrix from spec is not fully implemented. |
 | `7. Validation and Linting` | `partial` | Core diagnostics exist (start/exit, edges, condition parse, goal gate retry hints, codergen prompt warning). Full lint rule set and custom rule API are not complete. |
 | `8. Model Stylesheet` | `not implemented` | `model_stylesheet` parsing and selector application are not implemented. |
@@ -60,7 +60,6 @@ Legend: `implemented`, `partial`, `not implemented`.
 3. Full interviewer abstraction set (`AutoApprove`, `Console`, `Callback`, `Queue` as named interfaces).
 4. Custom lint rules and full linting parity matrix.
 5. AST transform registration pipeline and HTTP server mode.
-6. First-class checkpoint resume API.
 
 ## Verification Commands
 

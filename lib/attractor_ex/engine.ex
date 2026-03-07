@@ -12,11 +12,11 @@ defmodule AttractorEx.Engine do
   }
 
   def run(dot, initial_context, opts \\ []) do
-    normalized_initial_context = normalize_context(initial_context)
-
     with {:ok, %Graph{} = graph} <- Parser.parse(dot),
          diagnostics <- Validator.validate(graph),
          [] <- Enum.filter(diagnostics, &(&1.severity == :error)) do
+      normalized_initial_context = normalize_context(initial_context)
+
       execute(
         graph,
         normalized_initial_context,
@@ -26,6 +26,75 @@ defmodule AttractorEx.Engine do
     else
       {:error, reason} -> {:error, %{error: reason}}
       errors when is_list(errors) -> {:error, %{diagnostics: errors}}
+    end
+  end
+
+  def resume(dot, checkpoint_or_path, opts \\ []) do
+    with {:ok, %Graph{} = graph} <- Parser.parse(dot),
+         diagnostics <- Validator.validate(graph),
+         [] <- Enum.filter(diagnostics, &(&1.severity == :error)),
+         {:ok, checkpoint, inferred_opts} <- load_checkpoint(checkpoint_or_path) do
+      checkpoint_context = normalize_context(checkpoint.context)
+
+      resume_opts =
+        opts
+        |> Keyword.merge(inferred_opts)
+        |> Keyword.put_new(:start_at, checkpoint.current_node)
+        |> maybe_put_run_id(checkpoint_context)
+
+      execute(
+        graph,
+        checkpoint_context,
+        diagnostics,
+        Keyword.put(resume_opts, :_initial_context, checkpoint_context)
+      )
+    else
+      {:error, reason} when is_binary(reason) -> {:error, %{error: reason}}
+      {:error, %{error: _} = error} -> {:error, error}
+      errors when is_list(errors) -> {:error, %{diagnostics: errors}}
+    end
+  end
+
+  defp load_checkpoint(path) when is_binary(path) do
+    checkpoint_path = Path.expand(path)
+
+    with {:ok, contents} <- File.read(checkpoint_path),
+         {:ok, decoded} <- Jason.decode(contents),
+         checkpoint <- normalize_checkpoint(decoded) do
+      run_root = Path.dirname(checkpoint_path)
+      inferred_opts = [logs_root: Path.dirname(run_root), run_id: Path.basename(run_root)]
+      {:ok, checkpoint, inferred_opts}
+    else
+      {:error, :enoent} ->
+        {:error, %{error: "Checkpoint file not found: #{checkpoint_path}"}}
+
+      {:error, reason} ->
+        {:error, %{error: "Checkpoint read/decode failed: #{inspect(reason)}"}}
+    end
+  end
+
+  defp load_checkpoint(%Checkpoint{} = checkpoint), do: {:ok, checkpoint, []}
+
+  defp load_checkpoint(checkpoint) when is_map(checkpoint),
+    do: {:ok, normalize_checkpoint(checkpoint), []}
+
+  defp load_checkpoint(_value),
+    do: {:error, %{error: "Checkpoint must be a file path, map, or %AttractorEx.Checkpoint{}"}}
+
+  defp normalize_checkpoint(checkpoint) do
+    %Checkpoint{
+      timestamp: Map.get(checkpoint, "timestamp") || Map.get(checkpoint, :timestamp),
+      current_node: Map.get(checkpoint, "current_node") || Map.get(checkpoint, :current_node),
+      completed_nodes:
+        Map.get(checkpoint, "completed_nodes") || Map.get(checkpoint, :completed_nodes) || [],
+      context: Map.get(checkpoint, "context") || Map.get(checkpoint, :context) || %{}
+    }
+  end
+
+  defp maybe_put_run_id(opts, context) do
+    case Map.get(context, "run_id") do
+      run_id when is_binary(run_id) and run_id != "" -> Keyword.put_new(opts, :run_id, run_id)
+      _ -> opts
     end
   end
 
