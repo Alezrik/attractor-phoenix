@@ -523,6 +523,83 @@ defmodule AttractorEx.EngineTest do
                "module transformed"
     end
 
+    test "supports module graph transforms via apply/1" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        task [shape=box]
+        done [shape=Msquare]
+        start -> task -> done
+      }
+      """
+
+      assert {:ok, result} =
+               AttractorEx.run(dot, %{},
+                 logs_root: unique_logs_root("graph_transform_apply_module"),
+                 codergen_backend: AttractorExTest.EchoBackend,
+                 graph_transforms: [AttractorExTest.ApplyGraphTransform]
+               )
+
+      assert result.status == :success
+
+      assert File.read!(Path.join([result.logs_root, "task", "prompt.md"])) ==
+               "apply transformed"
+    end
+
+    test "applies runtime preamble transform for non-full fidelity codergen stages" do
+      dot = """
+      digraph attractor {
+        graph [goal="Ship release", default_fidelity="compact"]
+        start [shape=Mdiamond]
+        plan [shape=box, prompt="Plan for $goal"]
+        implement [shape=box, prompt="Implement from context"]
+        done [shape=Msquare]
+        start -> plan -> implement -> done
+      }
+      """
+
+      assert {:ok, result} =
+               AttractorEx.run(dot, %{"ticket" => "A-9"},
+                 logs_root: unique_logs_root("runtime_preamble_transform"),
+                 codergen_backend: AttractorExTest.EchoBackend
+               )
+
+      assert result.status == :success
+
+      prompt = File.read!(Path.join([result.logs_root, "implement", "prompt.md"]))
+      assert prompt =~ "Context carryover (compact):"
+      assert prompt =~ "Goal: Ship release"
+      assert prompt =~ "Completed stages:"
+      assert prompt =~ "- plan [status=success]"
+      assert prompt =~ "Context values:"
+      assert prompt =~ ~s(- ticket: "A-9")
+      assert prompt =~ "Implement from context"
+    end
+
+    test "skips runtime preamble transform when fidelity resolves to full" do
+      dot = """
+      digraph attractor {
+        graph [goal="Ship release", default_fidelity="compact"]
+        start [shape=Mdiamond]
+        plan [shape=box, prompt="Plan for $goal"]
+        implement [shape=box, prompt="Implement from context", fidelity="full"]
+        done [shape=Msquare]
+        start -> plan -> implement -> done
+      }
+      """
+
+      assert {:ok, result} =
+               AttractorEx.run(dot, %{"ticket" => "A-10"},
+                 logs_root: unique_logs_root("runtime_preamble_full"),
+                 codergen_backend: AttractorExTest.EchoBackend
+               )
+
+      assert result.status == :success
+
+      assert File.read!(Path.join([result.logs_root, "implement", "prompt.md"])) ==
+               "Implement from context"
+    end
+
     test "returns error when graph transform is invalid" do
       dot = """
       digraph attractor {
