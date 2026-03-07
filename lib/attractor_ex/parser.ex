@@ -4,6 +4,7 @@ defmodule AttractorEx.Parser do
   alias AttractorEx.{Edge, Graph, ModelStylesheet, Node}
 
   @bare_id_pattern ~r/^[A-Za-z_][A-Za-z0-9_]*$/
+  @bare_graph_id_pattern ~r/^[A-Za-z_][A-Za-z0-9_\-]*$/
   @quoted_id_pattern ~r/^"(?:[^"\\]|\\.)+"$|^'(?:[^'\\]|\\.)+'$/
   @graph_attr_decl_pattern ~r/^([A-Za-z_][A-Za-z0-9_\.]*)\s*=\s*(.+)$/
   @type parse_scope :: %{
@@ -41,7 +42,7 @@ defmodule AttractorEx.Parser do
                  capture: :all_but_first
                ) do
             [value] ->
-              candidate = normalize_identifier(value)
+              candidate = normalize_graph_identifier(value)
 
               if candidate != "", do: candidate, else: "pipeline"
 
@@ -679,6 +680,26 @@ defmodule AttractorEx.Parser do
         ""
 
       Regex.match?(@bare_id_pattern, trimmed) ->
+        trimmed
+
+      Regex.match?(@quoted_id_pattern, trimmed) ->
+        trimmed
+        |> unquote_and_unescape()
+        |> String.trim()
+
+      true ->
+        ""
+    end
+  end
+
+  defp normalize_graph_identifier(id) do
+    trimmed = String.trim(id)
+
+    cond do
+      trimmed == "" ->
+        ""
+
+      Regex.match?(@bare_graph_id_pattern, trimmed) ->
         trimmed
 
       Regex.match?(@quoted_id_pattern, trimmed) ->
