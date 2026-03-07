@@ -13,12 +13,13 @@ defmodule AttractorEx.Engine do
 
   def run(dot, initial_context, opts \\ []) do
     with {:ok, %Graph{} = graph} <- Parser.parse(dot),
-         diagnostics <- Validator.validate(graph),
+         {:ok, %Graph{} = transformed_graph} <- apply_graph_transforms(graph, opts),
+         diagnostics <- Validator.validate(transformed_graph),
          [] <- Enum.filter(diagnostics, &(&1.severity == :error)) do
       normalized_initial_context = normalize_context(initial_context)
 
       execute(
-        graph,
+        transformed_graph,
         normalized_initial_context,
         diagnostics,
         Keyword.put(opts, :_initial_context, normalized_initial_context)
@@ -31,7 +32,8 @@ defmodule AttractorEx.Engine do
 
   def resume(dot, checkpoint_or_path, opts \\ []) do
     with {:ok, %Graph{} = graph} <- Parser.parse(dot),
-         diagnostics <- Validator.validate(graph),
+         {:ok, %Graph{} = transformed_graph} <- apply_graph_transforms(graph, opts),
+         diagnostics <- Validator.validate(transformed_graph),
          [] <- Enum.filter(diagnostics, &(&1.severity == :error)),
          {:ok, checkpoint, inferred_opts} <- load_checkpoint(checkpoint_or_path) do
       checkpoint_context = normalize_context(checkpoint.context)
@@ -43,7 +45,7 @@ defmodule AttractorEx.Engine do
         |> maybe_put_run_id(checkpoint_context)
 
       execute(
-        graph,
+        transformed_graph,
         checkpoint_context,
         diagnostics,
         Keyword.put(resume_opts, :_initial_context, checkpoint_context)
@@ -96,6 +98,60 @@ defmodule AttractorEx.Engine do
       run_id when is_binary(run_id) and run_id != "" -> Keyword.put_new(opts, :run_id, run_id)
       _ -> opts
     end
+  end
+
+  defp apply_graph_transforms(%Graph{} = graph, opts) do
+    transforms = normalized_graph_transforms(opts)
+
+    Enum.reduce_while(transforms, {:ok, graph}, fn transform, {:ok, current_graph} ->
+      case apply_graph_transform(transform, current_graph) do
+        {:ok, %Graph{} = next_graph} -> {:cont, {:ok, next_graph}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+  end
+
+  defp normalized_graph_transforms(opts) do
+    transforms = Keyword.get(opts, :graph_transforms, [])
+    legacy_transform = Keyword.get(opts, :graph_transform)
+
+    transforms =
+      cond do
+        is_list(transforms) -> transforms
+        is_nil(transforms) -> []
+        true -> [transforms]
+      end
+
+    if is_nil(legacy_transform), do: transforms, else: transforms ++ [legacy_transform]
+  end
+
+  defp apply_graph_transform(transform, %Graph{} = graph) when is_function(transform, 1) do
+    safe_graph_transform(transform, graph)
+  end
+
+  defp apply_graph_transform(transform, %Graph{} = graph) when is_atom(transform) do
+    if Code.ensure_loaded?(transform) and function_exported?(transform, :transform, 1) do
+      safe_graph_transform(fn value -> transform.transform(value) end, graph)
+    else
+      {:error, "Invalid graph transform: expected function/1 or module with transform/1"}
+    end
+  end
+
+  defp apply_graph_transform(_transform, _graph) do
+    {:error, "Invalid graph transform: expected function/1 or module with transform/1"}
+  end
+
+  defp safe_graph_transform(transform_fun, %Graph{} = graph) do
+    case transform_fun.(graph) do
+      %Graph{} = transformed ->
+        {:ok, transformed}
+
+      _other ->
+        {:error, "Graph transform must return %AttractorEx.Graph{}"}
+    end
+  rescue
+    error ->
+      {:error, "Graph transform failed: #{Exception.message(error)}"}
   end
 
   defp execute(graph, initial_context, diagnostics, opts) do

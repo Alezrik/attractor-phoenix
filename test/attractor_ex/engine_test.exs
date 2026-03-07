@@ -358,6 +358,81 @@ defmodule AttractorEx.EngineTest do
       assert {:error, %{error: message}} = AttractorEx.resume(dot, missing)
       assert message =~ "Checkpoint file not found"
     end
+
+    test "applies graph_transforms before validation and execution" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        task [shape=box]
+        done [shape=Msquare]
+        start -> task -> done
+      }
+      """
+
+      patch_prompt = fn graph ->
+        task = Map.fetch!(graph.nodes, "task")
+
+        patched_task = %{
+          task
+          | attrs: Map.put(task.attrs, "prompt", "transformed prompt"),
+            prompt: "transformed prompt"
+        }
+
+        %{graph | nodes: Map.put(graph.nodes, "task", patched_task)}
+      end
+
+      assert {:ok, result} =
+               AttractorEx.run(dot, %{},
+                 logs_root: unique_logs_root("graph_transform_function"),
+                 codergen_backend: AttractorExTest.EchoBackend,
+                 graph_transforms: [patch_prompt]
+               )
+
+      assert result.status == :success
+
+      assert File.read!(Path.join([result.logs_root, "task", "prompt.md"])) ==
+               "transformed prompt"
+    end
+
+    test "supports module graph transforms via transform/1" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        task [shape=box]
+        done [shape=Msquare]
+        start -> task -> done
+      }
+      """
+
+      assert {:ok, result} =
+               AttractorEx.run(dot, %{},
+                 logs_root: unique_logs_root("graph_transform_module"),
+                 codergen_backend: AttractorExTest.EchoBackend,
+                 graph_transforms: [AttractorExTest.GraphTransform]
+               )
+
+      assert result.status == :success
+
+      assert File.read!(Path.join([result.logs_root, "task", "prompt.md"])) ==
+               "module transformed"
+    end
+
+    test "returns error when graph transform is invalid" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        done [shape=Msquare]
+        start -> done
+      }
+      """
+
+      invalid_transform = fn _graph -> :invalid end
+
+      assert {:error, %{error: message}} =
+               AttractorEx.run(dot, %{}, graph_transforms: [invalid_transform])
+
+      assert message =~ "Graph transform must return"
+    end
   end
 
   defp unique_logs_root(tag) do
