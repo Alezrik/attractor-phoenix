@@ -107,7 +107,7 @@ defmodule AttractorEx.EngineTest do
       dot = """
       digraph attractor {
         start [shape=Mdiamond]
-        task [shape=box, prompt="Task"]
+        task [shape=box, prompt="Task", retry_target="done"]
         done [shape=Msquare]
         start -> task
       }

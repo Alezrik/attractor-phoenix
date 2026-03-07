@@ -1,7 +1,7 @@
 defmodule AttractorEx.ValidatorTest do
   use ExUnit.Case, async: true
 
-  alias AttractorEx.{Parser, Validator}
+  alias AttractorEx.{Edge, Graph, Node, Parser, Validator}
 
   describe "spec: validation and linting" do
     test "flags missing terminal node" do
@@ -110,7 +110,60 @@ defmodule AttractorEx.ValidatorTest do
       assert Enum.any?(diagnostics, &(&1.code == :codergen_prompt and &1.severity == :warning))
     end
 
-    test "warns when non-exit nodes are unreachable from start" do
+    test "warns when node type is not recognized by the handler registry" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        custom [type="my.custom.handler", prompt="Plan"]
+        done [shape=Msquare]
+        start -> custom
+        custom -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :type_known and &1.severity == :warning and &1.node_id == "custom")
+             )
+    end
+
+    test "warns on invalid graph, node, and edge fidelity values" do
+      dot = """
+      digraph attractor {
+        graph [default_fidelity="ultra"]
+        start [shape=Mdiamond]
+        task [shape=box, prompt="Plan", fidelity="verbose"]
+        done [shape=Msquare]
+        start -> task [fidelity="invalid"]
+        task -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :fidelity_valid and &1.severity == :warning and is_nil(&1.node_id) and
+                   is_nil(&1.edge))
+             )
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :fidelity_valid and &1.severity == :warning and &1.node_id == "task")
+             )
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :fidelity_valid and &1.severity == :warning and
+                   &1.edge == {"start", "task"})
+             )
+    end
+
+    test "flags unreachable nodes as reachability errors" do
       dot = """
       digraph attractor {
         start [shape=Mdiamond]
@@ -125,8 +178,26 @@ defmodule AttractorEx.ValidatorTest do
 
       assert Enum.any?(
                diagnostics,
-               &(&1.code == :unreachable_node and &1.severity == :warning and
+               &(&1.code == :reachability and &1.severity == :error and
                    &1.node_id == "orphan")
+             )
+    end
+
+    test "flags missing edge targets" do
+      graph = %Graph{
+        nodes: %{
+          "start" => Node.new("start", %{"shape" => "Mdiamond"}),
+          "done" => Node.new("done", %{"shape" => "Msquare"})
+        },
+        edges: [Edge.new("start", "missing", %{}), Edge.new("missing", "done", %{})]
+      }
+
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :edge_target_exists and &1.severity == :error and
+                   &1.edge == {"start", "missing"})
              )
     end
 
@@ -379,6 +450,24 @@ defmodule AttractorEx.ValidatorTest do
       assert Enum.any?(
                diagnostics,
                &(&1.code == :model_stylesheet_css_declaration_invalid and &1.severity == :warning)
+             )
+    end
+
+    test "flags invalid stylesheet syntax as an error" do
+      graph = %Graph{
+        attrs: %{"model_stylesheet" => ~s(* { llm_provider: openai;)},
+        nodes: %{
+          "start" => Node.new("start", %{"shape" => "Mdiamond"}),
+          "done" => Node.new("done", %{"shape" => "Msquare"})
+        },
+        edges: [Edge.new("start", "done", %{})]
+      }
+
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :stylesheet_syntax and &1.severity == :error)
              )
     end
 

@@ -43,6 +43,12 @@ defmodule AttractorEx.HandlerRegistry do
 
   def handler_for(node), do: resolve(node)
 
+  def known_type?(type) when is_binary(type) do
+    Map.has_key?(dynamic_handlers(), String.trim(type))
+  end
+
+  def known_type?(_type), do: false
+
   defp dynamic_handlers do
     :persistent_term.get(@registry_key, @base_handlers)
   end
