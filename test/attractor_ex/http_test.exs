@@ -307,6 +307,74 @@ defmodule AttractorEx.HTTPTest do
            } = Jason.decode!(questions_conn.resp_body)
   end
 
+  test "supports spec-compatible run, status, and answer HTTP aliases" do
+    dot = """
+    digraph attractor {
+      start [shape=Mdiamond]
+      gate [shape=hexagon, prompt="Approve release?", human.timeout="5s"]
+      done [shape=Msquare]
+      retry [shape=box, prompt="Retry release"]
+      start -> gate
+      gate -> done [label="[A] Approve"]
+      gate -> retry [label="[R] Retry"]
+      retry -> done
+    }
+    """
+
+    run_conn =
+      conn(:post, "/run", Jason.encode!(%{"dot_source" => dot}))
+      |> put_req_header("content-type", "application/json")
+      |> Router.call(@router_opts)
+
+    assert run_conn.status == 202
+    %{"pipeline_id" => pipeline_id} = Jason.decode!(run_conn.resp_body)
+
+    wait_for(fn ->
+      case Manager.pending_questions(AttractorEx.HTTP.Manager, pipeline_id) do
+        {:ok, [_question | _]} -> {:ok, :ready}
+        _ -> :retry
+      end
+    end)
+
+    status_conn =
+      Router.call(conn(:get, "/status?pipeline_id=#{pipeline_id}"), @router_opts)
+
+    assert status_conn.status == 200
+
+    assert %{"pipeline_id" => ^pipeline_id, "status" => "running"} =
+             Jason.decode!(status_conn.resp_body)
+
+    answer_conn =
+      conn(
+        :post,
+        "/answer",
+        Jason.encode!(%{"pipeline_id" => pipeline_id, "question_id" => "gate", "value" => "A"})
+      )
+      |> put_req_header("content-type", "application/json")
+      |> Router.call(@router_opts)
+
+    assert answer_conn.status == 202
+
+    assert %{"accepted" => true, "pipeline_id" => ^pipeline_id, "question_id" => "gate"} =
+             Jason.decode!(answer_conn.resp_body)
+
+    wait_for(fn ->
+      case Manager.get_pipeline(AttractorEx.HTTP.Manager, pipeline_id) do
+        {:ok, %{status: :success}} -> {:ok, :done}
+        {:ok, %{status: "success"}} -> {:ok, :done}
+        _ -> :retry
+      end
+    end)
+
+    final_status_conn =
+      Router.call(conn(:get, "/status?id=#{pipeline_id}"), @router_opts)
+
+    assert final_status_conn.status == 200
+
+    assert %{"pipeline_id" => ^pipeline_id, "status" => "success"} =
+             Jason.decode!(final_status_conn.resp_body)
+  end
+
   defp wait_for(fun, attempts \\ 100)
 
   defp wait_for(_fun, 0), do: flunk("condition was not met in time")

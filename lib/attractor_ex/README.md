@@ -65,6 +65,12 @@ Implemented endpoints:
 8. `GET /pipelines/:id/checkpoint`
 9. `GET /pipelines/:id/context`
 
+Compatibility aliases for the definition-of-done checklist:
+
+1. `POST /run` delegates to `POST /pipelines`
+2. `GET /status?pipeline_id=...` (or `?id=...`) delegates to `GET /pipelines/:id`
+3. `POST /answer` accepts `pipeline_id`, `question_id` (or `qid`), and `answer` (or `value`)
+
 Graph endpoint formats:
 
 1. Default: `GET /pipelines/:id/graph` returns a native SVG graph rendering.
