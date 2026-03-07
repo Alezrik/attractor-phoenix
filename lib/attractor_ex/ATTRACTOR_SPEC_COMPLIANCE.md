@@ -1,15 +1,16 @@
 # Attractor Spec Compliance (AttractorEx)
 
-This document tracks how `AttractorEx` implementation and tests align with the upstream Attractor specification.
+This file tracks current compliance against the upstream Attractor specification.
 
-## Upstream Reference
+## Source Documents
 
-- Spec URL: https://github.com/strongdm/attractor/blob/main/attractor-spec.md
-- Baseline commit currently targeted by this repository: `2f892efd63ee7c11f038856b90aae57c067b77c2` (2026-02-19)
+- Attractor spec: https://github.com/strongdm/attractor/blob/main/attractor-spec.md
+- Repository: https://github.com/strongdm/attractor
+- Upstream HEAD reviewed: `2f892efd63ee7c11f038856b90aae57c067b77c2` (checked 2026-03-06)
 
 ## Scope
 
-Implementation modules:
+Primary implementation:
 
 1. `lib/attractor_ex/parser.ex`
 2. `lib/attractor_ex/validator.ex`
@@ -17,86 +18,51 @@ Implementation modules:
 4. `lib/attractor_ex/condition.ex`
 5. `lib/attractor_ex/handlers/*.ex`
 
-Primary verification tests:
+Primary tests:
 
 1. `test/attractor_ex/dot_schema_test.exs`
 2. `test/attractor_ex/parser_test.exs`
 3. `test/attractor_ex/validator_test.exs`
-4. `test/attractor_ex/handlers_test.exs`
-5. `test/attractor_ex/engine_test.exs`
-6. `test/attractor_ex/condition_test.exs`
+4. `test/attractor_ex/condition_test.exs`
+5. `test/attractor_ex/handlers_test.exs`
+6. `test/attractor_ex/engine_test.exs`
 
-## Compliance Matrix
+## Section-by-Section Status
 
-### DOT grammar and schema parsing
+Legend: `implemented`, `partial`, `not implemented`.
 
-Covered behavior:
+| Upstream section | Status | Notes |
+|---|---|---|
+| `2. DOT DSL Schema` | `partial` | Supports directed graphs, attrs, chained edges, defaults, class attr, shape mapping, comments, value parsing. `subgraph` flattening and full grammar coverage are not fully implemented. |
+| `3. Pipeline Execution Engine` | `implemented` | Start-to-exit loop, edge selection priority, goal gates, retries/backoff, failure routing, loop restart, checkpoint/manifest/status artifacts are implemented. |
+| `4. Node Handlers` | `implemented` | Built-ins present: `start`, `exit`, `codergen`, `wait.human`, `conditional`, `parallel`, `parallel.fan_in`, `tool`, `stack.manager_loop`, default fallback. |
+| `5. State and Context` | `partial` | Context merge and per-node artifacts/checkpoints implemented. Resume-from-checkpoint flow is not exposed as a first-class API. |
+| `6. Human-in-the-Loop` | `partial` | `wait.human` behavior is implemented through context-driven answer selection and timeout/default handling. Full interviewer interface/types matrix from spec is not fully implemented. |
+| `7. Validation and Linting` | `partial` | Core diagnostics exist (start/exit, edges, condition parse, goal gate retry hints, codergen prompt warning). Full lint rule set and custom rule API are not complete. |
+| `8. Model Stylesheet` | `not implemented` | `model_stylesheet` parsing and selector application are not implemented. |
+| `9. Transforms and Extensibility` | `partial` | Extensibility exists via handlers/backends/options. AST transform pipeline and HTTP server mode are not implemented. |
+| `10. Condition Expression Language` | `implemented` | Equality/inequality, numeric comparisons, clause chaining, nil/boolean handling, nested context and `outcome` access are implemented and tested. |
+| `11. Definition of Done` | `partial` | Significant checklist coverage, but sections 8 and parts of 6/7/9 remain open. |
+| `Appendix A/B/C/D` | `partial` | Major attrs, shape mapping, status contract, and error categories are represented; not every appendix item is fully implemented. |
 
-1. Directed `digraph` parsing with graph defaults, node defaults, edge defaults.
-2. Chained edge expansion (`a -> b -> c`) with shared edge attributes.
-3. Graph-level key/value declarations (`goal="..."`) outside attribute blocks.
-4. Value parsing for strings, booleans, integers, and floats.
-5. Comment stripping and optional semicolons.
-6. Rejection of unsupported undirected edges (`--`).
-7. Canonical shape-to-node-type mapping.
+## Evidence Highlights
 
-Verification tests:
+1. DOT parsing + schema: `dot_schema_test.exs` and `parser_test.exs`.
+2. Validation diagnostics: `validator_test.exs`.
+3. Engine routing/retry/goal-gate: `engine_test.exs`.
+4. Condition language semantics: `condition_test.exs`.
+5. Built-in handlers: `handlers_test.exs`.
 
-- `test/attractor_ex/dot_schema_test.exs`
-- `test/attractor_ex/parser_test.exs`
+## Known Gaps vs Spec
 
-### Validation and graph constraints
-
-Covered behavior:
-
-1. Required start/exit node checks.
-2. Edge endpoint validity and reachability-style validation.
-3. Retry and goal-gate related validation diagnostics.
-4. Static graph diagnostics with severity reporting.
-
-Verification tests:
-
-- `test/attractor_ex/validator_test.exs`
-
-### Runtime execution semantics
-
-Covered behavior:
-
-1. Start-to-exit traversal through handler outcomes.
-2. Outcome status propagation through edge status/condition filters.
-3. Context merge behavior and run artifact progression.
-4. Retry/fallback path behavior driven by graph and node attributes.
-
-Verification tests:
-
-- `test/attractor_ex/engine_test.exs`
-
-### Condition language support
-
-Covered behavior:
-
-1. `outcome.status == "..."` style predicates.
-2. Nested context access in condition expressions.
-3. Safe fallback behavior for unsupported condition forms.
-
-Verification tests:
-
-- `test/attractor_ex/condition_test.exs`
-
-### Built-in handler behavior
-
-Covered behavior:
-
-1. `start`, `exit`, `default`, `conditional`, `parallel`, `parallel.fan_in`, `tool`, `wait.human`, `stack.manager_loop`, and `codergen` handler flows.
-2. Success/failure status behavior and context updates from handlers.
-
-Verification tests:
-
-- `test/attractor_ex/handlers_test.exs`
+1. Full subgraph flattening and broader DOT grammar edge cases.
+2. Model stylesheet parsing and selector precedence system.
+3. Full interviewer abstraction set (`AutoApprove`, `Console`, `Callback`, `Queue` as named interfaces).
+4. Custom lint rules and full linting parity matrix.
+5. AST transform registration pipeline and HTTP server mode.
+6. First-class checkpoint resume API.
 
 ## Verification Commands
-
-Use this sequence when re-validating compliance locally:
 
 ```bash
 mix test test/attractor_ex/dot_schema_test.exs
@@ -104,9 +70,3 @@ mix test test/attractor_ex/parser_test.exs test/attractor_ex/validator_test.exs
 mix test test/attractor_ex/condition_test.exs test/attractor_ex/handlers_test.exs test/attractor_ex/engine_test.exs
 mix precommit
 ```
-
-## Maintenance Notes
-
-1. Update this document when the upstream `attractor-spec.md` changes.
-2. Add or adjust tests before changing runtime behavior.
-3. Keep README references synchronized with this file and the coding-agent-loop compliance document.
