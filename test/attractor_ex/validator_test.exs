@@ -201,6 +201,24 @@ defmodule AttractorEx.ValidatorTest do
              )
     end
 
+    test "flags missing edge sources" do
+      graph = %Graph{
+        nodes: %{
+          "start" => Node.new("start", %{"shape" => "Mdiamond"}),
+          "done" => Node.new("done", %{"shape" => "Msquare"})
+        },
+        edges: [Edge.new("missing", "done", %{})]
+      }
+
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :edge_source_exists and &1.severity == :error and
+                   &1.edge == {"missing", "done"})
+             )
+    end
+
     test "warns for non-exit dead-end nodes" do
       dot = """
       digraph attractor {
@@ -294,6 +312,51 @@ defmodule AttractorEx.ValidatorTest do
       assert Enum.any?(
                diagnostics,
                &(&1.code == :human_default_choice and &1.severity == :warning)
+             )
+    end
+
+    test "warns when wait.human prompt is missing" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        gate [shape=hexagon]
+        done [shape=Msquare]
+        start -> gate
+        gate -> done [label="[A] Approve"]
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :human_gate_prompt and &1.severity == :warning and
+                   &1.node_id == "gate")
+             )
+    end
+
+    test "warns when human.default_choice is ambiguous" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        gate [shape=hexagon, prompt="Choose", human.default_choice="A"]
+        done [shape=Msquare]
+        retry [shape=box, prompt="Retry"]
+        start -> gate
+        gate -> done [label="[A] Approve"]
+        gate -> retry [label="[A] Ask again"]
+        retry -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :human_default_choice_ambiguous and &1.severity == :warning and
+                   &1.node_id == "gate")
              )
     end
 
