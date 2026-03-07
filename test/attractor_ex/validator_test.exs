@@ -512,6 +512,51 @@ defmodule AttractorEx.ValidatorTest do
              )
     end
 
+    test "warns when human.required or human.input values are invalid" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        gate [shape=hexagon, prompt="Explain", human.required="maybe", human.input="voice"]
+        done [shape=Msquare]
+        start -> gate
+        gate -> done [label="[D] Done"]
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :human_required_invalid and &1.severity == :warning and
+                   &1.node_id == "gate")
+             )
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :human_input_invalid and &1.severity == :warning and
+                   &1.node_id == "gate")
+             )
+    end
+
+    test "accepts supported human.required and human.input values" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        gate [shape=hexagon, prompt="Explain", human.required=false, human.input="textarea"]
+        done [shape=Msquare]
+        start -> gate
+        gate -> done [label="[D] Done"]
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      refute Enum.any?(diagnostics, &(&1.code == :human_required_invalid))
+      refute Enum.any?(diagnostics, &(&1.code == :human_input_invalid))
+    end
+
     test "accepts positive wait.human timeout values" do
       dot = """
       digraph attractor {
@@ -787,7 +832,7 @@ defmodule AttractorEx.ValidatorTest do
       dot = """
       digraph attractor {
         start [shape=Mdiamond]
-        manager [shape=house, manager.actions="observe,panic", manager.max_cycles="zero", manager.poll_interval="-5s"]
+        manager [shape=house, manager.actions="observe,panic", manager.max_cycles="zero", manager.poll_interval="-5s", stack.child_autostart="later"]
         done [shape=Msquare]
         start -> manager
         manager -> done
@@ -814,7 +859,48 @@ defmodule AttractorEx.ValidatorTest do
 
       assert Enum.any?(
                diagnostics,
+               &(&1.code == :manager_child_autostart_invalid and &1.node_id == "manager")
+             )
+    end
+
+    test "warns when stack manager autostart is enabled without graph child dotfile" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        manager [shape=house]
+        done [shape=Msquare]
+        start -> manager
+        manager -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
                &(&1.code == :manager_child_dotfile_missing and &1.node_id == "manager")
+             )
+    end
+
+    test "warns on invalid allow_partial values" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        task [shape=box, prompt="Do work", allow_partial="later"]
+        done [shape=Msquare]
+        start -> task
+        task -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :allow_partial_invalid and &1.severity == :warning and
+                   &1.node_id == "task")
              )
     end
 
@@ -863,6 +949,7 @@ defmodule AttractorEx.ValidatorTest do
       refute Enum.any?(diagnostics, &(&1.code == :manager_actions_invalid))
       refute Enum.any?(diagnostics, &(&1.code == :manager_max_cycles_invalid))
       refute Enum.any?(diagnostics, &(&1.code == :manager_poll_interval_invalid))
+      refute Enum.any?(diagnostics, &(&1.code == :manager_child_autostart_invalid))
       refute Enum.any?(diagnostics, &(&1.code == :manager_child_dotfile_missing))
     end
 
@@ -884,6 +971,23 @@ defmodule AttractorEx.ValidatorTest do
       refute Enum.any?(diagnostics, &(&1.code == :temperature_invalid))
       refute Enum.any?(diagnostics, &(&1.code == :max_tokens_invalid))
       refute Enum.any?(diagnostics, &(&1.code == :llm_provider_without_model))
+    end
+
+    test "accepts valid allow_partial values" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        task [shape=box, prompt="Do work", allow_partial=true]
+        done [shape=Msquare]
+        start -> task
+        task -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      refute Enum.any?(diagnostics, &(&1.code == :allow_partial_invalid))
     end
 
     test "warns for stylesheet declaration issues" do
