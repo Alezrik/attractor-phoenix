@@ -31,6 +31,20 @@ defmodule AttractorEx.Handlers.WaitForHuman do
     normalized_answer = normalize_token(answer)
 
     cond do
+      normalized_answer == "" ->
+        case node.attrs["human.default_choice"] do
+          value when is_binary(value) ->
+            if String.trim(value) != "" do
+              select_choice(value, choices) ||
+                Outcome.retry("human gate blank answer, no valid default")
+            else
+              Outcome.retry("human gate requires answer in context.human.answers.#{node.id}")
+            end
+
+          _ ->
+            Outcome.retry("human gate requires answer in context.human.answers.#{node.id}")
+        end
+
       normalized_answer in ["timeout", "timed_out"] ->
         case node.attrs["human.default_choice"] do
           value when is_binary(value) and value != "" ->
@@ -44,7 +58,8 @@ defmodule AttractorEx.Handlers.WaitForHuman do
         Outcome.fail("human skipped interaction")
 
       true ->
-        select_choice(answer, choices) || select_choice(List.first(choices), choices)
+        select_choice(answer, choices) ||
+          Outcome.retry("human gate answer did not match any choice")
     end
   end
 

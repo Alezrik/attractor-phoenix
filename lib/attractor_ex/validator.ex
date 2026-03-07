@@ -37,6 +37,8 @@ defmodule AttractorEx.Validator do
     |> validate_human_timeout_format(graph)
     |> validate_human_choice_key_collisions(graph)
     |> validate_codergen_llm_attrs(graph)
+    |> validate_parallel_attrs(graph)
+    |> validate_stack_manager_attrs(graph)
     |> validate_model_stylesheet_syntax(graph)
     |> validate_model_stylesheet_lints(graph)
     |> apply_custom_rules(graph, opts)
@@ -581,6 +583,34 @@ defmodule AttractorEx.Validator do
     end)
   end
 
+  defp validate_parallel_attrs(diags, graph) do
+    Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
+      if node.type == "parallel" do
+        acc
+        |> validate_parallel_join_policy(node)
+        |> validate_parallel_max_parallel(node)
+        |> validate_parallel_k(node)
+        |> validate_parallel_quorum_ratio(node)
+      else
+        acc
+      end
+    end)
+  end
+
+  defp validate_stack_manager_attrs(diags, graph) do
+    Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
+      if node.type == "stack.manager_loop" do
+        acc
+        |> validate_manager_actions(node)
+        |> validate_manager_max_cycles(node)
+        |> validate_manager_poll_interval(node)
+        |> validate_manager_child_dotfile(node, graph)
+      else
+        acc
+      end
+    end)
+  end
+
   defp validate_reasoning_effort(diags, node) do
     case Map.get(node.attrs, "reasoning_effort") do
       nil ->
@@ -674,6 +704,270 @@ defmodule AttractorEx.Validator do
           :warning,
           :llm_provider_without_model,
           "llm_provider is set but llm_model is missing for codergen node.",
+          node.id
+        )
+        | diags
+      ]
+    else
+      diags
+    end
+  end
+
+  defp validate_parallel_join_policy(diags, node) do
+    case blank_to_nil(Map.get(node.attrs, "join_policy")) do
+      nil ->
+        diags
+
+      value when value in ["wait_all", "first_success", "k_of_n", "quorum"] ->
+        diags
+
+      _value ->
+        [
+          diag(
+            :warning,
+            :parallel_join_policy_invalid,
+            "parallel join_policy should be one of: wait_all, first_success, k_of_n, quorum.",
+            node.id
+          )
+          | diags
+        ]
+    end
+  end
+
+  defp validate_parallel_max_parallel(diags, node) do
+    case Map.get(node.attrs, "max_parallel") do
+      nil ->
+        diags
+
+      value ->
+        case to_positive_integer(value) do
+          {:ok, _parsed} ->
+            diags
+
+          :error ->
+            [
+              diag(
+                :warning,
+                :parallel_max_parallel_invalid,
+                "parallel max_parallel should be a positive integer.",
+                node.id
+              )
+              | diags
+            ]
+        end
+    end
+  end
+
+  defp validate_parallel_k(diags, node) do
+    join_policy = blank_to_nil(Map.get(node.attrs, "join_policy"))
+    k_value = Map.get(node.attrs, "k")
+
+    cond do
+      join_policy == "k_of_n" and is_nil(k_value) ->
+        [
+          diag(
+            :warning,
+            :parallel_k_missing,
+            "parallel join_policy=k_of_n should define k.",
+            node.id
+          )
+          | diags
+        ]
+
+      join_policy == "k_of_n" ->
+        case to_positive_integer(k_value) do
+          {:ok, _parsed} ->
+            diags
+
+          :error ->
+            [
+              diag(
+                :warning,
+                :parallel_k_invalid,
+                "parallel k should be a positive integer when join_policy=k_of_n.",
+                node.id
+              )
+              | diags
+            ]
+        end
+
+      not is_nil(k_value) ->
+        [
+          diag(
+            :warning,
+            :parallel_k_unused,
+            "parallel k is set but join_policy is not k_of_n.",
+            node.id
+          )
+          | diags
+        ]
+
+      true ->
+        diags
+    end
+  end
+
+  defp validate_parallel_quorum_ratio(diags, node) do
+    join_policy = blank_to_nil(Map.get(node.attrs, "join_policy"))
+    quorum_ratio = Map.get(node.attrs, "quorum_ratio")
+
+    cond do
+      join_policy == "quorum" and is_nil(quorum_ratio) ->
+        [
+          diag(
+            :warning,
+            :parallel_quorum_ratio_missing,
+            "parallel join_policy=quorum should define quorum_ratio.",
+            node.id
+          )
+          | diags
+        ]
+
+      join_policy == "quorum" ->
+        case to_float(quorum_ratio) do
+          {:ok, value} when value > 0.0 and value <= 1.0 ->
+            diags
+
+          _ ->
+            [
+              diag(
+                :warning,
+                :parallel_quorum_ratio_invalid,
+                "parallel quorum_ratio should be a number greater than 0 and less than or equal to 1.",
+                node.id
+              )
+              | diags
+            ]
+        end
+
+      not is_nil(quorum_ratio) ->
+        [
+          diag(
+            :warning,
+            :parallel_quorum_ratio_unused,
+            "parallel quorum_ratio is set but join_policy is not quorum.",
+            node.id
+          )
+          | diags
+        ]
+
+      true ->
+        diags
+    end
+  end
+
+  defp validate_manager_actions(diags, node) do
+    case blank_to_nil(Map.get(node.attrs, "manager.actions")) do
+      nil ->
+        diags
+
+      value ->
+        actions =
+          value
+          |> String.split(",", trim: true)
+          |> Enum.map(&String.trim/1)
+          |> Enum.reject(&(&1 == ""))
+
+        cond do
+          actions == [] ->
+            [
+              diag(
+                :warning,
+                :manager_actions_invalid,
+                "manager.actions should include one or more of: observe, wait, steer.",
+                node.id
+              )
+              | diags
+            ]
+
+          Enum.all?(actions, &(&1 in ["observe", "wait", "steer"])) ->
+            diags
+
+          true ->
+            [
+              diag(
+                :warning,
+                :manager_actions_invalid,
+                "manager.actions should only include: observe, wait, steer.",
+                node.id
+              )
+              | diags
+            ]
+        end
+    end
+  end
+
+  defp validate_manager_max_cycles(diags, node) do
+    case Map.get(node.attrs, "manager.max_cycles") do
+      nil ->
+        diags
+
+      value ->
+        case to_positive_integer(value) do
+          {:ok, _parsed} ->
+            diags
+
+          :error ->
+            [
+              diag(
+                :warning,
+                :manager_max_cycles_invalid,
+                "manager.max_cycles should be a positive integer.",
+                node.id
+              )
+              | diags
+            ]
+        end
+    end
+  end
+
+  defp validate_manager_poll_interval(diags, node) do
+    case Map.get(node.attrs, "manager.poll_interval") do
+      nil ->
+        diags
+
+      value when is_integer(value) and value >= 0 ->
+        diags
+
+      value when is_binary(value) ->
+        normalized = String.trim(value)
+
+        if Regex.match?(~r/^\d+(ms|s|m|h|d)$/, normalized) do
+          diags
+        else
+          [
+            diag(
+              :warning,
+              :manager_poll_interval_invalid,
+              "manager.poll_interval should be a non-negative duration like 500ms, 30s, 5m, 1h, or 1d.",
+              node.id
+            )
+            | diags
+          ]
+        end
+
+      _value ->
+        [
+          diag(
+            :warning,
+            :manager_poll_interval_invalid,
+            "manager.poll_interval should be a non-negative duration like 500ms, 30s, 5m, 1h, or 1d.",
+            node.id
+          )
+          | diags
+        ]
+    end
+  end
+
+  defp validate_manager_child_dotfile(diags, node, graph) do
+    autostart_value = Map.get(node.attrs, "stack.child_autostart", "true")
+
+    if truthy?(autostart_value) and blank?(Map.get(graph.attrs, "stack.child_dotfile")) do
+      [
+        diag(
+          :warning,
+          :manager_child_dotfile_missing,
+          "stack.manager_loop autostart expects graph stack.child_dotfile to be set.",
           node.id
         )
         | diags
@@ -810,6 +1104,14 @@ defmodule AttractorEx.Validator do
   end
 
   defp blank?(value), do: is_nil(blank_to_nil(value))
+
+  defp truthy?(value) when is_boolean(value), do: value
+
+  defp truthy?(value) when is_binary(value) do
+    String.downcase(String.trim(value)) in ["true", "1", "yes"]
+  end
+
+  defp truthy?(_value), do: false
 
   defp duplicate_values?(values) do
     values
