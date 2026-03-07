@@ -174,6 +174,31 @@ defmodule AttractorEx.ParserTest do
       assert graph.nodes["critical_review"].attrs["reasoning_effort"] == "high"
     end
 
+    test "applies operational CSS model_stylesheet attrs to finalized nodes" do
+      stylesheet =
+        ~s(node[type=tool] { timeout: 90s; command: "mix test"; } node[type=wait.human] { prompt: "Review /* literal */ change"; human.timeout: 30s; human.default_choice: done; })
+
+      escaped_stylesheet = String.replace(stylesheet, "\"", "\\\"")
+
+      dot = """
+      digraph attractor {
+        graph [model_stylesheet="#{escaped_stylesheet}"]
+        start [shape=Mdiamond]
+        qa [shape=parallelogram]
+        review [shape=hexagon]
+        done [shape=Msquare]
+        start -> qa -> review -> done [label="[D] Done"]
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.nodes["qa"].attrs["timeout"] == "90s"
+      assert graph.nodes["qa"].attrs["command"] == "mix test"
+      assert graph.nodes["review"].prompt == "Review /* literal */ change"
+      assert graph.nodes["review"].attrs["human.timeout"] == "30s"
+      assert graph.nodes["review"].attrs["human.default_choice"] == "done"
+    end
+
     test "returns an error when model_stylesheet is invalid JSON" do
       dot = """
       digraph attractor {
