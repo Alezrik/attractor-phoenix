@@ -30,6 +30,7 @@ defmodule AttractorEx.Validator do
     |> validate_human_gate_choices(graph)
     |> validate_human_default_choice(graph)
     |> validate_human_timeout_default(graph)
+    |> validate_human_timeout_format(graph)
     |> validate_human_choice_key_collisions(graph)
     |> validate_codergen_llm_attrs(graph)
     |> validate_model_stylesheet_syntax(graph)
@@ -447,6 +448,27 @@ defmodule AttractorEx.Validator do
     end)
   end
 
+  defp validate_human_timeout_format(diags, graph) do
+    Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
+      timeout_value = Map.get(node.attrs, "human.timeout")
+
+      if node.type == "wait.human" and not is_nil(timeout_value) and
+           not valid_human_timeout?(timeout_value) do
+        [
+          diag(
+            :warning,
+            :human_timeout_invalid,
+            "human.timeout should be a positive integer or duration like 30s, 5m, or 500ms.",
+            node.id
+          )
+          | acc
+        ]
+      else
+        acc
+      end
+    end)
+  end
+
   defp validate_codergen_llm_attrs(diags, graph) do
     Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
       if node.type == "codergen" do
@@ -696,6 +718,25 @@ defmodule AttractorEx.Validator do
     |> Enum.frequencies()
     |> Enum.any?(fn {_value, count} -> count > 1 end)
   end
+
+  defp valid_human_timeout?(value) when is_integer(value), do: value > 0
+
+  defp valid_human_timeout?(value) when is_binary(value) do
+    trimmed = String.trim(value)
+
+    case Integer.parse(trimmed) do
+      {parsed, ""} ->
+        parsed > 0
+
+      _ ->
+        case Regex.run(~r/^(\d+)(ms|s|m|h|d)$/, trimmed, capture: :all_but_first) do
+          [amount, _unit] -> String.to_integer(amount) > 0
+          _ -> false
+        end
+    end
+  end
+
+  defp valid_human_timeout?(_value), do: false
 
   defp reachable_nodes(start_id, %Graph{} = graph) do
     edge_adjacency =

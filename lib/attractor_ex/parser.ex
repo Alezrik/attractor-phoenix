@@ -3,7 +3,7 @@ defmodule AttractorEx.Parser do
 
   alias AttractorEx.{Edge, Graph, ModelStylesheet, Node}
 
-  @id_pattern ~r/^[A-Za-z_][A-Za-z0-9_]*$/
+  @bare_id_pattern ~r/^[A-Za-z_][A-Za-z0-9_]*$/
   @graph_attr_decl_pattern ~r/^([A-Za-z_][A-Za-z0-9_\.]*)\s*=\s*(.+)$/
 
   def parse(dot) when is_binary(dot) do
@@ -38,7 +38,7 @@ defmodule AttractorEx.Parser do
               candidate =
                 value |> String.trim() |> String.trim_leading("\"") |> String.trim_trailing("\"")
 
-              if candidate != "" and valid_identifier?(candidate), do: candidate, else: "pipeline"
+              if candidate != "", do: candidate, else: "pipeline"
 
             _ ->
               "pipeline"
@@ -147,7 +147,7 @@ defmodule AttractorEx.Parser do
     {id_part, attrs_part} = split_attrs(statement)
     id = normalize_id(id_part)
 
-    if id == "" or not valid_identifier?(id) do
+    if id == "" do
       {:error, "Invalid node declaration: #{statement}"}
     else
       attrs = parse_attribute_block(attrs_part)
@@ -168,11 +168,11 @@ defmodule AttractorEx.Parser do
 
     ids =
       path_part
-      |> String.split("->")
+      |> split_edge_path()
       |> Enum.map(&normalize_id/1)
       |> Enum.reject(&(&1 == ""))
 
-    if length(ids) < 2 or Enum.any?(ids, &(not valid_identifier?(&1))) do
+    if length(ids) < 2 do
       {:error, "Invalid edge declaration: #{statement}"}
     else
       attrs = Map.merge(graph.edge_defaults, parse_attribute_block(attrs_part))
@@ -244,7 +244,7 @@ defmodule AttractorEx.Parser do
       |> String.graphemes()
       |> Enum.reduce({[], "", false}, fn char, {parts, current, in_quotes} ->
         cond do
-          char == "\"" ->
+          char == "\"" and not escaped_quote?(current) ->
             {parts, current <> char, not in_quotes}
 
           char == "," and not in_quotes ->
@@ -264,8 +264,7 @@ defmodule AttractorEx.Parser do
     normalized =
       value
       |> String.trim()
-      |> String.trim_leading("\"")
-      |> String.trim_trailing("\"")
+      |> strip_wrapping_quotes()
       |> String.replace("\\\"", "\"")
       |> String.replace("\\\\", "\\")
 
@@ -287,21 +286,100 @@ defmodule AttractorEx.Parser do
     end
   end
 
+  defp strip_wrapping_quotes(<<"\"", rest::binary>>) do
+    if String.ends_with?(rest, "\""), do: binary_part(rest, 0, byte_size(rest) - 1), else: rest
+  end
+
+  defp strip_wrapping_quotes(value), do: value
+
   defp normalize_id(id) do
     trimmed = String.trim(id)
 
-    case Regex.run(@id_pattern, trimmed) do
-      [plain] when is_binary(plain) and plain != "" -> plain
-      _ -> ""
+    cond do
+      trimmed == "" ->
+        ""
+
+      Regex.match?(~r/^"([^"\\]|\\.)*"$/, trimmed) ->
+        trimmed
+        |> String.trim_leading("\"")
+        |> String.trim_trailing("\"")
+        |> String.replace("\\\"", "\"")
+        |> String.replace("\\\\", "\\")
+
+      Regex.match?(@bare_id_pattern, trimmed) ->
+        trimmed
+
+      true ->
+        ""
     end
   end
 
-  defp valid_identifier?(id), do: Regex.match?(@id_pattern, id)
+  defp split_edge_path(text) do
+    {parts, current, _in_quotes} =
+      text
+      |> String.graphemes()
+      |> Enum.reduce({[], "", false}, fn char, {parts, current, in_quotes} ->
+        cond do
+          char == "\"" and not escaped_quote?(current) ->
+            {parts, current <> char, not in_quotes}
+
+          char == ">" and not in_quotes and String.ends_with?(current, "-") ->
+            segment = String.slice(current, 0, max(String.length(current) - 1, 0))
+            {parts ++ [segment], "", in_quotes}
+
+          true ->
+            {parts, current <> char, in_quotes}
+        end
+      end)
+
+    parts ++ [current]
+  end
 
   defp strip_comments(dot) do
-    dot
-    |> String.replace(~r/\/\*[\s\S]*?\*\//, "")
-    |> String.replace(~r/\/\/[^\n]*/, "")
+    do_strip_comments(dot, [], nil, false, :normal)
+    |> IO.iodata_to_binary()
+  end
+
+  defp do_strip_comments(<<>>, acc, _quote, _escaped, :normal), do: Enum.reverse(acc)
+  defp do_strip_comments(<<>>, acc, _quote, _escaped, :line_comment), do: Enum.reverse(acc)
+  defp do_strip_comments(<<>>, acc, _quote, _escaped, :block_comment), do: Enum.reverse(acc)
+
+  defp do_strip_comments(<<char, rest::binary>>, acc, quote, escaped, :normal) do
+    cond do
+      quote == nil and char == ?/ and match?(<<?/, _::binary>>, rest) ->
+        <<_slash, next::binary>> = rest
+        do_strip_comments(next, acc, nil, false, :line_comment)
+
+      quote == nil and char == ?/ and match?(<<?*, _::binary>>, rest) ->
+        <<_star, next::binary>> = rest
+        do_strip_comments(next, acc, nil, false, :block_comment)
+
+      char in [?", ?'] and quote == nil ->
+        do_strip_comments(rest, [<<char>> | acc], char, false, :normal)
+
+      char == quote and not escaped ->
+        do_strip_comments(rest, [<<char>> | acc], nil, false, :normal)
+
+      true ->
+        next_escaped = quote != nil and char == ?\\ and not escaped
+        do_strip_comments(rest, [<<char>> | acc], quote, next_escaped, :normal)
+    end
+  end
+
+  defp do_strip_comments(<<char, rest::binary>>, acc, quote, _escaped, :line_comment) do
+    if char == ?\n do
+      do_strip_comments(rest, [<<"\n">> | acc], quote, false, :normal)
+    else
+      do_strip_comments(rest, acc, quote, false, :line_comment)
+    end
+  end
+
+  defp do_strip_comments(<<"*/", rest::binary>>, acc, quote, _escaped, :block_comment) do
+    do_strip_comments(rest, acc, quote, false, :normal)
+  end
+
+  defp do_strip_comments(<<_char, rest::binary>>, acc, quote, _escaped, :block_comment) do
+    do_strip_comments(rest, acc, quote, false, :block_comment)
   end
 
   defp flatten_subgraphs(body) do

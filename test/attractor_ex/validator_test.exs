@@ -318,6 +318,44 @@ defmodule AttractorEx.ValidatorTest do
              )
     end
 
+    test "warns when wait.human timeout format is invalid" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        gate [shape=hexagon, human.timeout="later", human.default_choice="done"]
+        done [shape=Msquare]
+        start -> gate
+        gate -> done [label="[D] Done"]
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :human_timeout_invalid and &1.severity == :warning and
+                   &1.node_id == "gate")
+             )
+    end
+
+    test "accepts positive wait.human timeout values" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        gate [shape=hexagon, human.timeout="30s", human.default_choice="done"]
+        done [shape=Msquare]
+        start -> gate
+        gate -> done [label="[D] Done"]
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      refute Enum.any?(diagnostics, &(&1.code == :human_timeout_invalid))
+    end
+
     test "warns when wait.human choices collide on accelerator keys" do
       dot = """
       digraph attractor {

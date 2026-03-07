@@ -87,6 +87,42 @@ defmodule AttractorEx.ParserTest do
       assert Enum.any?(graph.edges, &(&1.from == "build" and &1.to == "done"))
     end
 
+    test "parses quoted node identifiers in node declarations and chained edges" do
+      dot = """
+      digraph "attractor-flow" {
+        "start-node" [shape=Mdiamond]
+        "plan step" [shape=box, prompt="Plan // keep text"]
+        "done-node" [shape=Msquare]
+        "start-node" -> "plan step" -> "done-node"
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.id == "attractor-flow"
+      assert Map.has_key?(graph.nodes, "start-node")
+      assert Map.has_key?(graph.nodes, "plan step")
+      assert graph.nodes["plan step"].prompt == "Plan // keep text"
+      assert Enum.any?(graph.edges, &(&1.from == "start-node" and &1.to == "plan step"))
+      assert Enum.any?(graph.edges, &(&1.from == "plan step" and &1.to == "done-node"))
+    end
+
+    test "preserves comment markers inside quoted values while stripping real comments" do
+      dot = """
+      digraph attractor {
+        // graph level note
+        start [shape=Mdiamond, prompt="Keep // inline markers"]
+        /* remove this block comment */
+        done [shape=Msquare, prompt="Keep /* block */ markers"]
+        start -> done [condition="result == \\"//ok\\""]
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.nodes["start"].prompt == "Keep // inline markers"
+      assert graph.nodes["done"].prompt == "Keep /* block */ markers"
+      assert Enum.at(graph.edges, 0).condition == ~s(result == "//ok")
+    end
+
     test "applies model_stylesheet rules with selector precedence" do
       stylesheet =
         ~s({"node":{"reasoning_effort":"low","llm_provider":"openai"},"type=codergen":{"llm_model":"gpt-4o-mini"},".critical":{"reasoning_effort":"medium"},"#review":{"reasoning_effort":"high"}})
