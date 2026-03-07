@@ -61,7 +61,18 @@ defmodule AttractorEx.InterviewerServerTest do
     end)
 
     assert :ok = Manager.submit_answer(manager, "server-interviewer", "gate", "A")
-    assert_receive {:event, %{type: "InterviewCompleted", answer: "A"}}
+
+    assert_receive {:event,
+                    %{
+                      type: "InterviewCompleted",
+                      answer: "A",
+                      answer_payload: %{
+                        normalized: "A",
+                        values: ["A"],
+                        matched_options: [%{"key" => "A", "label" => "Approve", "to" => "done"}]
+                      }
+                    }}
+
     assert_receive {:answer_result, {:ok, "A"}}
     refute Process.alive?(pid)
   end
@@ -126,7 +137,14 @@ defmodule AttractorEx.InterviewerServerTest do
     assert_receive {:event, %{type: "InterviewStarted"}}
     wait_until(fn -> match?({:ok, [_]}, Manager.pending_questions(manager, "server-list")) end)
     assert :ok = Manager.submit_answer(manager, "server-list", "gate", ["A", "B"])
-    assert_receive {:event, %{type: "InterviewCompleted", answer: ["A", "B"]}}
+
+    assert_receive {:event,
+                    %{
+                      type: "InterviewCompleted",
+                      answer: ["A", "B"],
+                      answer_payload: %{normalized: ["A", "B"], values: ["A", "B"]}
+                    }}
+
     assert_receive {:list_result, {:ok, ["A", "B"]}}
     refute Process.alive?(pid)
 

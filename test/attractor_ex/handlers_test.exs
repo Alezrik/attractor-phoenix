@@ -462,6 +462,34 @@ defmodule AttractorEx.HandlersTest do
       assert outcome.suggested_next_ids == ["ship_it", "fixes"]
     end
 
+    test "wait_for_human normalizes structured ask_multiple interviewer payloads" do
+      node = Node.new("gate", %{"type" => "wait.human", "human.multiple" => true})
+
+      graph = %Graph{
+        edges: [
+          Edge.new("gate", "ship_it", %{"label" => "[S] Ship"}),
+          Edge.new("gate", "fixes", %{"label" => "[F] Fix"})
+        ]
+      }
+
+      callback = fn _node, _choices, _ctx ->
+        {:ok, %{"selected" => [%{"key" => "S"}, %{"answer" => " F "}]}}
+      end
+
+      outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{},
+          graph,
+          unique_stage_dir("human_multiple_structured_interviewer"),
+          interviewer: :callback,
+          callback_multiple: callback
+        )
+
+      assert outcome.status == :success
+      assert outcome.suggested_next_ids == ["ship_it", "fixes"]
+    end
+
     test "wait_for_human multi-select falls back to ask/4 for ask-only interviewers" do
       node = Node.new("gate", %{"type" => "wait.human", "human.multiple" => true})
 

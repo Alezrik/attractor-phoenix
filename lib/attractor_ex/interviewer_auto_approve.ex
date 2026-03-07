@@ -3,29 +3,33 @@ defmodule AttractorEx.Interviewers.AutoApprove do
 
   @behaviour AttractorEx.Interviewer
 
+  alias AttractorEx.Interviewers.Payload
+
   @impl true
-  def ask(_node, choices, _context, opts) do
-    configured = opts[:choice]
+  def ask(node, choices, _context, opts) do
+    question = Payload.question(node, choices)
+    configured = opts[:answer] || opts[:choice]
 
     case configured do
-      value when is_binary(value) and value != "" -> {:ok, value}
-      _ -> choose_first(choices)
+      nil -> choose_first(choices)
+      value -> {:ok, Payload.normalize_single_answer(value, question)}
     end
   end
 
   @impl true
-  def ask_multiple(_node, choices, _context, opts) do
-    configured = opts[:choices]
+  def ask_multiple(node, choices, _context, opts) do
+    question = Payload.question(node, choices)
+    configured = opts[:choices] || opts[:answer] || opts[:choice]
 
-    cond do
-      is_list(configured) and configured != [] ->
-        {:ok, configured}
-
-      true ->
+    case configured do
+      nil ->
         case choose_first(choices) do
           {:ok, value} -> {:ok, [value]}
           other -> other
         end
+
+      value ->
+        {:ok, Payload.normalize_multiple_answer(value, question)}
     end
   end
 
