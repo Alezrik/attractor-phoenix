@@ -175,6 +175,322 @@ defmodule AttractorEx.InterviewerServerTest do
     refute Process.alive?(pid)
   end
 
+  test "server interviewer exposes freeform questions and normalizes map answers", %{
+    manager: manager
+  } do
+    {:ok, _id} =
+      Manager.create_pipeline(
+        manager,
+        "digraph { start [shape=Mdiamond] done [shape=Msquare] start -> done }",
+        %{},
+        pipeline_id: "server-freeform"
+      )
+
+    parent = self()
+    node = %Node{id: "gate", attrs: %{"prompt" => "Explain", "human.timeout" => "5ms"}}
+
+    pid =
+      spawn(fn ->
+        result =
+          Server.ask(node, [], %{},
+            manager: manager,
+            pipeline_id: "server-freeform",
+            event_observer: &send(parent, {:event, &1})
+          )
+
+        send(parent, {:freeform_result, result})
+      end)
+
+    assert_receive {:event,
+                    %{type: "InterviewStarted", question: %{id: "gate", type: "FREEFORM"}}}
+
+    wait_until(fn -> match?({:ok, [_]}, Manager.pending_questions(manager, "server-freeform")) end)
+
+    assert :ok =
+             Manager.submit_answer(manager, "server-freeform", "gate", %{
+               "answer" => "  details  "
+             })
+
+    assert_receive {:event, %{type: "InterviewCompleted", answer: "details"}}
+    assert_receive {:freeform_result, {:ok, "details"}}
+    refute Process.alive?(pid)
+  end
+
+  test "server interviewer respects human.multiple and normalizes structured list answers", %{
+    manager: manager
+  } do
+    {:ok, _id} =
+      Manager.create_pipeline(
+        manager,
+        "digraph { start [shape=Mdiamond] done [shape=Msquare] start -> done }",
+        %{},
+        pipeline_id: "server-multiple"
+      )
+
+    parent = self()
+
+    node = %Node{
+      id: "gate",
+      attrs: %{"prompt" => "Choose", "human.timeout" => "5ms", "human.multiple" => "yes"}
+    }
+
+    choices = [
+      %{key: "A", label: "[A] Approve", to: "done"},
+      %{key: "B", label: "[B] Block", to: "retry"}
+    ]
+
+    pid =
+      spawn(fn ->
+        result =
+          Server.ask_multiple(node, choices, %{},
+            manager: manager,
+            pipeline_id: "server-multiple",
+            event_observer: &send(parent, {:event, &1})
+          )
+
+        send(parent, {:multiple_choice_result, result})
+      end)
+
+    assert_receive {:event,
+                    %{type: "InterviewStarted", question: %{id: "gate", type: "MULTIPLE_CHOICE"}}}
+
+    wait_until(fn -> match?({:ok, [_]}, Manager.pending_questions(manager, "server-multiple")) end)
+
+    assert :ok =
+             Manager.submit_answer(manager, "server-multiple", "gate", [
+               %{"key" => "A"},
+               %{"value" => " B "}
+             ])
+
+    assert_receive {:event, %{type: "InterviewCompleted", answer: ["A", "B"]}}
+    assert_receive {:multiple_choice_result, {:ok, ["A", "B"]}}
+    refute Process.alive?(pid)
+  end
+
+  test "server interviewer normalizes false confirmation answers without an observer", %{
+    manager: manager
+  } do
+    {:ok, _id} =
+      Manager.create_pipeline(
+        manager,
+        "digraph { start [shape=Mdiamond] done [shape=Msquare] start -> done }",
+        %{},
+        pipeline_id: "server-confirmation-cancel"
+      )
+
+    parent = self()
+    node = %Node{id: "gate", attrs: %{"prompt" => "Confirm?", "human.timeout" => "1s"}}
+    choices = [%{key: "C", label: "[C] Confirm", to: "done"}]
+
+    pid =
+      spawn(fn ->
+        send(
+          parent,
+          {:cancel_result,
+           Server.ask(node, choices, %{},
+             manager: manager,
+             pipeline_id: "server-confirmation-cancel"
+           )}
+        )
+      end)
+
+    wait_until(fn ->
+      match?({:ok, [_]}, Manager.pending_questions(manager, "server-confirmation-cancel"))
+    end)
+
+    assert :ok = Manager.submit_answer(manager, "server-confirmation-cancel", "gate", false)
+    assert_receive {:cancel_result, {:ok, "cancel"}}
+    refute Process.alive?(pid)
+  end
+
+  test "server interviewer treats boolean human.multiple as multiple choice", %{
+    manager: manager
+  } do
+    {:ok, _id} =
+      Manager.create_pipeline(
+        manager,
+        "digraph { start [shape=Mdiamond] done [shape=Msquare] start -> done }",
+        %{},
+        pipeline_id: "server-bool-multiple"
+      )
+
+    parent = self()
+
+    node = %Node{
+      id: "gate",
+      attrs: %{"prompt" => "Choose", "human.timeout" => "1s", "human.multiple" => true}
+    }
+
+    choices = [%{key: "A", label: "[A] Approve", to: "done"}]
+
+    pid =
+      spawn(fn ->
+        result =
+          Server.ask_multiple(node, choices, %{},
+            manager: manager,
+            pipeline_id: "server-bool-multiple",
+            event_observer: &send(parent, {:event, &1})
+          )
+
+        send(parent, {:bool_multiple_result, result})
+      end)
+
+    assert_receive {:event,
+                    %{type: "InterviewStarted", question: %{id: "gate", type: "MULTIPLE_CHOICE"}}}
+
+    wait_until(fn ->
+      match?({:ok, [_]}, Manager.pending_questions(manager, "server-bool-multiple"))
+    end)
+
+    assert :ok =
+             Manager.submit_answer(manager, "server-bool-multiple", "gate", [
+               %{"answer" => "A"},
+               7
+             ])
+
+    assert_receive {:event, %{type: "InterviewCompleted", answer: ["A", 7]}}
+    assert_receive {:bool_multiple_result, {:ok, ["A", 7]}}
+    refute Process.alive?(pid)
+  end
+
+  test "server interviewer wraps scalar ask_multiple answers and accepts second-only timeouts", %{
+    manager: manager
+  } do
+    {:ok, _id} =
+      Manager.create_pipeline(
+        manager,
+        "digraph { start [shape=Mdiamond] done [shape=Msquare] start -> done }",
+        %{},
+        pipeline_id: "server-scalar-multiple"
+      )
+
+    parent = self()
+
+    node = %Node{id: "gate", attrs: %{"prompt" => "Choose", "human.timeout" => "5"}}
+
+    choices = [
+      %{key: "A", label: "[A] Alpha", to: "alpha"},
+      %{key: "B", label: "[B] Beta", to: "beta"},
+      %{key: "C", label: "[C] Gamma", to: "gamma"}
+    ]
+
+    pid =
+      spawn(fn ->
+        result =
+          Server.ask_multiple(node, choices, %{},
+            manager: manager,
+            pipeline_id: "server-scalar-multiple",
+            event_observer: &send(parent, {:event, &1})
+          )
+
+        send(parent, {:scalar_multiple_result, result})
+      end)
+
+    assert_receive {:event,
+                    %{type: "InterviewStarted", question: %{id: "gate", type: "MULTIPLE_CHOICE"}}}
+
+    wait_until(fn ->
+      match?({:ok, [_]}, Manager.pending_questions(manager, "server-scalar-multiple"))
+    end)
+
+    assert :ok = Manager.submit_answer(manager, "server-scalar-multiple", "gate", %{key: "A"})
+    assert_receive {:event, %{type: "InterviewCompleted", answer: "A"}}
+    assert_receive {:scalar_multiple_result, {:ok, ["A"]}}
+    refute Process.alive?(pid)
+  end
+
+  test "server interviewer tolerates nil choice fields while inferring non-yes-no multiple choice",
+       %{
+         manager: manager
+       } do
+    {:ok, _id} =
+      Manager.create_pipeline(
+        manager,
+        "digraph { start [shape=Mdiamond] done [shape=Msquare] start -> done }",
+        %{},
+        pipeline_id: "server-nil-choices"
+      )
+
+    parent = self()
+    node = %Node{id: "gate", attrs: %{"prompt" => "Choose", "human.timeout" => "1s"}}
+
+    choices = [
+      %{key: nil, label: nil, to: "alpha"},
+      %{key: "B", label: "[B] Beta", to: "beta"}
+    ]
+
+    pid =
+      spawn(fn ->
+        result =
+          Server.ask(node, choices, %{},
+            manager: manager,
+            pipeline_id: "server-nil-choices",
+            event_observer: &send(parent, {:event, &1})
+          )
+
+        send(parent, {:nil_choice_result, result})
+      end)
+
+    assert_receive {:event,
+                    %{type: "InterviewStarted", question: %{id: "gate", type: "MULTIPLE_CHOICE"}}}
+
+    wait_until(fn ->
+      match?({:ok, [_]}, Manager.pending_questions(manager, "server-nil-choices"))
+    end)
+
+    assert :ok = Manager.submit_answer(manager, "server-nil-choices", "gate", "B")
+    assert_receive {:event, %{type: "InterviewCompleted", answer: "B"}}
+    assert_receive {:nil_choice_result, {:ok, "B"}}
+    refute Process.alive?(pid)
+  end
+
+  test "server interviewer defaults to multiple choice for non-boolean two-option prompts", %{
+    manager: manager
+  } do
+    {:ok, _id} =
+      Manager.create_pipeline(
+        manager,
+        "digraph { start [shape=Mdiamond] done [shape=Msquare] start -> done }",
+        %{},
+        pipeline_id: "server-default-multiple"
+      )
+
+    parent = self()
+
+    node = %Node{id: "gate", attrs: %{"prompt" => "Pick", "human.timeout" => "1s"}}
+
+    choices = [
+      %{key: "A", label: "[A] Alpha", to: "alpha"},
+      %{key: "B", label: "[B] Beta", to: "beta"}
+    ]
+
+    pid =
+      spawn(fn ->
+        result =
+          Server.ask(node, choices, %{},
+            manager: manager,
+            pipeline_id: "server-default-multiple",
+            event_observer: &send(parent, {:event, &1})
+          )
+
+        send(parent, {:default_multiple_result, result})
+      end)
+
+    assert_receive {:event,
+                    %{type: "InterviewStarted", question: %{id: "gate", type: "MULTIPLE_CHOICE"}}}
+
+    wait_until(fn ->
+      match?({:ok, [_]}, Manager.pending_questions(manager, "server-default-multiple"))
+    end)
+
+    assert :ok =
+             Manager.submit_answer(manager, "server-default-multiple", "gate", %{answer: " A "})
+
+    assert_receive {:event, %{type: "InterviewCompleted", answer: "A"}}
+    assert_receive {:default_multiple_result, {:ok, "A"}}
+    refute Process.alive?(pid)
+  end
+
   test "inform returns ok and AttractorEx wrappers are covered", %{manager: manager} do
     assert :ok = Server.inform(%Node{id: "gate"}, %{message: "noop"}, %{}, [])
 

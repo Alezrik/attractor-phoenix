@@ -101,7 +101,6 @@ defmodule AttractorPhoenix.MixProject do
         "deps.unlock --unused",
         "format",
         "credo --strict",
-        "test",
         "coveralls.json",
         "coverage.gate"
       ]
