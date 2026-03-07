@@ -329,5 +329,20 @@ defmodule AttractorEx.ParserTest do
       assert {:error, message} = Parser.parse(dot)
       assert message =~ "model_stylesheet is not valid JSON or CSS stylesheet"
     end
+
+    test "keeps parsing when CSS model_stylesheet selectors are invalid but syntax is otherwise valid" do
+      dot = """
+      digraph attractor {
+        graph [model_stylesheet="node[type=codergen { llm_provider: openai; }"]
+        start [shape=Mdiamond]
+        plan [shape=box]
+        done [shape=Msquare]
+        start -> plan -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      refute Map.has_key?(graph.nodes["plan"].attrs, "llm_provider")
+    end
   end
 end
