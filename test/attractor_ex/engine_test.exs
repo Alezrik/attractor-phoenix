@@ -32,6 +32,38 @@ defmodule AttractorEx.EngineTest do
       assert File.exists?(Path.join([result.logs_root, "plan", "response.md"]))
     end
 
+    test "writes appendix C status.json contract fields" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        router [shape=box, prompt="route"]
+        chosen [shape=box, prompt="chosen"]
+        done [shape=Msquare]
+        start -> router
+        router -> chosen [label="[Y] Ship It"]
+        chosen -> done
+      }
+      """
+
+      assert {:ok, result} =
+               AttractorEx.run(dot, %{},
+                 logs_root: unique_logs_root("status_contract"),
+                 codergen_backend: AttractorExTest.PreferredLabelBackend
+               )
+
+      payload =
+        result.logs_root
+        |> Path.join("router/status.json")
+        |> File.read!()
+        |> Jason.decode!()
+
+      assert payload["outcome"] == "success"
+      assert payload["preferred_next_label"] == "[Y] Ship It"
+      assert payload["suggested_next_ids"] == []
+      assert is_map(payload["context_updates"])
+      assert Map.has_key?(payload, "notes")
+    end
+
     test "routes by edge condition first" do
       dot = """
       digraph attractor {
@@ -116,6 +148,7 @@ defmodule AttractorEx.EngineTest do
       assert {:ok, result} = AttractorEx.run(dot, %{}, logs_root: unique_logs_root("no_outgoing"))
       assert result.status == :fail
       assert result.reason =~ "No outgoing edge selected"
+      assert result.error_category == :pipeline
     end
 
     test "enforces goal gate and retries to retry_target until satisfied" do
@@ -264,6 +297,40 @@ defmodule AttractorEx.EngineTest do
       assert result.outcomes["task"].status == :fail
       assert result.outcomes["task"].failure_reason =~ "max retries exceeded"
       assert File.exists?(Path.join([result.logs_root, "task_attempt_51", "status.json"]))
+    end
+
+    test "classifies retry exhaustion as retryable" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        task [shape=box, prompt="work", max_retries=1]
+        path [shape=box, prompt="path"]
+        done [shape=Msquare]
+        start -> task [status="success"]
+        start -> path [condition="outcome=fail"]
+        path -> done
+      }
+      """
+
+      assert {:ok, result} =
+               AttractorEx.run(dot, %{},
+                 logs_root: unique_logs_root("retryable_category"),
+                 codergen_backend: AttractorExTest.AlwaysRetryBackend,
+                 retry_sleep: false
+               )
+
+      assert result.status == :fail
+      assert result.error_category == :retryable
+      assert result.outcomes["task"].failure_category == :retryable
+
+      payload =
+        result.logs_root
+        |> Path.join("task_attempt_2/status.json")
+        |> File.read!()
+        |> Jason.decode!()
+
+      assert payload["outcome"] == "fail"
+      assert payload["error_category"] == "retryable"
     end
 
     test "allow_partial returns PARTIAL_SUCCESS when retries exhausted" do
@@ -615,6 +682,13 @@ defmodule AttractorEx.EngineTest do
                AttractorEx.run(dot, %{}, graph_transforms: [invalid_transform])
 
       assert message =~ "Graph transform must return"
+    end
+
+    test "classifies parse-time failures as pipeline errors" do
+      assert {:error, %{error: message, error_category: "pipeline"}} =
+               AttractorEx.run("not dot", %{})
+
+      assert message =~ "Invalid DOT input"
     end
   end
 

@@ -2,7 +2,7 @@ defmodule AttractorEx.Handlers.Codergen do
   @moduledoc false
 
   alias AttractorEx.LLM.{Client, Message, Request, Response}
-  alias AttractorEx.{Outcome, SimulationBackend}
+  alias AttractorEx.{Outcome, SimulationBackend, StatusContract}
 
   def execute(node, context, graph, stage_dir, opts) do
     prompt =
@@ -107,19 +107,7 @@ defmodule AttractorEx.Handlers.Codergen do
   end
 
   defp maybe_write_status(outcome, stage_dir) do
-    status_payload = %{
-      status: outcome.status,
-      notes: outcome.notes,
-      failure_reason: outcome.failure_reason,
-      context_updates: outcome.context_updates,
-      preferred_label: outcome.preferred_label,
-      suggested_next_ids: outcome.suggested_next_ids
-    }
-
-    with {:ok, encoded} <- Jason.encode(status_payload, pretty: true) do
-      _ = File.write(Path.join(stage_dir, "status.json"), encoded)
-    end
-
+    _ = StatusContract.write_status_file(Path.join(stage_dir, "status.json"), outcome)
     outcome
   end
 

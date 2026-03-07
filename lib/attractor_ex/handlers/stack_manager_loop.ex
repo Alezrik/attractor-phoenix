@@ -5,6 +5,7 @@ defmodule AttractorEx.Handlers.StackManagerLoop do
 
   def execute(node, context, graph, _stage_dir, opts) do
     child_dotfile = graph.attrs["stack.child_dotfile"]
+    child_workdir = graph.attrs["stack.child_workdir"] || File.cwd!()
     poll_interval = parse_duration_ms(node.attrs["manager.poll_interval"] || "45s")
     max_cycles = parse_int(node.attrs["manager.max_cycles"], 1000)
     stop_condition = node.attrs["manager.stop_condition"] || ""
@@ -12,7 +13,7 @@ defmodule AttractorEx.Handlers.StackManagerLoop do
 
     if truthy?(node.attrs["stack.child_autostart"] || "true") do
       starter = Keyword.get(opts, :manager_start_child, fn _child_dotfile -> :ok end)
-      _ = starter.(child_dotfile)
+      _ = invoke_child_starter(starter, child_dotfile, child_workdir)
     end
 
     observe = Keyword.get(opts, :manager_observe, fn ctx -> ctx end)
@@ -149,4 +150,10 @@ defmodule AttractorEx.Handlers.StackManagerLoop do
   end
 
   defp truthy?(_), do: false
+
+  defp invoke_child_starter(starter, child_dotfile, child_workdir) when is_function(starter, 2),
+    do: starter.(child_dotfile, child_workdir)
+
+  defp invoke_child_starter(starter, child_dotfile, _child_workdir) when is_function(starter, 1),
+    do: starter.(child_dotfile)
 end
