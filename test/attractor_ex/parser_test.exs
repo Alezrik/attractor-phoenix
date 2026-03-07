@@ -147,6 +147,40 @@ defmodule AttractorEx.ParserTest do
       assert graph.id == "attractor-flow"
     end
 
+    test "accepts strict digraph declarations" do
+      dot = """
+      strict digraph attractor {
+        start [shape=Mdiamond]
+        done [shape=Msquare]
+        start -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.id == "attractor"
+      assert graph.nodes["start"].type == "start"
+      assert Enum.any?(graph.edges, &(&1.from == "start" and &1.to == "done"))
+    end
+
+    test "parses numeric node identifiers in node and edge statements" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        1 [shape=box, prompt="First step"]
+        2 [shape=box, prompt="Second step"]
+        done [shape=Msquare]
+        start -> 1 -> 2 -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.nodes["1"].prompt == "First step"
+      assert graph.nodes["2"].prompt == "Second step"
+      assert Enum.any?(graph.edges, &(&1.from == "start" and &1.to == "1"))
+      assert Enum.any?(graph.edges, &(&1.from == "1" and &1.to == "2"))
+      assert Enum.any?(graph.edges, &(&1.from == "2" and &1.to == "done"))
+    end
+
     test "preserves comment markers inside quoted values while stripping real comments" do
       dot = """
       digraph attractor {
@@ -238,6 +272,26 @@ defmodule AttractorEx.ParserTest do
       assert Enum.at(graph.edges, 0).attrs["label"] == "Go\nNow"
       assert Enum.at(graph.edges, 0).condition == ~s(result == "/*ready*/")
       assert Enum.at(graph.edges, 1).attrs["label"] == "Go\nNow"
+    end
+
+    test "parses attr statements without requiring a space before the attr block" do
+      dot = """
+      digraph attractor {
+        graph[goal="Ship feature"]
+        node[shape=box, timeout="900s"]
+        edge[label="next", fidelity="compact"]
+        start [shape=Mdiamond]
+        task [prompt="Plan"]
+        done [shape=Msquare]
+        start -> task -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.attrs["goal"] == "Ship feature"
+      assert graph.nodes["task"].attrs["timeout"] == "900s"
+      assert Enum.all?(graph.edges, &(&1.attrs["label"] == "next"))
+      assert Enum.all?(graph.edges, &(&1.attrs["fidelity"] == "compact"))
     end
 
     test "applies model_stylesheet rules with selector precedence" do

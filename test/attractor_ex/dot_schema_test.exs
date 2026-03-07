@@ -42,6 +42,25 @@ defmodule AttractorEx.DotSchemaTest do
       assert graph.attrs["goal"] == "Hello World"
       assert graph.attrs["label"] == "hello-world"
     end
+
+    test "accepts strict digraph and compact attr statements" do
+      dot = """
+      strict digraph attractor {
+        graph[goal="Hello World"]
+        node[shape=box, timeout="900s"]
+        edge[label="next"]
+        start [shape=Mdiamond]
+        1 [prompt="Task"]
+        done [shape=Msquare]
+        start -> 1 -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.attrs["goal"] == "Hello World"
+      assert graph.nodes["1"].attrs["timeout"] == "900s"
+      assert Enum.all?(graph.edges, &(&1.attrs["label"] == "next"))
+    end
   end
 
   describe "2.3 key constraints" do
