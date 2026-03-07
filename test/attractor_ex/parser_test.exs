@@ -68,5 +68,47 @@ defmodule AttractorEx.ParserTest do
       assert graph.nodes["manager"].type == "stack.manager_loop"
       assert graph.nodes["done"].type == "exit"
     end
+
+    test "flattens inline and nested subgraphs into regular statements" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond];
+        done [shape=Msquare];
+        subgraph cluster_outer { plan [shape=box]; subgraph cluster_inner { plan -> build; } build -> done; }
+        start -> plan;
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert Map.has_key?(graph.nodes, "plan")
+      assert Map.has_key?(graph.nodes, "build")
+      assert Enum.any?(graph.edges, &(&1.from == "start" and &1.to == "plan"))
+      assert Enum.any?(graph.edges, &(&1.from == "plan" and &1.to == "build"))
+      assert Enum.any?(graph.edges, &(&1.from == "build" and &1.to == "done"))
+    end
+
+    test "applies model_stylesheet rules with selector precedence" do
+      stylesheet =
+        ~s({"node":{"reasoning_effort":"low","llm_provider":"openai"},"type=codergen":{"llm_model":"gpt-4o-mini"},".critical":{"reasoning_effort":"medium"},"#review":{"reasoning_effort":"high"}})
+
+      escaped_stylesheet = String.replace(stylesheet, "\"", "\\\"")
+
+      dot = """
+      digraph attractor {
+        graph [model_stylesheet="#{escaped_stylesheet}"]
+        start [shape=Mdiamond]
+        review [shape=box, class="critical"]
+        summarize [shape=box]
+        done [shape=Msquare]
+        start -> review -> summarize -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.nodes["summarize"].attrs["llm_model"] == "gpt-4o-mini"
+      assert graph.nodes["summarize"].attrs["llm_provider"] == "openai"
+      assert graph.nodes["summarize"].attrs["reasoning_effort"] == "low"
+      assert graph.nodes["review"].attrs["reasoning_effort"] == "high"
+    end
   end
 end

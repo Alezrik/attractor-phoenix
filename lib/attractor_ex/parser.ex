@@ -1,7 +1,7 @@
 defmodule AttractorEx.Parser do
   @moduledoc false
 
-  alias AttractorEx.{Edge, Graph, Node}
+  alias AttractorEx.{Edge, Graph, ModelStylesheet, Node}
 
   @id_pattern ~r/^[A-Za-z_][A-Za-z0-9_]*$/
   @graph_attr_decl_pattern ~r/^([A-Za-z_][A-Za-z0-9_\.]*)\s*=\s*(.+)$/
@@ -24,7 +24,7 @@ defmodule AttractorEx.Parser do
 
       case parsed do
         {:error, reason} -> {:error, reason}
-        graph_value -> {:ok, finalize_graph(graph_value)}
+        graph_value -> finalize_graph(graph_value)
       end
     end
   end
@@ -53,6 +53,7 @@ defmodule AttractorEx.Parser do
 
   defp split_statements(body) do
     body
+    |> flatten_subgraphs()
     |> String.replace("\r", "")
     |> String.split(~r/;\s*|\n/, trim: true)
     |> Enum.map(&String.trim/1)
@@ -165,15 +166,18 @@ defmodule AttractorEx.Parser do
   end
 
   defp finalize_graph(graph) do
-    finalized_nodes =
-      graph.nodes
-      |> Enum.map(fn {id, node} ->
-        attrs = Map.merge(graph.node_defaults, node.attrs)
-        {id, Node.new(id, attrs)}
-      end)
-      |> Map.new()
+    with {:ok, stylesheet_rules} <- ModelStylesheet.parse(graph.attrs["model_stylesheet"]) do
+      finalized_nodes =
+        graph.nodes
+        |> Enum.map(fn {id, node} ->
+          style_attrs = ModelStylesheet.attrs_for_node(stylesheet_rules, id, node.attrs)
+          attrs = graph.node_defaults |> Map.merge(style_attrs) |> Map.merge(node.attrs)
+          {id, Node.new(id, attrs)}
+        end)
+        |> Map.new()
 
-    %{graph | nodes: finalized_nodes}
+      {:ok, %{graph | nodes: finalized_nodes}}
+    end
   end
 
   defp split_attrs(statement) do
@@ -265,5 +269,16 @@ defmodule AttractorEx.Parser do
     dot
     |> String.replace(~r/\/\*[\s\S]*?\*\//, "")
     |> String.replace(~r/\/\/[^\n]*/, "")
+  end
+
+  defp flatten_subgraphs(body) do
+    flattened =
+      Regex.replace(
+        ~r/subgraph\s+("?[\w\-]+"?)?\s*\{([^{}]*)\}/ms,
+        body,
+        "\\2"
+      )
+
+    if flattened == body, do: body, else: flatten_subgraphs(flattened)
   end
 end
