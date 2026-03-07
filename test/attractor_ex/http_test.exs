@@ -34,10 +34,18 @@ defmodule AttractorEx.HTTPTest do
     assert conn.status == 202
     %{"pipeline_id" => pipeline_id} = Jason.decode!(conn.resp_body)
 
-    {:ok, pipeline} = Manager.get_pipeline(AttractorEx.HTTP.Manager, pipeline_id)
-    task_pid = pipeline.task_pid
-    ref = Process.monitor(task_pid)
-    assert_receive {:DOWN, ^ref, :process, ^task_pid, :normal}
+    wait_for(fn ->
+      case Manager.get_pipeline(AttractorEx.HTTP.Manager, pipeline_id) do
+        {:ok, %{status: :success, task_pid: task_pid}} when is_pid(task_pid) ->
+          {:ok, task_pid}
+
+        {:ok, %{status: "success", task_pid: task_pid}} when is_pid(task_pid) ->
+          {:ok, task_pid}
+
+        _ ->
+          :retry
+      end
+    end)
 
     status_conn = Router.call(conn(:get, "/pipelines/#{pipeline_id}"), @router_opts)
     assert status_conn.status == 200
@@ -193,7 +201,16 @@ defmodule AttractorEx.HTTPTest do
     assert answer_conn.status == 202
 
     ref = Process.monitor(task_pid)
-    assert_receive {:DOWN, ^ref, :process, ^task_pid, :normal}
+
+    wait_for(fn ->
+      case Manager.get_pipeline(AttractorEx.HTTP.Manager, pipeline_id) do
+        {:ok, %{status: :success}} -> {:ok, :done}
+        {:ok, %{status: "success"}} -> {:ok, :done}
+        _ -> :retry
+      end
+    end)
+
+    assert_receive {:DOWN, ^ref, :process, ^task_pid, :normal}, 1_000
 
     status_conn = Router.call(conn(:get, "/pipelines/#{pipeline_id}"), @router_opts)
     assert status_conn.status == 200
