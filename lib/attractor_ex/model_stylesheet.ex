@@ -3,6 +3,13 @@ defmodule AttractorEx.ModelStylesheet do
 
   @type rule :: %{selector: String.t(), attrs: map(), rank: integer(), order: integer()}
   @selector_ident ~r/^[A-Za-z_][A-Za-z0-9_\-]*$/
+  @supported_css_properties [
+    "llm_model",
+    "llm_provider",
+    "reasoning_effort",
+    "temperature",
+    "max_tokens"
+  ]
 
   def parse(nil), do: {:ok, []}
   def parse(%{} = stylesheet), do: {:ok, map_to_rules(stylesheet)}
@@ -95,8 +102,7 @@ defmodule AttractorEx.ModelStylesheet do
           normalized_value =
             value
             |> String.trim()
-            |> String.trim_leading("\"")
-            |> String.trim_trailing("\"")
+            |> trim_wrapping_quotes()
 
           if recognized_css_property?(normalized_property) and normalized_value != "" do
             Map.put(acc, normalized_property, normalized_value)
@@ -111,7 +117,15 @@ defmodule AttractorEx.ModelStylesheet do
   end
 
   defp recognized_css_property?(property) do
-    property in ["llm_model", "llm_provider", "reasoning_effort"]
+    property in @supported_css_properties
+  end
+
+  defp trim_wrapping_quotes(value) do
+    value
+    |> String.trim_leading("\"")
+    |> String.trim_trailing("\"")
+    |> String.trim_leading("'")
+    |> String.trim_trailing("'")
   end
 
   defp map_to_rules(map) do

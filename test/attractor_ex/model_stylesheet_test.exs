@@ -39,7 +39,7 @@ defmodule AttractorEx.ModelStylesheetTest do
 
     test "parses CSS-like stylesheet rules" do
       css = """
-      * { llm_provider: anthropic; llm_model: claude-sonnet-4-5; }
+      * { llm_provider: anthropic; llm_model: claude-sonnet-4-5; temperature: 0.2; max_tokens: 512; }
       .code { llm_model: claude-opus-4-6; }
       #critical_review { llm_model: gpt-5.2; llm_provider: openai; reasoning_effort: high; }
       """
@@ -49,6 +49,23 @@ defmodule AttractorEx.ModelStylesheetTest do
       assert Enum.any?(rules, &(&1.selector == "*"))
       assert Enum.any?(rules, &(&1.selector == ".code"))
       assert Enum.any?(rules, &(&1.selector == "#critical_review"))
+
+      global_rule = Enum.find(rules, &(&1.selector == "*"))
+      assert global_rule.attrs["temperature"] == "0.2"
+      assert global_rule.attrs["max_tokens"] == "512"
+    end
+
+    test "parses CSS declarations with single-quoted values" do
+      css = """
+      .code { llm_provider: 'openai'; llm_model: 'gpt-5.2'; }
+      """
+
+      assert {:ok, rules} = ModelStylesheet.parse(css)
+      assert length(rules) == 1
+      rule = hd(rules)
+      assert rule.selector == ".code"
+      assert rule.attrs["llm_provider"] == "openai"
+      assert rule.attrs["llm_model"] == "gpt-5.2"
     end
 
     test "rejects invalid stylesheet values" do
@@ -178,7 +195,7 @@ defmodule AttractorEx.ModelStylesheetTest do
     test "applies CSS selector specificity and later-rule precedence" do
       {:ok, rules} =
         ModelStylesheet.parse("""
-        * { llm_provider: anthropic; llm_model: claude-sonnet-4-5; reasoning_effort: low; }
+        * { llm_provider: anthropic; llm_model: claude-sonnet-4-5; reasoning_effort: low; temperature: 0.1; max_tokens: 256; }
         .code { llm_model: claude-opus-4-6; }
         .code { reasoning_effort: medium; }
         #critical_review { llm_model: gpt-5.2; llm_provider: openai; reasoning_effort: high; }
@@ -201,10 +218,14 @@ defmodule AttractorEx.ModelStylesheetTest do
       assert regular_code["llm_provider"] == "anthropic"
       assert regular_code["llm_model"] == "claude-opus-4-6"
       assert regular_code["reasoning_effort"] == "medium"
+      assert regular_code["temperature"] == "0.1"
+      assert regular_code["max_tokens"] == "256"
 
       assert critical_code["llm_provider"] == "openai"
       assert critical_code["llm_model"] == "gpt-5.2"
       assert critical_code["reasoning_effort"] == "high"
+      assert critical_code["temperature"] == "0.1"
+      assert critical_code["max_tokens"] == "256"
     end
   end
 end
