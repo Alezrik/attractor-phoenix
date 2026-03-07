@@ -1,7 +1,7 @@
 defmodule AttractorEx.Validator do
   @moduledoc false
 
-  alias AttractorEx.{Condition, Graph, HumanGate}
+  alias AttractorEx.{Condition, Graph, HumanGate, ModelStylesheet}
 
   def validate(%Graph{} = graph, opts \\ []) do
     []
@@ -17,7 +17,10 @@ defmodule AttractorEx.Validator do
     |> validate_codergen_prompt(graph)
     |> validate_human_gate_choices(graph)
     |> validate_human_default_choice(graph)
+    |> validate_human_timeout_default(graph)
+    |> validate_human_choice_key_collisions(graph)
     |> validate_codergen_llm_attrs(graph)
+    |> validate_model_stylesheet_lints(graph)
     |> apply_custom_rules(graph, opts)
   end
 
@@ -284,6 +287,58 @@ defmodule AttractorEx.Validator do
     end)
   end
 
+  defp validate_human_timeout_default(diags, graph) do
+    Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
+      timeout_value = Map.get(node.attrs, "human.timeout")
+      default_choice = Map.get(node.attrs, "human.default_choice")
+
+      if node.type == "wait.human" and not is_nil(timeout_value) and
+           blank?(default_choice) do
+        [
+          diag(
+            :warning,
+            :human_timeout_without_default,
+            "wait.human node sets human.timeout but has no human.default_choice.",
+            node.id
+          )
+          | acc
+        ]
+      else
+        acc
+      end
+    end)
+  end
+
+  defp validate_human_choice_key_collisions(diags, graph) do
+    Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
+      if node.type == "wait.human" do
+        choices = HumanGate.choices_for(node.id, graph)
+
+        has_duplicate_keys? =
+          choices
+          |> Enum.map(&HumanGate.normalize_token(&1.key))
+          |> Enum.reject(&(&1 == ""))
+          |> duplicate_values?()
+
+        if has_duplicate_keys? do
+          [
+            diag(
+              :warning,
+              :human_gate_duplicate_keys,
+              "wait.human choices produce duplicate accelerator keys.",
+              node.id
+            )
+            | acc
+          ]
+        else
+          acc
+        end
+      else
+        acc
+      end
+    end)
+  end
+
   defp validate_codergen_llm_attrs(diags, graph) do
     Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
       if node.type == "codergen" do
@@ -400,6 +455,15 @@ defmodule AttractorEx.Validator do
     end
   end
 
+  defp validate_model_stylesheet_lints(diags, graph) do
+    style_diags =
+      graph.attrs
+      |> Map.get("model_stylesheet")
+      |> ModelStylesheet.lint()
+
+    Enum.reverse(style_diags) ++ diags
+  end
+
   defp apply_custom_rules(diags, graph, opts) do
     rules = Keyword.get(opts, :custom_rules, [])
 
@@ -497,6 +561,14 @@ defmodule AttractorEx.Validator do
   defp blank_to_nil(value) do
     trimmed = value |> to_string() |> String.trim()
     if trimmed == "", do: nil, else: trimmed
+  end
+
+  defp blank?(value), do: is_nil(blank_to_nil(value))
+
+  defp duplicate_values?(values) do
+    values
+    |> Enum.frequencies()
+    |> Enum.any?(fn {_value, count} -> count > 1 end)
   end
 
   defp reachable_nodes(start_id, %Graph{} = graph) do

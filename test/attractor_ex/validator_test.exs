@@ -226,6 +226,51 @@ defmodule AttractorEx.ValidatorTest do
              )
     end
 
+    test "warns when wait.human timeout is set without default choice" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        gate [shape=hexagon, human.timeout="30s"]
+        done [shape=Msquare]
+        start -> gate
+        gate -> done [label="[A] Approve"]
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :human_timeout_without_default and &1.severity == :warning and
+                   &1.node_id == "gate")
+             )
+    end
+
+    test "warns when wait.human choices collide on accelerator keys" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        gate [shape=hexagon]
+        done [shape=Msquare]
+        retry [shape=box, prompt="Retry"]
+        start -> gate
+        gate -> done [label="[A] Approve"]
+        gate -> retry [label="[A] Ask again"]
+        retry -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :human_gate_duplicate_keys and &1.severity == :warning and
+                   &1.node_id == "gate")
+             )
+    end
+
     test "supports custom lint rules via validate/2 custom_rules option" do
       dot = """
       digraph attractor {
@@ -311,6 +356,30 @@ defmodule AttractorEx.ValidatorTest do
       refute Enum.any?(diagnostics, &(&1.code == :temperature_invalid))
       refute Enum.any?(diagnostics, &(&1.code == :max_tokens_invalid))
       refute Enum.any?(diagnostics, &(&1.code == :llm_provider_without_model))
+    end
+
+    test "warns for stylesheet declaration issues" do
+      dot = """
+      digraph attractor {
+        model_stylesheet="* { llm_provider: openai; unsupported_property: foo; invalid_decl; }"
+        start [shape=Mdiamond]
+        done [shape=Msquare]
+        start -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :model_stylesheet_css_property_unknown and &1.severity == :warning)
+             )
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :model_stylesheet_css_declaration_invalid and &1.severity == :warning)
+             )
     end
 
     test "handles invalid and crashing custom rules gracefully" do
