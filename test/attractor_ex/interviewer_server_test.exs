@@ -39,7 +39,8 @@ defmodule AttractorEx.InterviewerServerTest do
         send(parent, {:answer_result, result})
       end)
 
-    assert_receive {:event, %{type: "InterviewStarted", question: %{id: "gate"}}}
+    assert_receive {:event,
+                    %{type: "InterviewStarted", question: %{id: "gate", type: "CONFIRMATION"}}}
 
     wait_until(fn ->
       match?({:ok, [_]}, Manager.pending_questions(manager, "server-interviewer"))
@@ -132,6 +133,46 @@ defmodule AttractorEx.InterviewerServerTest do
 
     Process.sleep(10)
     Process.exit(timeout_pid, :kill)
+  end
+
+  test "server interviewer infers yes/no question types and normalizes boolean answers", %{
+    manager: manager
+  } do
+    {:ok, _id} =
+      Manager.create_pipeline(
+        manager,
+        "digraph { start [shape=Mdiamond] done [shape=Msquare] start -> done }",
+        %{},
+        pipeline_id: "server-yes-no"
+      )
+
+    parent = self()
+
+    node = %Node{id: "gate", attrs: %{"prompt" => "Ship it?", "human.timeout" => "5ms"}}
+
+    choices = [
+      %{key: "Y", label: "[Y] Yes", to: "done"},
+      %{key: "N", label: "[N] No", to: "retry"}
+    ]
+
+    pid =
+      spawn(fn ->
+        result =
+          Server.ask(node, choices, %{},
+            manager: manager,
+            pipeline_id: "server-yes-no",
+            event_observer: &send(parent, {:event, &1})
+          )
+
+        send(parent, {:yes_no_result, result})
+      end)
+
+    assert_receive {:event, %{type: "InterviewStarted", question: %{id: "gate", type: "YES_NO"}}}
+    wait_until(fn -> match?({:ok, [_]}, Manager.pending_questions(manager, "server-yes-no")) end)
+    assert :ok = Manager.submit_answer(manager, "server-yes-no", "gate", true)
+    assert_receive {:event, %{type: "InterviewCompleted", answer: "yes"}}
+    assert_receive {:yes_no_result, {:ok, "yes"}}
+    refute Process.alive?(pid)
   end
 
   test "inform returns ok and AttractorEx wrappers are covered", %{manager: manager} do

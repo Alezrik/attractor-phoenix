@@ -27,7 +27,7 @@ defmodule AttractorEx.Validator do
     |> validate_graph_retry_target_nodes(graph)
     |> validate_retry_target_nodes(graph)
     |> validate_retry_counts(graph)
-    |> validate_codergen_prompt(graph)
+    |> validate_llm_node_prompt(graph)
     |> validate_known_node_types(graph)
     |> validate_fidelity_values(graph)
     |> validate_human_gate_choices(graph)
@@ -329,10 +329,21 @@ defmodule AttractorEx.Validator do
     end
   end
 
-  defp validate_codergen_prompt(diags, graph) do
+  defp validate_llm_node_prompt(diags, graph) do
     Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
-      if node.type == "codergen" and String.trim(node.prompt) == "" do
-        [diag(:warning, :codergen_prompt, "Codergen node has no prompt.", node.id) | acc]
+      prompt = blank_to_nil(node.prompt)
+      label = blank_to_nil(Map.get(node.attrs, "label"))
+
+      if node.type == "codergen" and is_nil(prompt) and is_nil(label) do
+        [
+          diag(
+            :warning,
+            :prompt_on_llm_nodes,
+            "LLM-backed box nodes should define a prompt or label.",
+            node.id
+          )
+          | acc
+        ]
       else
         acc
       end

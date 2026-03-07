@@ -94,7 +94,7 @@ defmodule AttractorEx.ValidatorTest do
              )
     end
 
-    test "warns for codergen nodes without prompt" do
+    test "warns for llm-backed box nodes without prompt or label" do
       dot = """
       digraph attractor {
         start [shape=Mdiamond]
@@ -107,7 +107,27 @@ defmodule AttractorEx.ValidatorTest do
 
       assert {:ok, graph} = Parser.parse(dot)
       diagnostics = Validator.validate(graph)
-      assert Enum.any?(diagnostics, &(&1.code == :codergen_prompt and &1.severity == :warning))
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :prompt_on_llm_nodes and &1.severity == :warning)
+             )
+    end
+
+    test "accepts llm-backed box nodes with a label even when prompt is absent" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        task [shape=box, label="Plan task"]
+        done [shape=Msquare]
+        start -> task
+        task -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+      refute Enum.any?(diagnostics, &(&1.code == :prompt_on_llm_nodes and &1.node_id == "task"))
     end
 
     test "warns when node type is not recognized by the handler registry" do
