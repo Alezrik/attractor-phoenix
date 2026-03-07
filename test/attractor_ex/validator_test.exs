@@ -225,6 +225,27 @@ defmodule AttractorEx.ValidatorTest do
              )
     end
 
+    test "flags invalid edge conditions with spec-aligned rule metadata" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        task [shape=box, prompt="Do work"]
+        done [shape=Msquare]
+        start -> task [condition="outcome.status =="]
+        task -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :condition_parse and &1.rule == "condition_syntax" and
+                   &1.severity == :error and &1.edge == {"start", "task"})
+             )
+    end
+
     test "treats graph-level retry targets as reachable execution paths" do
       dot = """
       digraph attractor {
@@ -312,8 +333,8 @@ defmodule AttractorEx.ValidatorTest do
 
       assert Enum.any?(
                diagnostics,
-               &(&1.code == :retry_target_missing and &1.severity == :error and
-                   &1.node_id == "task")
+               &(&1.code == :retry_target_missing and &1.rule == "retry_target_exists" and
+                   &1.severity == :warning and &1.node_id == "task")
              )
     end
 
@@ -333,7 +354,8 @@ defmodule AttractorEx.ValidatorTest do
 
       assert Enum.any?(
                diagnostics,
-               &(&1.code == :fallback_retry_target_missing and &1.severity == :error and
+               &(&1.code == :fallback_retry_target_missing and
+                   &1.rule == "retry_target_exists" and &1.severity == :warning and
                    &1.node_id == "task")
              )
     end
@@ -401,8 +423,8 @@ defmodule AttractorEx.ValidatorTest do
 
       assert Enum.any?(
                diagnostics,
-               &(&1.code == :graph_retry_target_missing and &1.severity == :error and
-                   is_nil(&1.node_id))
+               &(&1.code == :graph_retry_target_missing and &1.rule == "retry_target_exists" and
+                   &1.severity == :warning and is_nil(&1.node_id))
              )
     end
 
@@ -423,7 +445,8 @@ defmodule AttractorEx.ValidatorTest do
 
       assert Enum.any?(
                diagnostics,
-               &(&1.code == :graph_fallback_retry_target_missing and &1.severity == :error and
+               &(&1.code == :graph_fallback_retry_target_missing and
+                   &1.rule == "retry_target_exists" and &1.severity == :warning and
                    is_nil(&1.node_id))
              )
     end
@@ -704,6 +727,37 @@ defmodule AttractorEx.ValidatorTest do
              )
     end
 
+    test "normalizes custom rule metadata including info severity and fix hints" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        done [shape=Msquare]
+        start -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+
+      custom_rule = fn _graph ->
+        %{
+          severity: :info,
+          code: :custom_info,
+          rule: "custom_rule",
+          message: "custom info",
+          node_id: "done",
+          fix: "Add metadata"
+        }
+      end
+
+      diagnostics = Validator.validate(graph, custom_rules: [custom_rule])
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :custom_info and &1.rule == "custom_rule" and &1.severity == :info and
+                   &1.fix == "Add metadata" and &1.node_id == "done")
+             )
+    end
+
     test "warns on invalid codergen LLM attribute values" do
       dot = """
       digraph attractor {
@@ -740,6 +794,27 @@ defmodule AttractorEx.ValidatorTest do
                diagnostics,
                &(&1.code == :llm_provider_without_model and &1.severity == :warning and
                    &1.node_id == "task")
+             )
+    end
+
+    test "warns on llm-backed fallback box nodes without prompt or label" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        task [shape=box, type="custom.unknown"]
+        done [shape=Msquare]
+        start -> task
+        task -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :prompt_on_llm_nodes and &1.rule == "prompt_on_llm_nodes" and
+                   &1.severity == :warning and &1.node_id == "task")
              )
     end
 

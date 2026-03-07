@@ -30,6 +30,9 @@ defmodule AttractorEx.Condition do
         rhs_value = parse_literal(rhs, context)
         {:ok, compare(lhs_value, op, rhs_value)}
 
+      {:error, :invalid_syntax} ->
+        {:error, "Invalid condition syntax: #{trimmed}"}
+
       :no_match ->
         value = resolve(trimmed, context)
         {:ok, truthy?(value)}
@@ -43,7 +46,15 @@ defmodule AttractorEx.Condition do
       :no_match
     else
       [lhs, rhs] = String.split(clause, op, parts: 2)
-      {:ok, {String.trim(lhs), op, String.trim(rhs)}}
+
+      lhs = String.trim(lhs)
+      rhs = String.trim(rhs)
+
+      if lhs == "" or rhs == "" do
+        {:error, :invalid_syntax}
+      else
+        {:ok, {lhs, op, rhs}}
+      end
     end
   rescue
     _ -> :no_match

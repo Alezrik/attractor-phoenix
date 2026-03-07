@@ -59,6 +59,7 @@ defmodule AttractorEx.ConditionTest do
 
     test "valid? returns boolean for parsed expressions" do
       assert Condition.valid?("foo == 1")
+      refute Condition.valid?("foo ==")
       assert_raise FunctionClauseError, fn -> Condition.valid?(123) end
     end
   end

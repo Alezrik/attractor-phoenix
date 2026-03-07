@@ -2,6 +2,7 @@ defmodule AttractorEx.Validator do
   @moduledoc false
 
   alias AttractorEx.{Condition, Graph, HandlerRegistry, HumanGate, ModelStylesheet}
+  alias AttractorEx.Handlers.Codergen
 
   @valid_fidelity_values [
     "full",
@@ -67,7 +68,7 @@ defmodule AttractorEx.Validator do
               true -> ""
             end
 
-          "[#{diag.code}]#{location} #{diag.message}"
+          "[#{diag.rule || diag.code}]#{location} #{diag.message}"
         end)
 
       raise ArgumentError, "Attractor validation failed:\n" <> formatted
@@ -154,7 +155,8 @@ defmodule AttractorEx.Validator do
             :condition_parse,
             "Edge condition is invalid: #{edge.condition}",
             edge.from,
-            {edge.from, edge.to}
+            {edge.from, edge.to},
+            "condition_syntax"
           )
           | acc
         ]
@@ -324,7 +326,7 @@ defmodule AttractorEx.Validator do
     if MapSet.member?(node_ids, target) do
       diags
     else
-      [diag(:error, code, message, node.id) | diags]
+      [diag(:warning, code, message, node.id, nil, "retry_target_exists") | diags]
     end
   end
 
@@ -334,7 +336,7 @@ defmodule AttractorEx.Validator do
     if MapSet.member?(node_ids, target) do
       diags
     else
-      [diag(:error, code, message) | diags]
+      [diag(:warning, code, message, nil, nil, "retry_target_exists") | diags]
     end
   end
 
@@ -343,13 +345,15 @@ defmodule AttractorEx.Validator do
       prompt = blank_to_nil(node.prompt)
       label = blank_to_nil(Map.get(node.attrs, "label"))
 
-      if node.type == "codergen" and is_nil(prompt) and is_nil(label) do
+      if HandlerRegistry.handler_for(node) == Codergen and is_nil(prompt) and is_nil(label) do
         [
           diag(
             :warning,
             :prompt_on_llm_nodes,
             "LLM-backed box nodes should define a prompt or label.",
-            node.id
+            node.id,
+            nil,
+            "prompt_on_llm_nodes"
           )
           | acc
         ]
@@ -1223,7 +1227,10 @@ defmodule AttractorEx.Validator do
           diag(
             :error,
             :stylesheet_syntax,
-            "The model_stylesheet attribute must parse as valid stylesheet rules."
+            "The model_stylesheet attribute must parse as valid stylesheet rules.",
+            nil,
+            nil,
+            "stylesheet_syntax"
           )
           | diags
         ]
@@ -1283,21 +1290,36 @@ defmodule AttractorEx.Validator do
   end
 
   defp normalize_custom_diag(%{severity: severity, code: code, message: message} = diag_map)
-       when severity in [:error, :warning] and is_atom(code) and is_binary(message) do
+       when severity in [:error, :warning, :info] and is_atom(code) and is_binary(message) do
     %{
       severity: severity,
       code: code,
+      rule: normalize_rule(Map.get(diag_map, :rule), code),
       message: message,
       node_id: Map.get(diag_map, :node_id),
-      edge: Map.get(diag_map, :edge)
+      edge: Map.get(diag_map, :edge),
+      fix: Map.get(diag_map, :fix)
     }
   end
 
   defp normalize_custom_diag(_), do: nil
 
-  defp diag(severity, code, message, node_id \\ nil, edge \\ nil) do
-    %{severity: severity, code: code, message: message, node_id: node_id, edge: edge}
+  defp diag(severity, code, message, node_id \\ nil, edge \\ nil, rule \\ nil, fix \\ nil) do
+    %{
+      severity: severity,
+      code: code,
+      rule: normalize_rule(rule, code),
+      message: message,
+      node_id: node_id,
+      edge: edge,
+      fix: fix
+    }
   end
+
+  defp normalize_rule(nil, code) when is_atom(code), do: Atom.to_string(code)
+  defp normalize_rule(rule, _code) when is_binary(rule), do: rule
+  defp normalize_rule(rule, _code) when is_atom(rule), do: Atom.to_string(rule)
+  defp normalize_rule(_rule, code) when is_atom(code), do: Atom.to_string(code)
 
   defp to_float(value) when is_float(value), do: {:ok, value}
   defp to_float(value) when is_integer(value), do: {:ok, value * 1.0}
