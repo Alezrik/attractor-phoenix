@@ -8,7 +8,12 @@
 import Config
 
 config :attractor_phoenix,
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  attractor_http: [
+    port: 4041,
+    ip: {127, 0, 0, 1},
+    base_url: "http://127.0.0.1:4041"
+  ]
 
 # Configure the endpoint
 config :attractor_phoenix, AttractorPhoenixWeb.Endpoint,

@@ -47,6 +47,15 @@ defmodule AttractorEx.HTTP.Router do
     end
   end
 
+  get "/pipelines" do
+    manager = manager!(conn)
+
+    case Manager.list_pipelines(manager) do
+      {:ok, pipelines} -> json(conn, 200, %{"pipelines" => pipelines})
+      {:error, reason} -> json(conn, 400, %{"error" => inspect(reason)})
+    end
+  end
+
   get "/pipelines/:id" do
     manager = manager!(conn)
 
@@ -56,7 +65,11 @@ defmodule AttractorEx.HTTP.Router do
           "pipeline_id" => pipeline.id,
           "status" => pipeline.status,
           "event_count" => length(pipeline.events),
-          "pending_questions" => map_size(pipeline.questions)
+          "pending_questions" => map_size(pipeline.questions),
+          "logs_root" => pipeline.logs_root,
+          "inserted_at" => pipeline.inserted_at,
+          "updated_at" => pipeline.updated_at,
+          "has_checkpoint" => is_map(pipeline.checkpoint)
         })
 
       {:error, :not_found} ->
@@ -70,25 +83,29 @@ defmodule AttractorEx.HTTP.Router do
 
     with {:ok, events} <- Manager.pipeline_events(manager, id),
          {:ok, pipeline} <- Manager.get_pipeline(manager, id) do
-      conn =
-        conn
-        |> Plug.Conn.put_resp_content_type("text/event-stream")
-        |> Plug.Conn.send_chunked(200)
+      if events_stream?(conn) do
+        conn =
+          conn
+          |> Plug.Conn.put_resp_content_type("text/event-stream")
+          |> Plug.Conn.send_chunked(200)
 
-      conn =
-        Enum.reduce_while(events, conn, fn event, acc ->
-          case Plug.Conn.chunk(acc, encode_sse(event)) do
-            {:ok, next_conn} -> {:cont, next_conn}
-            {:error, _reason} -> {:halt, acc}
-          end
-        end)
+        conn =
+          Enum.reduce_while(events, conn, fn event, acc ->
+            case Plug.Conn.chunk(acc, encode_sse(event)) do
+              {:ok, next_conn} -> {:cont, next_conn}
+              {:error, _reason} -> {:halt, acc}
+            end
+          end)
 
-      if terminal?(pipeline.status) do
-        conn
+        if terminal?(pipeline.status) do
+          conn
+        else
+          {:ok, _} = Registry.register(registry, {:pipeline_events, id}, true)
+          :ok = Manager.subscribe(manager, id, self())
+          sse_loop(conn, pipeline.status)
+        end
       else
-        {:ok, _} = Registry.register(registry, {:pipeline_events, id}, true)
-        :ok = Manager.subscribe(manager, id, self())
-        sse_loop(conn, pipeline.status)
+        json(conn, 200, %{"events" => events})
       end
     else
       {:error, :not_found} -> json(conn, 404, %{"error" => "pipeline not found"})
@@ -174,6 +191,7 @@ defmodule AttractorEx.HTTP.Router do
 
   defp decode_pipeline_opts(opts) when is_map(opts) do
     allowed_keys = %{
+      "pipeline_id" => :pipeline_id,
       "max_steps" => :max_steps,
       "logs_root" => :logs_root,
       "retry_sleep" => :retry_sleep,
@@ -221,6 +239,8 @@ defmodule AttractorEx.HTTP.Router do
   defp encode_sse(event) do
     "event: #{Map.get(event, "type", "message")}\ndata: #{Jason.encode!(event)}\n\n"
   end
+
+  defp events_stream?(conn), do: conn.params["stream"] not in ["false", "0"]
 
   defp sse_loop(conn, status) when status in [:success, :fail, :cancelled], do: conn
 

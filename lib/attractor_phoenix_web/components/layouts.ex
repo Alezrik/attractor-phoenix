@@ -31,16 +31,24 @@ defmodule AttractorPhoenixWeb.Layouts do
     default: nil,
     doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
 
+  attr :current_path, :string, default: nil, doc: "the current request path"
+
   slot :inner_block, required: true
 
   def app(assigns) do
     ~H"""
-    <header class="border-b border-base-300 px-4 py-4 sm:px-6 lg:px-8">
-      <div class="mx-auto flex w-full max-w-[120rem] items-center justify-between">
-        <a href="/" class="text-sm font-semibold tracking-wide">
-          attractor-phoenix
-        </a>
-        <div>
+    <header class="border-b border-base-300/80 bg-base-100/90 px-4 py-4 backdrop-blur-sm sm:px-6 lg:px-8">
+      <div class="mx-auto flex w-full max-w-[120rem] flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-6">
+          <.link navigate={~p"/"} class="text-sm font-semibold tracking-[0.18em] uppercase">
+            attractor-phoenix
+          </.link>
+          <nav class="flex items-center gap-2" id="top-nav">
+            <.nav_link current_path={@current_path} href={~p"/"} label="Dashboard" />
+            <.nav_link current_path={@current_path} href={~p"/builder"} label="Builder" />
+          </nav>
+        </div>
+        <div class="flex items-center gap-3">
           <.theme_toggle />
         </div>
       </div>
@@ -53,6 +61,32 @@ defmodule AttractorPhoenixWeb.Layouts do
     </main>
 
     <.flash_group flash={@flash} />
+    """
+  end
+
+  attr :current_path, :string, default: nil
+  attr :href, :string, required: true
+  attr :label, :string, required: true
+
+  defp nav_link(assigns) do
+    active? = assigns.current_path == assigns.href
+
+    assigns =
+      assign(assigns,
+        active?: active?,
+        classes: [
+          "rounded-full px-4 py-2 text-sm font-medium transition",
+          if(active?,
+            do: "bg-primary text-primary-content shadow-sm",
+            else: "text-base-content/70 hover:bg-base-200 hover:text-base-content"
+          )
+        ]
+      )
+
+    ~H"""
+    <.link navigate={@href} class={@classes}>
+      {@label}
+    </.link>
     """
   end
 

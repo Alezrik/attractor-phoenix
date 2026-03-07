@@ -1,0 +1,246 @@
+<Layouts.app flash={@flash} current_scope={assigns[:current_scope]} current_path={~p"/"}>
+  <section class="space-y-8" id="dashboard-page">
+    <div class="dashboard-hero">
+      <div class="space-y-3">
+        <p class="dashboard-kicker">Live Operations</p>
+        <h1 class="max-w-3xl text-4xl font-black tracking-tight sm:text-5xl">
+          Real-time attractor-ex pipeline telemetry over LiveView.
+        </h1>
+        <p class="max-w-2xl text-sm leading-6 text-base-content/70 sm:text-base">
+          The dashboard reads the attractor-ex HTTP API and pushes live updates over the Phoenix
+          websocket. Use the builder to launch flows, then inspect status, events, questions,
+          checkpoints, and rendered graphs here.
+        </p>
+      </div>
+      <div class="dashboard-status-panel">
+        <div class="dashboard-status-row">
+          <span>Total pipelines</span>
+          <strong>{@total_pipelines}</strong>
+        </div>
+        <div class="dashboard-status-row">
+          <span>Pending questions</span>
+          <strong>{@total_questions}</strong>
+        </div>
+        <div class="dashboard-meter">
+          <div
+            class="dashboard-meter-segment bg-info"
+            style={bar_width(@total_pipelines, @running_pipelines)}
+          >
+          </div>
+          <div
+            class="dashboard-meter-segment bg-success"
+            style={bar_width(@total_pipelines, @successful_pipelines)}
+          >
+          </div>
+          <div
+            class="dashboard-meter-segment bg-error"
+            style={bar_width(@total_pipelines, @failed_pipelines)}
+          >
+          </div>
+          <div
+            class="dashboard-meter-segment bg-warning"
+            style={bar_width(@total_pipelines, @cancelled_pipelines)}
+          >
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3 text-xs text-base-content/70">
+          <div>Running: {@running_pipelines}</div>
+          <div>Success: {@successful_pipelines}</div>
+          <div>Fail: {@failed_pipelines}</div>
+          <div>Cancelled: {@cancelled_pipelines}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-4">
+      <article class="dashboard-card">
+        <p class="dashboard-card-label">Live Runs</p>
+        <p class="dashboard-card-value">{@running_pipelines}</p>
+        <p class="dashboard-card-note">Currently executing through the API manager.</p>
+      </article>
+      <article class="dashboard-card">
+        <p class="dashboard-card-label">Successful</p>
+        <p class="dashboard-card-value">{@successful_pipelines}</p>
+        <p class="dashboard-card-note">Completed pipelines with terminal success.</p>
+      </article>
+      <article class="dashboard-card">
+        <p class="dashboard-card-label">Attention</p>
+        <p class="dashboard-card-value">{@failed_pipelines + @cancelled_pipelines}</p>
+        <p class="dashboard-card-note">Failed or cancelled runs that may need review.</p>
+      </article>
+      <article class="dashboard-card">
+        <p class="dashboard-card-label">Human Loop</p>
+        <p class="dashboard-card-value">{@total_questions}</p>
+        <p class="dashboard-card-note">Open wait.human prompts waiting on answers.</p>
+      </article>
+    </div>
+
+    <%= if @error do %>
+      <div
+        id="dashboard-error"
+        class="rounded-2xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
+      >
+        {@error}
+      </div>
+    <% end %>
+
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold">Pipelines</h2>
+          <.link navigate={~p"/builder"} class="builder-btn">Open Builder</.link>
+        </div>
+
+        <div class="space-y-3" id="pipeline-list">
+          <%= if @pipelines == [] do %>
+            <div class="rounded-2xl border border-dashed border-base-300 px-4 py-6 text-sm text-base-content/60">
+              No pipelines have been submitted yet.
+            </div>
+          <% end %>
+
+          <%= for pipeline <- @pipelines do %>
+            <.link
+              patch={~p"/?pipeline=#{pipeline["pipeline_id"]}"}
+              id={"pipeline-#{pipeline["pipeline_id"]}"}
+              class={[
+                "dashboard-pipeline-item",
+                @selected_pipeline_id == pipeline["pipeline_id"] &&
+                  "dashboard-pipeline-item-active"
+              ]}
+            >
+              <div class="flex items-center justify-between gap-3">
+                <p class="font-semibold">{pipeline["pipeline_id"]}</p>
+                <span class="rounded-full bg-base-200 px-2 py-1 text-[10px] uppercase tracking-[0.14em]">
+                  {pipeline["status"]}
+                </span>
+              </div>
+              <div class="mt-2 grid grid-cols-2 gap-2 text-xs text-base-content/65">
+                <span>{pipeline["event_count"]} events</span>
+                <span>{pipeline["pending_questions"]} questions</span>
+                <span>checkpoint: {if pipeline["has_checkpoint"], do: "yes", else: "no"}</span>
+                <span>{pipeline["updated_at"]}</span>
+              </div>
+            </.link>
+          <% end %>
+        </div>
+      </aside>
+
+      <div class="space-y-4">
+        <%= if @selected_pipeline do %>
+          <section class="dashboard-detail-grid">
+            <article class="dashboard-panel lg:col-span-2">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <p class="dashboard-card-label">Selected Pipeline</p>
+                  <h2 class="text-2xl font-bold">{@selected_pipeline["pipeline_id"]}</h2>
+                </div>
+                <span class="rounded-full bg-base-200 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]">
+                  {@selected_pipeline["status"]}
+                </span>
+              </div>
+              <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                <div class="rounded-2xl bg-base-200/70 p-3">
+                  <p class="dashboard-card-label">Events</p>
+                  <p class="text-2xl font-bold">{@selected_pipeline["event_count"]}</p>
+                </div>
+                <div class="rounded-2xl bg-base-200/70 p-3">
+                  <p class="dashboard-card-label">Questions</p>
+                  <p class="text-2xl font-bold">{@selected_pipeline["pending_questions"]}</p>
+                </div>
+                <div class="rounded-2xl bg-base-200/70 p-3">
+                  <p class="dashboard-card-label">Logs</p>
+                  <p class="truncate text-sm font-medium">{@selected_pipeline["logs_root"]}</p>
+                </div>
+              </div>
+            </article>
+
+            <article class="dashboard-panel">
+              <p class="dashboard-card-label">Checkpoint</p>
+              <%= if @selected_checkpoint do %>
+                <pre class="mt-3 overflow-x-auto text-xs"><%= preview_json(@selected_checkpoint) %></pre>
+              <% else %>
+                <p class="mt-3 text-sm text-base-content/60">
+                  No checkpoint has been published yet.
+                </p>
+              <% end %>
+            </article>
+
+            <article class="dashboard-panel lg:col-span-2">
+              <div class="flex items-center justify-between">
+                <p class="dashboard-card-label">Pipeline Graph</p>
+                <span class="text-xs text-base-content/60">GET /pipelines/:id/graph</span>
+              </div>
+              <div class="dashboard-graph-frame">
+                {graph_markup(@graph_svg)}
+              </div>
+            </article>
+
+            <article class="dashboard-panel">
+              <p class="dashboard-card-label">Context Snapshot</p>
+              <pre class="mt-3 overflow-x-auto text-xs"><%= preview_json(@selected_context) %></pre>
+            </article>
+          </section>
+
+          <section class="grid gap-4 xl:grid-cols-2">
+            <article class="dashboard-panel">
+              <div class="flex items-center justify-between">
+                <p class="dashboard-card-label">Recent Events</p>
+                <span class="text-xs text-base-content/60">GET /pipelines/:id/events</span>
+              </div>
+              <div class="mt-3 space-y-3">
+                <%= if @selected_events == [] do %>
+                  <p class="text-sm text-base-content/60">No events recorded yet.</p>
+                <% end %>
+
+                <%= for event <- Enum.take(Enum.reverse(@selected_events), 8) do %>
+                  <div class="rounded-2xl border border-base-300/70 px-4 py-3">
+                    <div class="flex items-center justify-between gap-3">
+                      <strong class="text-sm">{event["type"] || "event"}</strong>
+                      <span class="text-xs text-base-content/55">{event["timestamp"]}</span>
+                    </div>
+                    <%= if event["status"] do %>
+                      <p class="mt-1 text-xs uppercase tracking-[0.16em] text-base-content/60">
+                        {event["status"]}
+                      </p>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+            </article>
+
+            <article class="dashboard-panel">
+              <div class="flex items-center justify-between">
+                <p class="dashboard-card-label">Pending Questions</p>
+                <span class="text-xs text-base-content/60">GET /pipelines/:id/questions</span>
+              </div>
+              <div class="mt-3 space-y-3">
+                <%= if @selected_questions == [] do %>
+                  <p class="text-sm text-base-content/60">No open human-in-the-loop questions.</p>
+                <% end %>
+
+                <%= for question <- @selected_questions do %>
+                  <div class="rounded-2xl border border-base-300/70 px-4 py-3">
+                    <div class="flex items-center justify-between gap-3">
+                      <strong class="text-sm">{question["id"]}</strong>
+                      <span class="text-xs text-base-content/55">{question["node_id"]}</span>
+                    </div>
+                    <p class="mt-2 text-sm leading-6">
+                      {question["prompt"] || question["question"]}
+                    </p>
+                  </div>
+                <% end %>
+              </div>
+            </article>
+          </section>
+        <% else %>
+          <section class="dashboard-panel">
+            <h2 class="text-xl font-semibold">No pipeline selected</h2>
+            <p class="mt-2 max-w-xl text-sm leading-6 text-base-content/65">
+              Submit a pipeline from the builder or through the HTTP API to populate the dashboard.
+            </p>
+          </section>
+        <% end %>
+      </div>
+    </div>
+  </section>
+</Layouts.app>

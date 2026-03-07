@@ -16,6 +16,7 @@ defmodule AttractorEx.HTTP.Manager do
   end
 
   def get_pipeline(server, id), do: GenServer.call(server, {:get_pipeline, id})
+  def list_pipelines(server), do: GenServer.call(server, :list_pipelines)
   def pipeline_graph(server, id), do: GenServer.call(server, {:pipeline_graph, id})
   def pipeline_context(server, id), do: GenServer.call(server, {:pipeline_context, id})
   def pipeline_checkpoint(server, id), do: GenServer.call(server, {:pipeline_checkpoint, id})
@@ -59,7 +60,9 @@ defmodule AttractorEx.HTTP.Manager do
       questions: %{},
       subscribers: MapSet.new(),
       task_pid: nil,
-      logs_root: logs_root
+      logs_root: logs_root,
+      inserted_at: now_iso8601(),
+      updated_at: now_iso8601()
     }
 
     state = put_in(state, [:pipelines, pipeline_id], pipeline)
@@ -94,6 +97,16 @@ defmodule AttractorEx.HTTP.Manager do
 
   def handle_call({:get_pipeline, id}, _from, state) do
     {:reply, fetch_pipeline(state, id), state}
+  end
+
+  def handle_call(:list_pipelines, _from, state) do
+    pipelines =
+      state.pipelines
+      |> Map.values()
+      |> Enum.sort_by(& &1.inserted_at, :desc)
+      |> Enum.map(&pipeline_summary/1)
+
+    {:reply, {:ok, pipelines}, state}
   end
 
   def handle_call({:pipeline_graph, id}, _from, state) do
@@ -184,6 +197,7 @@ defmodule AttractorEx.HTTP.Manager do
       state =
         state
         |> put_in([:pipelines, id, :status], :cancelled)
+        |> touch_pipeline(id)
         |> append_event(id, event)
 
       {:reply, :ok, state}
@@ -225,6 +239,7 @@ defmodule AttractorEx.HTTP.Manager do
       |> put_in([:pipelines, id, :result], result)
       |> put_in([:pipelines, id, :context], normalize_map(result.context))
       |> put_in([:pipelines, id, :checkpoint], build_checkpoint(result))
+      |> touch_pipeline(id)
 
     {:noreply, state}
   end
@@ -234,6 +249,7 @@ defmodule AttractorEx.HTTP.Manager do
       state
       |> put_in([:pipelines, id, :status], :fail)
       |> put_in([:pipelines, id, :error], error)
+      |> touch_pipeline(id)
 
     {:noreply, state}
   end
@@ -259,6 +275,7 @@ defmodule AttractorEx.HTTP.Manager do
         notify_subscribers(pipeline.subscribers, normalized_event)
 
         state
+        |> touch_pipeline(id)
         |> update_in([:pipelines, id, :events], &(&1 ++ [normalized_event]))
         |> maybe_update_checkpoint(id, normalized_event)
         |> maybe_update_context(id, normalized_event)
@@ -346,4 +363,27 @@ defmodule AttractorEx.HTTP.Manager do
 
   defp normalize_map(value) when is_list(value), do: Enum.map(value, &normalize_map/1)
   defp normalize_map(value), do: value
+
+  defp pipeline_summary(pipeline) do
+    %{
+      "pipeline_id" => pipeline.id,
+      "status" => pipeline.status,
+      "event_count" => length(pipeline.events),
+      "pending_questions" => map_size(pipeline.questions),
+      "logs_root" => pipeline.logs_root,
+      "inserted_at" => pipeline.inserted_at,
+      "updated_at" => pipeline.updated_at,
+      "has_checkpoint" => is_map(pipeline.checkpoint)
+    }
+  end
+
+  defp touch_pipeline(state, id) do
+    put_in(state, [:pipelines, id, :updated_at], now_iso8601())
+  end
+
+  defp now_iso8601 do
+    DateTime.utc_now()
+    |> DateTime.truncate(:second)
+    |> DateTime.to_iso8601()
+  end
 end

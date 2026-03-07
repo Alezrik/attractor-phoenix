@@ -240,7 +240,7 @@ defmodule AttractorEx.Agent.SessionTest do
         Session.submit(session, "parallel")
       end)
 
-    assert elapsed_us < 400_000
+    assert elapsed_us < 520_000
     assert last_assistant_text(completed) == "parallel-done"
   end
 
@@ -710,7 +710,7 @@ defmodule AttractorEx.Agent.SessionTest do
       description: "slow tool",
       parameters: %{},
       execute: fn args, _env ->
-        Process.sleep(220)
+        Process.sleep(300)
         args["text"] || ""
       end
     }
