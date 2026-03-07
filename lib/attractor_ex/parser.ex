@@ -6,10 +6,11 @@ defmodule AttractorEx.Parser do
   @bare_id_pattern ~r/^(?:[A-Za-z_][A-Za-z0-9_]*|-?(?:\.\d+|\d+(?:\.\d*)?))$/
   @bare_graph_id_pattern ~r/^[A-Za-z_][A-Za-z0-9_\-]*$/
   @quoted_id_pattern ~r/^"(?:[^"\\]|\\.)+"$|^'(?:[^'\\]|\\.)+'$/
+  @compass_points ~w(n ne e se s sw w nw c _)
   @graph_attr_decl_pattern ~r/^([A-Za-z_][A-Za-z0-9_\.]*)\s*=\s*(.+)$/
   @attr_statement_pattern ~r/^(graph|node|edge)\b(.*)$/s
-  @root_pattern ~r/^\s*(?:strict\s+)?digraph\s+((?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[A-Za-z_][A-Za-z0-9_\-]*))?\s*\{(?<body>.*)\}\s*$/ms
-  @root_name_pattern ~r/^\s*(?:strict\s+)?digraph\s+((?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[A-Za-z_][A-Za-z0-9_\-]*))?\s*\{/m
+  @root_pattern ~r/^\s*(?:strict\s+)?digraph\s+((?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|<[^>]+>|[A-Za-z_][A-Za-z0-9_\-]*))?\s*\{(?<body>.*)\}\s*$/ms
+  @root_name_pattern ~r/^\s*(?:strict\s+)?digraph\s+((?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|<[^>]+>|[A-Za-z_][A-Za-z0-9_\-]*))?\s*\{/m
   @type parse_scope :: %{
           node_defaults: map(),
           edge_defaults: map(),
@@ -151,8 +152,11 @@ defmodule AttractorEx.Parser do
       String.contains?(statement, "--") ->
         {:error, "Undirected edges are not supported. Use `->`."}
 
-      String.contains?(statement, "->") ->
+      edge_statement?(statement) ->
         parse_edge_statement(statement, graph, scope)
+
+      subgraph_statement?(statement) ->
+        parse_inline_subgraph(statement, graph, scope)
 
       Regex.match?(@graph_attr_decl_pattern, statement) ->
         parse_graph_attr_decl(statement, graph, scope, opts)
@@ -209,28 +213,98 @@ defmodule AttractorEx.Parser do
   defp parse_edge_statement(statement, graph, scope) do
     {path_part, attrs_part} = split_attrs(statement)
 
-    ids =
-      path_part
-      |> split_edge_path()
-      |> Enum.map(&normalize_id/1)
-      |> Enum.reject(&(&1 == ""))
+    with {:ok, endpoint_groups, graph_after_endpoints} <-
+           parse_edge_endpoints(path_part, graph, scope) do
+      case endpoint_groups do
+        [_single] ->
+          {:error, "Invalid edge declaration: #{statement}"}
 
-    if length(ids) < 2 do
-      {:error, "Invalid edge declaration: #{statement}"}
+        _ ->
+          base_attrs = Map.merge(scope.edge_defaults, parse_attribute_blocks(attrs_part))
+          next_graph = connect_endpoint_groups(endpoint_groups, graph_after_endpoints, base_attrs)
+          {:ok, next_graph, scope}
+      end
     else
-      attrs = Map.merge(scope.edge_defaults, parse_attribute_blocks(attrs_part))
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
 
-      next_graph =
-        ids
-        |> Enum.chunk_every(2, 1, :discard)
-        |> Enum.reduce(graph, fn [from, to], acc ->
-          with_from = ensure_node(acc, from)
-          with_nodes = ensure_node(with_from, to)
-          edge = Edge.new(from, to, attrs)
-          %{with_nodes | edges: with_nodes.edges ++ [edge]}
-        end)
+  defp append_edge(graph, from, to, attrs) do
+    edge = Edge.new(from, to, attrs)
+    %{graph | edges: graph.edges ++ [edge]}
+  end
 
-      {:ok, next_graph, scope}
+  defp maybe_put_port_attr(attrs, _key, nil), do: attrs
+  defp maybe_put_port_attr(attrs, key, port), do: Map.put(attrs, key, port)
+
+  defp connect_endpoint_groups(endpoint_groups, graph, base_attrs) do
+    endpoint_groups
+    |> Enum.chunk_every(2, 1, :discard)
+    |> Enum.reduce(graph, fn [from_group, to_group], acc ->
+      connect_endpoint_group_pair(from_group, to_group, acc, base_attrs)
+    end)
+  end
+
+  defp connect_endpoint_group_pair(from_group, to_group, graph, base_attrs) do
+    Enum.reduce(from_group, graph, fn from, group_acc ->
+      Enum.reduce(to_group, group_acc, fn to, edge_acc ->
+        attrs =
+          base_attrs
+          |> maybe_put_port_attr("tailport", from.port)
+          |> maybe_put_port_attr("headport", to.port)
+
+        edge_acc
+        |> ensure_node(from.id)
+        |> ensure_node(to.id)
+        |> append_edge(from.id, to.id, attrs)
+      end)
+    end)
+  end
+
+  defp parse_inline_subgraph(statement, graph, scope) do
+    with {:ok, body, rest} <- take_subgraph(String.trim(statement)),
+         "" <- String.trim(rest) do
+      subgraph_scope = %{
+        node_defaults: scope.node_defaults,
+        edge_defaults: scope.edge_defaults,
+        classes: scope.classes,
+        graph_attrs: %{}
+      }
+
+      parse_block(body, graph, subgraph_scope, top_level?: false)
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, "Invalid subgraph declaration."}
+    end
+  end
+
+  defp parse_edge_endpoints(path_part, graph, scope) do
+    path_part
+    |> split_edge_path()
+    |> Enum.reduce_while({:ok, [], graph}, fn segment, {:ok, endpoint_groups, acc_graph} ->
+      case parse_edge_endpoint(segment, acc_graph, scope) do
+        {:ok, parsed_group, next_graph} ->
+          {:cont, {:ok, endpoint_groups ++ [parsed_group], next_graph}}
+
+        {:error, reason} ->
+          {:halt, {:error, reason}}
+      end
+    end)
+  end
+
+  defp parse_edge_endpoint(segment, graph, scope) do
+    trimmed = String.trim(segment)
+
+    cond do
+      trimmed == "" ->
+        {:error, "Invalid edge declaration: #{segment}"}
+
+      subgraph_statement?(trimmed) ->
+        parse_subgraph_endpoint(trimmed, graph, scope)
+
+      true ->
+        parse_node_endpoint(trimmed, graph)
     end
   end
 
@@ -257,7 +331,7 @@ defmodule AttractorEx.Parser do
   end
 
   defp split_attrs(statement) do
-    do_split_attrs(statement, "", nil)
+    do_split_attrs(statement, "", scanner_state())
   end
 
   defp parse_attribute_blocks(text) when is_binary(text) do
@@ -292,74 +366,53 @@ defmodule AttractorEx.Parser do
 
   defp do_parse_attribute_blocks(_text, acc), do: acc
 
-  defp take_attribute_block("[" <> rest), do: do_take_attribute_block(rest, "", nil, 1)
+  defp take_attribute_block("[" <> rest),
+    do: do_take_attribute_block(rest, "", scanner_state(bracket_depth: 1))
+
   defp take_attribute_block(_text), do: :error
 
-  defp do_take_attribute_block(<<>>, _current, _quote, _depth), do: :error
+  defp do_take_attribute_block(<<>>, _current, _state), do: :error
 
-  defp do_take_attribute_block(<<char, rest::binary>>, current, quote, depth) do
+  defp do_take_attribute_block(<<char, rest::binary>>, current, state) do
+    next_state = advance_scanner_state(state, char, current)
+
     cond do
-      char in [?", ?'] and is_nil(quote) ->
-        do_take_attribute_block(rest, current <> <<char>>, char, depth)
+      scanner_opening_bracket?(state, char) ->
+        do_take_attribute_block(rest, current <> <<char>>, next_state)
 
-      char == quote and not escaped_quote?(current) ->
-        do_take_attribute_block(rest, current <> <<char>>, nil, depth)
-
-      is_nil(quote) and char == ?[ ->
-        do_take_attribute_block(rest, current <> <<char>>, quote, depth + 1)
-
-      is_nil(quote) and char == ?] and depth == 1 ->
+      scanner_closing_bracket?(state, char) and state.bracket_depth == 1 ->
         {:ok, current, rest}
 
-      is_nil(quote) and char == ?] ->
-        do_take_attribute_block(rest, current <> <<char>>, quote, depth - 1)
-
       true ->
-        do_take_attribute_block(rest, current <> <<char>>, quote, depth)
+        do_take_attribute_block(rest, current <> <<char>>, next_state)
     end
   end
 
   defp split_attr_pairs(text) do
-    {parts, current, _in_quotes, _bracket_depth} =
+    {parts, current, _state} =
       text
       |> String.graphemes()
-      |> Enum.reduce({[], "", nil, 0}, &consume_attr_pair_char/2)
+      |> Enum.reduce({[], "", scanner_state()}, &consume_attr_pair_char/2)
 
     [current | parts]
     |> Enum.reverse()
     |> Enum.reject(&(String.trim(&1) == ""))
   end
 
-  defp consume_attr_pair_char(char, {parts, current, quote, bracket_depth}) do
-    cond do
-      opens_quote?(char, quote, current) ->
-        {parts, current <> char, char, bracket_depth}
+  defp consume_attr_pair_char(char, {parts, current, state}) do
+    next_state = advance_scanner_state(state, char, current)
 
-      closes_quote?(char, quote, current) ->
-        {parts, current <> char, nil, bracket_depth}
-
-      char == "[" and is_nil(quote) ->
-        {parts, current <> char, quote, bracket_depth + 1}
-
-      char == "]" and is_nil(quote) and bracket_depth > 0 ->
-        {parts, current <> char, quote, bracket_depth - 1}
-
-      attr_pair_separator?(char, quote, bracket_depth) ->
-        {[current | parts], "", quote, bracket_depth}
-
-      true ->
-        {parts, current <> char, quote, bracket_depth}
+    if attr_pair_separator?(char, state) do
+      {[current | parts], "", state}
+    else
+      {parts, current <> char, next_state}
     end
   end
 
-  defp opens_quote?(char, quote, current),
-    do: char in ["\"", "'"] and is_nil(quote) and not escaped_quote?(current)
-
-  defp closes_quote?(char, quote, current),
-    do: char == quote and not escaped_quote?(current)
-
-  defp attr_pair_separator?(char, quote, bracket_depth),
-    do: is_nil(quote) and bracket_depth == 0 and char in [",", ";", "\n"]
+  defp attr_pair_separator?(char, state),
+    do:
+      scanner_plain?(state) and state.bracket_depth == 0 and state.brace_depth == 0 and
+        char_code(char) in [?,, ?;, ?\n]
 
   defp parse_value(value) do
     normalized =
@@ -411,23 +464,18 @@ defmodule AttractorEx.Parser do
   defp normalize_id(id), do: normalize_identifier(id)
 
   defp split_edge_path(text) do
-    {parts, current, _quote} =
+    {parts, current, _state} =
       text
       |> String.graphemes()
-      |> Enum.reduce({[], "", nil}, fn char, {parts, current, quote} ->
+      |> Enum.reduce({[], "", scanner_state()}, fn char, {parts, current, state} ->
         cond do
-          char in ["\"", "'"] and is_nil(quote) and not escaped_quote?(current) ->
-            {parts, current <> char, char}
-
-          char == quote and not escaped_quote?(current) ->
-            {parts, current <> char, nil}
-
-          char == ">" and is_nil(quote) and String.ends_with?(current, "-") ->
+          char_code(char) == ?> and scanner_plain?(state) and String.ends_with?(current, "-") ->
             segment = String.slice(current, 0, max(String.length(current) - 1, 0))
-            {parts ++ [segment], "", quote}
+            {parts ++ [segment], "", state}
 
           true ->
-            {parts, current <> char, quote}
+            next_state = advance_scanner_state(state, char, current)
+            {parts, current <> char, next_state}
         end
       end)
 
@@ -435,50 +483,44 @@ defmodule AttractorEx.Parser do
   end
 
   defp strip_comments(dot) do
-    do_strip_comments(dot, [], nil, false, :normal)
+    do_strip_comments(dot, [], scanner_state(), :normal)
     |> IO.iodata_to_binary()
   end
 
-  defp do_strip_comments(<<>>, acc, _quote, _escaped, :normal), do: Enum.reverse(acc)
-  defp do_strip_comments(<<>>, acc, _quote, _escaped, :line_comment), do: Enum.reverse(acc)
-  defp do_strip_comments(<<>>, acc, _quote, _escaped, :block_comment), do: Enum.reverse(acc)
+  defp do_strip_comments(<<>>, acc, _state, :normal), do: Enum.reverse(acc)
+  defp do_strip_comments(<<>>, acc, _state, :line_comment), do: Enum.reverse(acc)
+  defp do_strip_comments(<<>>, acc, _state, :block_comment), do: Enum.reverse(acc)
 
-  defp do_strip_comments(<<char, rest::binary>>, acc, quote, escaped, :normal) do
+  defp do_strip_comments(<<char, rest::binary>>, acc, state, :normal) do
     cond do
-      quote == nil and char == ?/ and match?(<<?/, _::binary>>, rest) ->
+      scanner_plain?(state) and char == ?/ and match?(<<?/, _::binary>>, rest) ->
         <<_slash, next::binary>> = rest
-        do_strip_comments(next, acc, nil, false, :line_comment)
+        do_strip_comments(next, acc, state, :line_comment)
 
-      quote == nil and char == ?/ and match?(<<?*, _::binary>>, rest) ->
+      scanner_plain?(state) and char == ?/ and match?(<<?*, _::binary>>, rest) ->
         <<_star, next::binary>> = rest
-        do_strip_comments(next, acc, nil, false, :block_comment)
-
-      char in [?", ?'] and quote == nil ->
-        do_strip_comments(rest, [<<char>> | acc], char, false, :normal)
-
-      char == quote and not escaped ->
-        do_strip_comments(rest, [<<char>> | acc], nil, false, :normal)
+        do_strip_comments(next, acc, state, :block_comment)
 
       true ->
-        next_escaped = quote != nil and char == ?\\ and not escaped
-        do_strip_comments(rest, [<<char>> | acc], quote, next_escaped, :normal)
+        next_state = advance_scanner_state(state, char, "")
+        do_strip_comments(rest, [<<char>> | acc], next_state, :normal)
     end
   end
 
-  defp do_strip_comments(<<char, rest::binary>>, acc, quote, _escaped, :line_comment) do
+  defp do_strip_comments(<<char, rest::binary>>, acc, state, :line_comment) do
     if char == ?\n do
-      do_strip_comments(rest, [<<"\n">> | acc], quote, false, :normal)
+      do_strip_comments(rest, [<<"\n">> | acc], state, :normal)
     else
-      do_strip_comments(rest, acc, quote, false, :line_comment)
+      do_strip_comments(rest, acc, state, :line_comment)
     end
   end
 
-  defp do_strip_comments(<<"*/", rest::binary>>, acc, quote, _escaped, :block_comment) do
-    do_strip_comments(rest, acc, quote, false, :normal)
+  defp do_strip_comments(<<"*/", rest::binary>>, acc, state, :block_comment) do
+    do_strip_comments(rest, acc, state, :normal)
   end
 
-  defp do_strip_comments(<<_char, rest::binary>>, acc, quote, _escaped, :block_comment) do
-    do_strip_comments(rest, acc, quote, false, :block_comment)
+  defp do_strip_comments(<<_char, rest::binary>>, acc, state, :block_comment) do
+    do_strip_comments(rest, acc, state, :block_comment)
   end
 
   defp do_split_items(text, acc) do
@@ -489,52 +531,46 @@ defmodule AttractorEx.Parser do
         {:ok, Enum.reverse(acc)}
 
       String.starts_with?(trimmed, "subgraph") ->
-        with {:ok, body, rest} <- take_subgraph(trimmed),
-             {:ok, next_rest} <- consume_statement_separator(rest) do
-          do_split_items(next_rest, [{:subgraph, body} | acc])
+        with {:ok, body, rest} <- take_subgraph(trimmed) do
+          if String.starts_with?(String.trim_leading(rest), "->") do
+            split_statement_item(trimmed, acc)
+          else
+            with {:ok, next_rest} <- consume_statement_separator(rest) do
+              do_split_items(next_rest, [{:subgraph, body} | acc])
+            end
+          end
         end
 
       true ->
-        with {:ok, statement, rest} <- take_statement(trimmed),
-             {:ok, next_rest} <- consume_statement_separator(rest) do
-          case String.trim(statement) do
-            "" -> do_split_items(next_rest, acc)
-            value -> do_split_items(next_rest, [{:statement, value} | acc])
-          end
-        end
+        split_statement_item(trimmed, acc)
+    end
+  end
+
+  defp split_statement_item(text, acc) do
+    with {:ok, statement, rest} <- take_statement(text),
+         {:ok, next_rest} <- consume_statement_separator(rest) do
+      case String.trim(statement) do
+        "" -> do_split_items(next_rest, acc)
+        value -> do_split_items(next_rest, [{:statement, value} | acc])
+      end
     end
   end
 
   defp take_statement(text) do
-    do_take_statement(text, "", nil, false, 0)
+    do_take_statement(text, "", scanner_state())
   end
 
-  defp do_take_statement(<<>>, current, _quote, _escaped, _bracket_depth),
+  defp do_take_statement(<<>>, current, _state),
     do: {:ok, current, ""}
 
-  defp do_take_statement(<<char, rest::binary>>, current, quote, escaped, bracket_depth) do
+  defp do_take_statement(<<char, rest::binary>>, current, state) do
     cond do
-      char in [?", ?'] and is_nil(quote) ->
-        do_take_statement(rest, current <> <<char>>, char, false, bracket_depth)
-
-      char == quote and not escaped ->
-        do_take_statement(rest, current <> <<char>>, nil, false, bracket_depth)
-
-      quote != nil ->
-        next_escaped = char == ?\\ and not escaped
-        do_take_statement(rest, current <> <<char>>, quote, next_escaped, bracket_depth)
-
-      char == ?[ ->
-        do_take_statement(rest, current <> <<char>>, quote, false, bracket_depth + 1)
-
-      char == ?] and bracket_depth > 0 ->
-        do_take_statement(rest, current <> <<char>>, quote, false, bracket_depth - 1)
-
-      bracket_depth == 0 and char in [?\n, ?;] ->
+      statement_terminator?(char, state) ->
         {:ok, current, rest}
 
       true ->
-        do_take_statement(rest, current <> <<char>>, quote, false, bracket_depth)
+        next_state = advance_scanner_state(state, char, current)
+        do_take_statement(rest, current <> <<char>>, next_state)
     end
   end
 
@@ -543,60 +579,47 @@ defmodule AttractorEx.Parser do
          true <-
            String.trim(body_start) =~
              ~r/^subgraph(\s+(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[A-Za-z_][A-Za-z0-9_\-]*))?$/ do
-      take_balanced_block(rest, "", nil, 1)
+      take_balanced_block(rest, "", scanner_state(), 1)
     else
       false -> {:error, "Invalid subgraph declaration."}
       {:error, reason} -> {:error, reason}
     end
   end
 
-  defp take_until_open_brace(text), do: do_take_until_open_brace(text, "", nil, false)
+  defp take_until_open_brace(text), do: do_take_until_open_brace(text, "", scanner_state())
 
-  defp do_take_until_open_brace(<<>>, _current, _quote, _escaped),
+  defp do_take_until_open_brace(<<>>, _current, _state),
     do: {:error, "Invalid subgraph declaration."}
 
-  defp do_take_until_open_brace(<<char, rest::binary>>, current, quote, escaped) do
+  defp do_take_until_open_brace(<<char, rest::binary>>, current, state) do
     cond do
-      char in [?", ?'] and is_nil(quote) ->
-        do_take_until_open_brace(rest, current <> <<char>>, char, false)
-
-      char == quote and not escaped ->
-        do_take_until_open_brace(rest, current <> <<char>>, nil, false)
-
-      quote != nil ->
-        next_escaped = char == ?\\ and not escaped
-        do_take_until_open_brace(rest, current <> <<char>>, quote, next_escaped)
-
-      char == ?{ ->
+      char == ?{ and scanner_plain?(state) ->
         {:ok, current, rest}
 
       true ->
-        do_take_until_open_brace(rest, current <> <<char>>, quote, false)
+        next_state = advance_scanner_state(state, char, current)
+        do_take_until_open_brace(rest, current <> <<char>>, next_state)
     end
   end
 
   defp take_balanced_block(text, current, _quote, 0), do: {:ok, current, text}
   defp take_balanced_block(<<>>, _current, _quote, _depth), do: {:error, "Unterminated subgraph."}
 
-  defp take_balanced_block(<<char, rest::binary>>, current, quote, depth) do
+  defp take_balanced_block(<<char, rest::binary>>, current, state, depth) do
+    next_state = advance_scanner_state(state, char, current)
+
     cond do
-      char in [?", ?'] and is_nil(quote) ->
-        take_balanced_block(rest, current <> <<char>>, char, depth)
+      char == ?{ and scanner_plain?(state) ->
+        take_balanced_block(rest, current <> <<char>>, next_state, depth + 1)
 
-      char == quote and not escaped_quote?(current) ->
-        take_balanced_block(rest, current <> <<char>>, nil, depth)
-
-      is_nil(quote) and char == ?{ ->
-        take_balanced_block(rest, current <> <<char>>, quote, depth + 1)
-
-      is_nil(quote) and char == ?} and depth == 1 ->
+      char == ?} and scanner_plain?(state) and depth == 1 ->
         {:ok, current, rest}
 
-      is_nil(quote) and char == ?} ->
-        take_balanced_block(rest, current <> <<char>>, quote, depth - 1)
+      char == ?} and scanner_plain?(state) ->
+        take_balanced_block(rest, current <> <<char>>, next_state, depth - 1)
 
       true ->
-        take_balanced_block(rest, current <> <<char>>, quote, depth)
+        take_balanced_block(rest, current <> <<char>>, next_state, depth)
     end
   end
 
@@ -670,21 +693,16 @@ defmodule AttractorEx.Parser do
     |> Enum.reject(&(&1 == ""))
   end
 
-  defp do_split_attrs(<<>>, current, _quote), do: {String.trim(current), "[]"}
+  defp do_split_attrs(<<>>, current, _state), do: {String.trim(current), "[]"}
 
-  defp do_split_attrs(<<char, rest::binary>>, current, quote) do
+  defp do_split_attrs(<<char, rest::binary>>, current, state) do
     cond do
-      char in [?", ?'] and is_nil(quote) and not escaped_quote?(current) ->
-        do_split_attrs(rest, current <> <<char>>, char)
-
-      char == quote and not escaped_quote?(current) ->
-        do_split_attrs(rest, current <> <<char>>, nil)
-
-      char == ?[ and is_nil(quote) ->
+      scanner_opening_bracket?(state, char) and state.brace_depth == 0 ->
         {String.trim(current), "[" <> rest}
 
       true ->
-        do_split_attrs(rest, current <> <<char>>, quote)
+        next_state = advance_scanner_state(state, char, current)
+        do_split_attrs(rest, current <> <<char>>, next_state)
     end
   end
 
@@ -704,6 +722,9 @@ defmodule AttractorEx.Parser do
         trimmed
         |> unquote_and_unescape()
         |> String.trim()
+
+      html_identifier?(trimmed) ->
+        trimmed
 
       true ->
         ""
@@ -725,8 +746,174 @@ defmodule AttractorEx.Parser do
         |> unquote_and_unescape()
         |> String.trim()
 
+      html_identifier?(trimmed) ->
+        trimmed
+
       true ->
         ""
     end
+  end
+
+  defp parse_subgraph_endpoint(segment, graph, scope) do
+    with {:ok, body, rest} <- take_subgraph(segment),
+         "" <- String.trim(rest) do
+      subgraph_scope = %{
+        node_defaults: scope.node_defaults,
+        edge_defaults: scope.edge_defaults,
+        classes: scope.classes,
+        graph_attrs: %{}
+      }
+
+      with {:ok, next_graph, _scope} <-
+             parse_block(body, graph, subgraph_scope, top_level?: false),
+           {:ok, endpoint_graph, _scope} <-
+             parse_block(body, %Graph{}, subgraph_scope, top_level?: false) do
+        endpoints =
+          endpoint_graph.nodes
+          |> Map.keys()
+          |> Enum.sort()
+          |> Enum.map(&%{id: &1, port: nil})
+
+        {:ok, endpoints, next_graph}
+      end
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, "Invalid subgraph declaration."}
+    end
+  end
+
+  defp parse_node_endpoint(segment, graph) do
+    case split_port_parts(segment) do
+      [] ->
+        {:error, "Invalid edge declaration: #{segment}"}
+
+      [base | suffixes] ->
+        id = normalize_id(base)
+
+        if id == "" do
+          {:error, "Invalid edge declaration: #{segment}"}
+        else
+          {:ok, [%{id: id, port: normalize_port_suffix(suffixes)}], ensure_node(graph, id)}
+        end
+    end
+  end
+
+  defp split_port_parts(text) do
+    {parts, current, _state} =
+      text
+      |> String.graphemes()
+      |> Enum.reduce({[], "", scanner_state()}, fn char, {parts, current, state} ->
+        cond do
+          char_code(char) == ?: and scanner_plain?(state) ->
+            {parts ++ [current], "", state}
+
+          true ->
+            next_state = advance_scanner_state(state, char, current)
+            {parts, current <> char, next_state}
+        end
+      end)
+
+    (parts ++ [current])
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+  end
+
+  defp normalize_port_suffix([]), do: nil
+
+  defp normalize_port_suffix([single]) when single in @compass_points,
+    do: single
+
+  defp normalize_port_suffix(parts), do: Enum.join(parts, ":")
+
+  defp scanner_state(overrides \\ []) do
+    %{quote: nil, escaped: false, bracket_depth: 0, brace_depth: 0, html_depth: 0}
+    |> Map.merge(Map.new(overrides))
+  end
+
+  defp scanner_plain?(state) do
+    is_nil(state.quote) and state.html_depth == 0
+  end
+
+  defp scanner_opening_bracket?(state, char), do: scanner_plain?(state) and char_code(char) == ?[
+  defp scanner_closing_bracket?(state, char), do: scanner_plain?(state) and char_code(char) == ?]
+
+  defp statement_terminator?(char, state) do
+    scanner_plain?(state) and state.bracket_depth == 0 and state.brace_depth == 0 and
+      char_code(char) in [?\n, ?;]
+  end
+
+  defp advance_scanner_state(state, char, current) do
+    code = char_code(char)
+
+    cond do
+      opening_quote?(state, code, current) ->
+        %{state | quote: code, escaped: false}
+
+      closing_quote?(state, code) ->
+        %{state | quote: nil, escaped: false}
+
+      in_quote?(state) ->
+        %{state | escaped: escaping_char?(code, state)}
+
+      true ->
+        advance_plain_scanner_state(state, code)
+    end
+  end
+
+  defp edge_statement?(statement) do
+    statement
+    |> split_edge_path()
+    |> length()
+    |> Kernel.>(1)
+  end
+
+  defp char_code(char) when is_integer(char), do: char
+  defp char_code(char) when is_binary(char), do: :binary.first(char)
+
+  defp opening_quote?(state, code, current) do
+    code in [?", ?'] and not in_quote?(state) and state.html_depth == 0 and
+      not escaped_quote?(current)
+  end
+
+  defp closing_quote?(state, code), do: code == state.quote and not state.escaped
+  defp in_quote?(state), do: not is_nil(state.quote)
+  defp escaping_char?(code, state), do: code == ?\\ and not state.escaped
+
+  defp advance_plain_scanner_state(state, code) do
+    cond do
+      code == ?< -> %{state | html_depth: state.html_depth + 1}
+      code == ?> and state.html_depth > 0 -> %{state | html_depth: state.html_depth - 1}
+      code == ?[ -> %{state | bracket_depth: state.bracket_depth + 1}
+      code == ?] and state.bracket_depth > 0 -> %{state | bracket_depth: state.bracket_depth - 1}
+      code == ?{ -> %{state | brace_depth: state.brace_depth + 1}
+      code == ?} and state.brace_depth > 0 -> %{state | brace_depth: state.brace_depth - 1}
+      true -> %{state | escaped: false}
+    end
+  end
+
+  defp subgraph_statement?(statement) do
+    String.trim_leading(statement)
+    |> String.starts_with?("subgraph")
+  end
+
+  defp html_identifier?(trimmed) do
+    String.starts_with?(trimmed, "<") and String.ends_with?(trimmed, ">") and
+      balanced_html?(trimmed)
+  end
+
+  defp balanced_html?(text) do
+    final_depth =
+      text
+      |> String.graphemes()
+      |> Enum.reduce_while(0, fn char, depth ->
+        cond do
+          char == "<" -> {:cont, depth + 1}
+          char == ">" and depth > 0 -> {:cont, depth - 1}
+          char == ">" -> {:halt, :error}
+          true -> {:cont, depth}
+        end
+      end)
+
+    final_depth == 0
   end
 end

@@ -33,7 +33,7 @@ Legend: `implemented`, `partial`, `not implemented`.
 
 | Upstream section | Status | Notes |
 |---|---|---|
-| `2. DOT DSL Schema` | `partial` | Supports directed graphs, attrs, chained edges, order-sensitive node/edge defaults, `strict digraph`, compact attr statements like `graph[...]` / `node[...]` / `edge[...]`, multi-line attr blocks including line-separated declarations inside `[...]`, repeated attr blocks like `[a=1][b=2]`, comma- and semicolon-separated attr declarations, class attr, shape mapping, bare and quoted graph/node identifiers (including bare graph ids with hyphens and numeric node ids), single/double-quoted attr values, value parsing including escaped newline/tab/carriage-return sequences in quoted strings, quote-aware statement splitting (so `;` and newlines inside quoted values are preserved), quote-aware comment stripping (so `//` and `/* */` inside quoted attr values are preserved), and recursive inline/nested `subgraph` flattening with scoped default inheritance plus subgraph-label-derived classes. Full grammar coverage is not fully implemented. |
+| `2. DOT DSL Schema` | `partial` | Supports directed graphs, attrs, chained edges, order-sensitive node/edge defaults, `strict digraph`, compact attr statements like `graph[...]` / `node[...]` / `edge[...]`, multi-line attr blocks including line-separated declarations inside `[...]`, repeated attr blocks like `[a=1][b=2]`, comma- and semicolon-separated attr declarations, class attr, shape mapping, bare / quoted / HTML-like graph and node identifiers (including bare graph ids with hyphens and numeric node ids), single/double-quoted attr values, value parsing including escaped newline/tab/carriage-return sequences in quoted strings, quote-aware statement splitting (so `;` and newlines inside quoted values are preserved), quote-aware comment stripping (so `//` and `/* */` inside quoted attr values are preserved), node-port edge endpoint parsing (`a:out -> b:in:nw`) with preserved `tailport` / `headport` attrs, and recursive inline/nested `subgraph` flattening with scoped default inheritance plus subgraph-label-derived classes, including subgraphs used directly as edge endpoints. Full Graphviz grammar parity is still not implemented. |
 | `3. Pipeline Execution Engine` | `implemented` | Start-to-exit loop, edge selection priority, goal gates, retries/backoff, failure routing, loop restart, checkpoint/manifest/status artifacts, and the spec default `default_max_retry=50` behavior are implemented. |
 | `4. Node Handlers` | `implemented` | Built-ins present: `start`, `exit`, `codergen`, `wait.human`, `conditional`, `parallel`, `parallel.fan_in`, `tool`, `stack.manager_loop`, default fallback. |
 | `5. State and Context` | `implemented` | Context merge, `graph.*` context mirroring, `current_node` tracking, and per-node artifacts/checkpoints are implemented. First-class resume API is available via `AttractorEx.resume/3` using a checkpoint struct/map or `checkpoint.json` path. |
@@ -47,7 +47,7 @@ Legend: `implemented`, `partial`, `not implemented`.
 
 ## Evidence Highlights
 
-1. DOT parsing + schema: `dot_schema_test.exs` and `parser_test.exs` (including `strict digraph`, compact attr statements, quoted graph/node identifier coverage, bare graph ids with hyphens, numeric node ids, repeated attr blocks, line-/comma-/semicolon-separated attr declarations inside attr blocks, and escaped newline/tab handling in quoted values).
+1. DOT parsing + schema: `dot_schema_test.exs` and `parser_test.exs` (including `strict digraph`, compact attr statements, quoted and HTML-like graph/node identifier coverage, bare graph ids with hyphens, numeric node ids, repeated attr blocks, line-/comma-/semicolon-separated attr declarations inside attr blocks, escaped newline/tab handling in quoted values, node port endpoint parsing, and subgraph edge endpoint expansion).
 2. Validation diagnostics: `validator_test.exs` (start/exit structure, reachability including graph-level retry paths, condition syntax metadata, retry-target/default-max-retry linting, goal-gate retry lint behavior, `wait.human` prompt/default/timeout/choice checks, codergen/parallel/manager attr linting, stylesheet diagnostics, custom rules, diagnostic `rule` metadata, and `validate_or_raise/2` escalation) plus public wrapper coverage in `attractor_ex_test.exs`.
 3. Engine routing/retry/goal-gate: `engine_test.exs`.
 4. Condition language semantics: `condition_test.exs`.
@@ -59,7 +59,7 @@ Legend: `implemented`, `partial`, `not implemented`.
 
 ## Known Gaps vs Spec
 
-1. Broader DOT grammar edge cases beyond the supported parsing subset (for example deeper Graphviz grammar parity for HTML-like IDs, port syntax, and subgraph edge endpoints beyond the implemented repeated attr blocks, escaped quoted strings, compact attr statements, and semicolon-separated attr declarations).
+1. Full Graphviz DOT grammar parity remains incomplete beyond the supported runtime-oriented subset (for example full HTML-string grammar fidelity, richer endpoint forms and attr_stmt variants, and unsupported constructs that do not map cleanly into AttractorEx execution semantics).
 ## Verification Commands
 
 ```bash
