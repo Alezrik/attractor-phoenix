@@ -15,7 +15,7 @@ defmodule AttractorEx.HTTPTest do
     :ok
   end
 
-  test "creates a pipeline and exposes status, context, checkpoint, graph, and SSE events" do
+  test "creates a pipeline and exposes status, context, checkpoint, graph formats, and SSE events" do
     dot = """
     digraph attractor {
       graph [goal="Ship feature"]
@@ -63,6 +63,8 @@ defmodule AttractorEx.HTTPTest do
     assert graph_conn.status == 200
     assert [content_type | _] = get_resp_header(graph_conn, "content-type")
     assert String.starts_with?(content_type, "image/svg+xml")
+    assert get_resp_header(graph_conn, "cache-control") == ["no-store"]
+    assert get_resp_header(graph_conn, "x-content-type-options") == ["nosniff"]
     assert graph_conn.resp_body =~ "Attractor Pipeline"
 
     dot_graph_conn =
@@ -71,6 +73,11 @@ defmodule AttractorEx.HTTPTest do
     assert dot_graph_conn.status == 200
     assert [dot_content_type | _] = get_resp_header(dot_graph_conn, "content-type")
     assert String.starts_with?(dot_content_type, "text/vnd.graphviz")
+
+    assert get_resp_header(dot_graph_conn, "content-disposition") == [
+             "inline; filename=\"pipeline.dot\""
+           ]
+
     assert dot_graph_conn.resp_body =~ "digraph attractor"
 
     json_graph_conn =
@@ -84,10 +91,50 @@ defmodule AttractorEx.HTTPTest do
     assert Map.has_key?(nodes, "plan")
     assert is_list(edges)
 
+    mermaid_graph_conn =
+      Router.call(conn(:get, "/pipelines/#{pipeline_id}/graph?format=mermaid"), @router_opts)
+
+    assert mermaid_graph_conn.status == 200
+    assert [mermaid_content_type | _] = get_resp_header(mermaid_graph_conn, "content-type")
+    assert String.starts_with?(mermaid_content_type, "text/plain")
+    assert mermaid_graph_conn.resp_body =~ "flowchart TD"
+    assert mermaid_graph_conn.resp_body =~ "start -->|"
+
+    text_graph_conn =
+      Router.call(conn(:get, "/pipelines/#{pipeline_id}/graph?format=text"), @router_opts)
+
+    assert text_graph_conn.status == 200
+    assert [text_content_type | _] = get_resp_header(text_graph_conn, "content-type")
+    assert String.starts_with?(text_content_type, "text/plain")
+    assert text_graph_conn.resp_body =~ "Graph: attractor"
+    assert text_graph_conn.resp_body =~ "Nodes:"
+    assert text_graph_conn.resp_body =~ "Edges:"
+
+    invalid_graph_conn =
+      Router.call(conn(:get, "/pipelines/#{pipeline_id}/graph?format=png"), @router_opts)
+
+    assert invalid_graph_conn.status == 400
+
+    assert %{"error" => "unsupported graph format", "supported_formats" => formats} =
+             Jason.decode!(invalid_graph_conn.resp_body)
+
+    assert "mermaid" in formats
+    assert "text" in formats
+
     events_conn = Router.call(conn(:get, "/pipelines/#{pipeline_id}/events"), @router_opts)
     assert events_conn.status == 200
     assert events_conn.resp_body =~ "event: PipelineStarted"
     assert events_conn.resp_body =~ "event: PipelineCompleted"
+  end
+
+  test "rejects pipeline creation requests without dot source" do
+    conn =
+      conn(:post, "/pipelines", Jason.encode!(%{"context" => %{"ticket" => "A-2"}}))
+      |> put_req_header("content-type", "application/json")
+      |> Router.call(@router_opts)
+
+    assert conn.status == 400
+    assert %{"error" => "pipeline dot source is required"} = Jason.decode!(conn.resp_body)
   end
 
   test "exposes pending questions and accepts answers for wait.human nodes" do
