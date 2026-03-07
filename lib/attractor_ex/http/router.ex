@@ -39,22 +39,11 @@ defmodule AttractorEx.HTTP.Router do
   end
 
   post "/pipelines" do
-    manager = manager!(conn)
-    payload = conn.body_params
-    dot = first_present_dot(payload["dot"], payload["dot_source"])
-    context = payload["context"] || %{}
-    opts = decode_pipeline_opts(payload["opts"] || %{})
+    create_pipeline(conn)
+  end
 
-    case present_string(dot) do
-      {:ok, value} ->
-        case Manager.create_pipeline(manager, value, context, opts) do
-          {:ok, id} -> json(conn, 202, %{"pipeline_id" => id})
-          {:error, reason} -> json(conn, 400, %{"error" => inspect(reason)})
-        end
-
-      _ ->
-        json(conn, 400, %{"error" => "pipeline dot source is required"})
-    end
+  post "/run" do
+    create_pipeline(conn)
   end
 
   get "/pipelines" do
@@ -67,23 +56,13 @@ defmodule AttractorEx.HTTP.Router do
   end
 
   get "/pipelines/:id" do
-    manager = manager!(conn)
+    show_pipeline_status(conn, id)
+  end
 
-    case Manager.get_pipeline(manager, id) do
-      {:ok, pipeline} ->
-        json(conn, 200, %{
-          "pipeline_id" => pipeline.id,
-          "status" => pipeline.status,
-          "event_count" => length(pipeline.events),
-          "pending_questions" => map_size(pipeline.questions),
-          "logs_root" => pipeline.logs_root,
-          "inserted_at" => pipeline.inserted_at,
-          "updated_at" => pipeline.updated_at,
-          "has_checkpoint" => is_map(pipeline.checkpoint)
-        })
-
-      {:error, :not_found} ->
-        json(conn, 404, %{"error" => "pipeline not found"})
+  get "/status" do
+    case status_pipeline_id(conn.params) do
+      {:ok, id} -> show_pipeline_status(conn, id)
+      :error -> json(conn, 400, %{"error" => "pipeline_id is required"})
     end
   end
 
@@ -161,12 +140,16 @@ defmodule AttractorEx.HTTP.Router do
   end
 
   post "/pipelines/:id/questions/:qid/answer" do
-    manager = manager!(conn)
-    answer = conn.body_params["answer"] || conn.body_params["value"]
+    submit_answer(conn, id, qid)
+  end
 
-    case Manager.submit_answer(manager, id, qid, answer) do
-      :ok -> json(conn, 202, %{"pipeline_id" => id, "question_id" => qid, "accepted" => true})
-      {:error, :not_found} -> json(conn, 404, %{"error" => "question not found"})
+  post "/answer" do
+    with {:ok, id} <- answer_pipeline_id(conn.body_params),
+         {:ok, qid} <- answer_question_id(conn.body_params) do
+      submit_answer(conn, id, qid)
+    else
+      :error ->
+        json(conn, 400, %{"error" => "pipeline_id and question_id are required"})
     end
   end
 
@@ -230,6 +213,81 @@ defmodule AttractorEx.HTTP.Router do
       :error -> fallback
     end
   end
+
+  defp create_pipeline(conn) do
+    manager = manager!(conn)
+    payload = conn.body_params
+    dot = first_present_dot(payload["dot"], payload["dot_source"])
+    context = payload["context"] || %{}
+    opts = decode_pipeline_opts(payload["opts"] || %{})
+
+    case present_string(dot) do
+      {:ok, value} ->
+        case Manager.create_pipeline(manager, value, context, opts) do
+          {:ok, id} -> json(conn, 202, %{"pipeline_id" => id})
+          {:error, reason} -> json(conn, 400, %{"error" => inspect(reason)})
+        end
+
+      _ ->
+        json(conn, 400, %{"error" => "pipeline dot source is required"})
+    end
+  end
+
+  defp show_pipeline_status(conn, id) do
+    manager = manager!(conn)
+
+    case Manager.get_pipeline(manager, id) do
+      {:ok, pipeline} ->
+        json(conn, 200, %{
+          "pipeline_id" => pipeline.id,
+          "status" => pipeline.status,
+          "event_count" => length(pipeline.events),
+          "pending_questions" => map_size(pipeline.questions),
+          "logs_root" => pipeline.logs_root,
+          "inserted_at" => pipeline.inserted_at,
+          "updated_at" => pipeline.updated_at,
+          "has_checkpoint" => is_map(pipeline.checkpoint)
+        })
+
+      {:error, :not_found} ->
+        json(conn, 404, %{"error" => "pipeline not found"})
+    end
+  end
+
+  defp submit_answer(conn, id, qid) do
+    manager = manager!(conn)
+    answer = conn.body_params["answer"] || conn.body_params["value"]
+
+    case Manager.submit_answer(manager, id, qid, answer) do
+      :ok -> json(conn, 202, %{"pipeline_id" => id, "question_id" => qid, "accepted" => true})
+      {:error, :not_found} -> json(conn, 404, %{"error" => "question not found"})
+    end
+  end
+
+  defp status_pipeline_id(params) do
+    params["pipeline_id"]
+    |> first_present_param(params["id"])
+  end
+
+  defp answer_pipeline_id(params) do
+    params["pipeline_id"]
+    |> first_present_param(params["id"])
+  end
+
+  defp answer_question_id(params) do
+    params["question_id"]
+    |> first_present_param(params["qid"])
+  end
+
+  defp first_present_param(primary, fallback) do
+    case present_string(primary) do
+      {:ok, value} -> {:ok, String.trim(value)}
+      :error -> present_string(fallback) |> normalize_present_param()
+    end
+  end
+
+  defp normalize_present_param({:ok, value}), do: {:ok, String.trim(value)}
+  defp normalize_present_param(:error), do: :error
 
   defp present_string(value) when is_binary(value) do
     trimmed = String.trim(value)
