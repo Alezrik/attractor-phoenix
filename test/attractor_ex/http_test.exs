@@ -222,6 +222,70 @@ defmodule AttractorEx.HTTPTest do
     assert %{"questions" => []} = Jason.decode!(final_questions_conn.resp_body)
   end
 
+  test "exposes inferred question metadata for wait.human HTTP questions" do
+    dot = """
+    digraph attractor {
+      start [shape=Mdiamond]
+      gate [
+        shape=hexagon,
+        prompt="Pick release actions",
+        human.timeout="1d",
+        human.multiple=true,
+        human.required=false,
+        human.input="checkbox"
+      ]
+      done [shape=Msquare]
+      retry [shape=box, prompt="Retry release"]
+      start -> gate
+      gate -> done [label="[A] Approve"]
+      gate -> retry [label="[R] Retry"]
+      retry -> done
+    }
+    """
+
+    conn =
+      conn(:post, "/pipelines", Jason.encode!(%{"dot" => dot}))
+      |> put_req_header("content-type", "application/json")
+      |> Router.call(@router_opts)
+
+    assert conn.status == 202
+    %{"pipeline_id" => pipeline_id} = Jason.decode!(conn.resp_body)
+
+    wait_for(fn ->
+      case Manager.pending_questions(AttractorEx.HTTP.Manager, pipeline_id) do
+        {:ok, [_question | _]} -> {:ok, :ready}
+        _ -> :retry
+      end
+    end)
+
+    questions_conn = Router.call(conn(:get, "/pipelines/#{pipeline_id}/questions"), @router_opts)
+    assert questions_conn.status == 200
+
+    assert %{
+             "questions" => [
+               %{
+                 "id" => "gate",
+                 "type" => "MULTIPLE_CHOICE",
+                 "multiple" => true,
+                 "required" => false,
+                 "timeout_seconds" => 86_400.0,
+                 "metadata" => %{
+                   "question_type" => "MULTIPLE_CHOICE",
+                   "timeout" => "1d",
+                   "multiple" => true,
+                   "required" => false,
+                   "input_mode" => "checkbox",
+                   "choice_count" => 2
+                 },
+                 "options" => [
+                   %{"key" => "A", "label" => "[A] Approve", "to" => "done"},
+                   %{"key" => "R", "label" => "[R] Retry", "to" => "retry"}
+                 ]
+               }
+             ]
+           } = Jason.decode!(questions_conn.resp_body)
+  end
+
   defp wait_for(fun, attempts \\ 100)
 
   defp wait_for(_fun, 0), do: flunk("condition was not met in time")
