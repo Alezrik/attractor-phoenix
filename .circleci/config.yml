@@ -62,9 +62,18 @@ jobs:
     steps:
       - checkout
       - setup_elixir
+      - restore_cache:
+          keys:
+            - v1-test-build-{{ arch }}-{{ checksum "mix.lock" }}-{{ checksum "mix.exs" }}
+            - v1-test-build-{{ arch }}-{{ checksum "mix.lock" }}
+            - v1-test-build-{{ arch }}-
       - run:
           name: Run tests
           command: mix test --warnings-as-errors
+      - save_cache:
+          key: v1-test-build-{{ arch }}-{{ checksum "mix.lock" }}-{{ checksum "mix.exs" }}
+          paths:
+            - _build/test
       - store_test_results:
           path: test-results
       - run:

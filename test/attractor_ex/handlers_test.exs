@@ -215,7 +215,7 @@ defmodule AttractorEx.HandlersTest do
       assert outcome.failure_reason =~ "no default"
     end
 
-    test "wait_for_human supports accelerator variants and fallback selection" do
+    test "wait_for_human supports accelerator variants and retries on unknown answers" do
       node = Node.new("gate", %{"type" => "wait.human"})
 
       graph = %Graph{
@@ -234,8 +234,8 @@ defmodule AttractorEx.HandlersTest do
           []
         )
 
-      assert outcome.status == :success
-      assert outcome.suggested_next_ids == ["approved"]
+      assert outcome.status == :retry
+      assert outcome.failure_reason =~ "did not match any choice"
     end
 
     test "wait_for_human supports legacy context.human.<node>.answer path" do
@@ -253,6 +253,46 @@ defmodule AttractorEx.HandlersTest do
 
       assert outcome.status == :success
       assert outcome.suggested_next_ids == ["ship_it"]
+    end
+
+    test "wait_for_human uses default choice when blank answer is provided" do
+      node = Node.new("gate", %{"type" => "wait.human", "human.default_choice" => "fixes"})
+
+      graph = %Graph{
+        edges: [
+          Edge.new("gate", "ship_it", %{"label" => "[A] Approve"}),
+          Edge.new("gate", "fixes", %{"label" => "[F] Fix"})
+        ]
+      }
+
+      outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{"human" => %{"answers" => %{"gate" => "   "}}},
+          graph,
+          unique_stage_dir("human_blank_default"),
+          []
+        )
+
+      assert outcome.status == :success
+      assert outcome.suggested_next_ids == ["fixes"]
+    end
+
+    test "wait_for_human retries on blank answer when default choice is blank" do
+      node = Node.new("gate", %{"type" => "wait.human", "human.default_choice" => "   "})
+      graph = %Graph{edges: [Edge.new("gate", "ship_it", %{"label" => "[S] Ship"})]}
+
+      outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{"human" => %{"answers" => %{"gate" => "   "}}},
+          graph,
+          unique_stage_dir("human_blank_invalid_default"),
+          []
+        )
+
+      assert outcome.status == :retry
+      assert outcome.failure_reason =~ "requires answer"
     end
 
     test "wait_for_human handles non-graph argument by failing on empty choices" do
