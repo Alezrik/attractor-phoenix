@@ -1145,6 +1145,23 @@ defmodule AttractorEx.ValidatorTest do
              )
     end
 
+    test "warns for invalid stylesheet selectors without escalating to syntax errors" do
+      dot = """
+      digraph attractor {
+        model_stylesheet="node[type=codergen { llm_provider: openai; }"
+        start [shape=Mdiamond]
+        done [shape=Msquare]
+        start -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(diagnostics, &(&1.code == :model_stylesheet_selector_invalid))
+      refute Enum.any?(diagnostics, &(&1.code == :stylesheet_syntax and &1.severity == :error))
+    end
+
     test "handles invalid and crashing custom rules gracefully" do
       dot = """
       digraph attractor {

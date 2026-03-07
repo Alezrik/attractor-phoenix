@@ -123,6 +123,20 @@ defmodule AttractorEx.ModelStylesheetTest do
       assert rule.attrs["tool_command"] == "echo /* not a comment */"
     end
 
+    test "accepts CSS stylesheets whose selectors are all invalid so lint can report them" do
+      css = """
+      node[type=codergen { llm_provider: openai; }
+      """
+
+      assert {:ok, rules} = ModelStylesheet.parse(css)
+      assert rules == []
+
+      assert Enum.any?(
+               ModelStylesheet.lint(css),
+               &(&1.code == :model_stylesheet_selector_invalid)
+             )
+    end
+
     test "rejects invalid stylesheet values" do
       assert {:error, _} = ModelStylesheet.parse(123)
       assert {:error, _} = ModelStylesheet.parse("not-json")

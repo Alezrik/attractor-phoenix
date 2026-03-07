@@ -150,7 +150,7 @@ defmodule AttractorEx.ModelStylesheet do
     stylesheet
     |> parse_css_rules([], 0)
     |> case do
-      {:ok, rules} when rules != [] -> {:ok, rules}
+      {:ok, rules} -> {:ok, rules}
       _ -> {:error, "model_stylesheet is not valid JSON or CSS stylesheet"}
     end
   end
