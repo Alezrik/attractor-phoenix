@@ -31,7 +31,9 @@ defmodule AttractorEx.Parser do
   end
 
   defp parse_root(dot) do
-    case Regex.run(~r/^\s*digraph(?:\s+(?<graph_id>.+?))?\s*\{(?<body>.*)\}\s*$/ms, dot, capture: :all_names) do
+    case Regex.run(~r/^\s*digraph(?:\s+(?<graph_id>.+?))?\s*\{(?<body>.*)\}\s*$/ms, dot,
+           capture: :all_names
+         ) do
       [graph_id, body] ->
         name =
           graph_id
