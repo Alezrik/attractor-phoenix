@@ -145,6 +145,23 @@ defmodule AttractorEx.HTTPTest do
     assert %{"error" => "pipeline dot source is required"} = Jason.decode!(conn.resp_body)
   end
 
+  test "rejects oversized JSON pipeline submissions with an explicit 413 response" do
+    oversized_dot = String.duplicate("a", 1_000_001)
+
+    conn =
+      conn(:post, "/pipelines", Jason.encode!(%{"dot" => oversized_dot}))
+      |> put_req_header("content-type", "application/json")
+      |> Router.call(@router_opts)
+
+    assert conn.status == 413
+
+    assert %{"error" => "request body too large", "max_bytes" => 1_000_000} =
+             Jason.decode!(conn.resp_body)
+
+    assert get_resp_header(conn, "cache-control") == ["no-store"]
+    assert get_resp_header(conn, "x-content-type-options") == ["nosniff"]
+  end
+
   test "exposes pending questions and accepts answers for wait.human nodes" do
     dot = """
     digraph attractor {

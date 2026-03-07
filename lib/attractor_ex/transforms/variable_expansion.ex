@@ -8,7 +8,8 @@ defmodule AttractorEx.Transforms.VariableExpansion do
 
     %Graph{
       graph
-      | nodes: expand_nodes(graph.nodes, substitutions),
+      | attrs: expand_attrs(graph.attrs, substitutions),
+        nodes: expand_nodes(graph.nodes, substitutions),
         edges: expand_edges(graph.edges, substitutions)
     }
   end

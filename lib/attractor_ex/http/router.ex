@@ -26,6 +26,15 @@ defmodule AttractorEx.HTTP.Router do
     conn
     |> Plug.Conn.put_private(:attractor_http_opts, opts)
     |> super(opts)
+  rescue
+    Plug.Parsers.RequestTooLargeError ->
+      json(conn, 413, %{
+        "error" => "request body too large",
+        "max_bytes" => @default_max_body_length
+      })
+
+    Plug.Parsers.ParseError ->
+      json(conn, 400, %{"error" => "invalid json body"})
   end
 
   post "/pipelines" do
@@ -86,6 +95,7 @@ defmodule AttractorEx.HTTP.Router do
       if events_stream?(conn) do
         conn =
           conn
+          |> put_common_headers()
           |> Plug.Conn.put_resp_content_type("text/event-stream")
           |> Plug.Conn.send_chunked(200)
 
