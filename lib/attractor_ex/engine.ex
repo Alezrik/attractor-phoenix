@@ -124,15 +124,21 @@ defmodule AttractorEx.Engine do
   end
 
   defp apply_graph_transform(transform, %Graph{} = graph) when is_atom(transform) do
-    if Code.ensure_loaded?(transform) and function_exported?(transform, :transform, 1) do
-      safe_graph_transform(fn value -> transform.transform(value) end, graph)
-    else
-      {:error, "Invalid graph transform: expected function/1 or module with transform/1"}
+    cond do
+      Code.ensure_loaded?(transform) and function_exported?(transform, :apply, 1) ->
+        safe_graph_transform(fn value -> transform.apply(value) end, graph)
+
+      Code.ensure_loaded?(transform) and function_exported?(transform, :transform, 1) ->
+        safe_graph_transform(fn value -> transform.transform(value) end, graph)
+
+      true ->
+        {:error,
+         "Invalid graph transform: expected function/1 or module with apply/1 or transform/1"}
     end
   end
 
   defp apply_graph_transform(_transform, _graph) do
-    {:error, "Invalid graph transform: expected function/1 or module with transform/1"}
+    {:error, "Invalid graph transform: expected function/1 or module with apply/1 or transform/1"}
   end
 
   defp safe_graph_transform(transform_fun, %Graph{} = graph) do
@@ -183,11 +189,22 @@ defmodule AttractorEx.Engine do
          %{diagnostics: [%{severity: :error, code: :start_node, message: "Start node missing"}]}}
 
       id ->
-        loop(graph, id, context, %{}, [], run_root, diagnostics, max_steps, opts)
+        loop(graph, id, context, %{}, [], run_root, diagnostics, max_steps, opts, nil)
     end
   end
 
-  defp loop(_graph, _node_id, context, outcomes, history, run_root, diagnostics, 0, opts) do
+  defp loop(
+         _graph,
+         _node_id,
+         context,
+         outcomes,
+         history,
+         run_root,
+         diagnostics,
+         0,
+         opts,
+         _incoming_edge
+       ) do
     final = %{
       run_id: context["run_id"],
       status: :fail,
@@ -203,8 +220,23 @@ defmodule AttractorEx.Engine do
     {:ok, final}
   end
 
-  defp loop(graph, node_id, context, outcomes, history, run_root, diagnostics, steps_left, opts) do
+  defp loop(
+         graph,
+         node_id,
+         context,
+         outcomes,
+         history,
+         run_root,
+         diagnostics,
+         steps_left,
+         opts,
+         incoming_edge
+       ) do
     node = Map.fetch!(graph.nodes, node_id)
+
+    runtime_node =
+      apply_runtime_transforms(node, graph, context, outcomes, history, incoming_edge)
+
     context = Map.put(context, "current_node", node.id)
     retry_policy = build_retry_policy(node, graph, opts)
     stage_index = length(history)
@@ -216,7 +248,9 @@ defmodule AttractorEx.Engine do
       context: context
     })
 
-    {outcome, stage_dir} = execute_with_retry(node, context, graph, run_root, retry_policy, opts)
+    {outcome, stage_dir} =
+      execute_with_retry(runtime_node, context, graph, run_root, retry_policy, opts)
+
     _ = write_json(Path.join(stage_dir, "status.json"), serialize_outcome(outcome))
 
     next_context =
@@ -250,7 +284,8 @@ defmodule AttractorEx.Engine do
         run_root,
         diagnostics,
         steps_left,
-        opts
+        opts,
+        incoming_edge
       )
     else
       handle_non_exit_node(
@@ -303,7 +338,8 @@ defmodule AttractorEx.Engine do
          run_root,
          diagnostics,
          steps_left,
-         opts
+         opts,
+         incoming_edge
        ) do
     case pick_retry_target(graph, outcomes) do
       nil ->
@@ -327,7 +363,8 @@ defmodule AttractorEx.Engine do
             run_root,
             diagnostics,
             steps_left - 1,
-            opts
+            opts,
+            incoming_edge
           )
         else
           terminal_result(
@@ -388,7 +425,8 @@ defmodule AttractorEx.Engine do
               run_root,
               diagnostics,
               steps_left - 1,
-              opts
+              opts,
+              nil
             )
         end
 
@@ -435,10 +473,161 @@ defmodule AttractorEx.Engine do
         run_root,
         diagnostics,
         steps_left - 1,
-        opts
+        opts,
+        edge
       )
     end
   end
+
+  defp apply_runtime_transforms(node, graph, context, outcomes, history, incoming_edge) do
+    if HandlerRegistry.handler_for(node) == AttractorEx.Handlers.Codergen do
+      maybe_apply_preamble_transform(node, graph, context, outcomes, history, incoming_edge)
+    else
+      node
+    end
+  end
+
+  defp maybe_apply_preamble_transform(node, graph, context, outcomes, history, incoming_edge) do
+    prompt = blank_to_nil(node.prompt) || blank_to_nil(node.attrs["label"])
+    fidelity = resolve_fidelity(node, graph, incoming_edge)
+
+    cond do
+      is_nil(prompt) ->
+        node
+
+      fidelity == "full" ->
+        node
+
+      true ->
+        preamble = build_preamble(graph, context, outcomes, history, fidelity)
+
+        if is_nil(preamble) do
+          node
+        else
+          merged_prompt = preamble <> "\n\n" <> prompt
+          %{node | prompt: merged_prompt, attrs: Map.put(node.attrs, "prompt", merged_prompt)}
+        end
+    end
+  end
+
+  defp resolve_fidelity(node, graph, incoming_edge) do
+    blank_to_nil(incoming_edge && incoming_edge.attrs["fidelity"]) ||
+      blank_to_nil(node.attrs["fidelity"]) ||
+      blank_to_nil(graph.attrs["default_fidelity"]) ||
+      "compact"
+  end
+
+  defp build_preamble(graph, context, outcomes, history, fidelity) do
+    if meaningful_carryover?(context, outcomes, history) do
+      sections =
+        [
+          "Context carryover (#{fidelity}):",
+          preamble_goal(graph),
+          preamble_run_id(context),
+          preamble_history(history, fidelity),
+          preamble_outcomes(outcomes, fidelity),
+          preamble_context(context, fidelity)
+        ]
+        |> Enum.reject(&is_nil/1)
+
+      if length(sections) <= 1, do: nil, else: Enum.join(sections, "\n")
+    else
+      nil
+    end
+  end
+
+  defp meaningful_carryover?(context, outcomes, history) do
+    non_system_context?(context) or
+      Enum.any?(history, &(&1.node_id != "start")) or
+      Enum.any?(outcomes, fn {node_id, _outcome} -> node_id != "start" end)
+  end
+
+  defp non_system_context?(context) do
+    context
+    |> Map.drop(["current_node", "graph", "outcome", "responses", "run_id"])
+    |> map_size()
+    |> Kernel.>(0)
+  end
+
+  defp preamble_goal(graph) do
+    case blank_to_nil(graph.attrs["goal"]) do
+      nil -> nil
+      goal -> "Goal: #{goal}"
+    end
+  end
+
+  defp preamble_run_id(context) do
+    case blank_to_nil(context["run_id"]) do
+      nil -> nil
+      run_id -> "Run ID: #{run_id}"
+    end
+  end
+
+  defp preamble_history(_history, "truncate"), do: nil
+
+  defp preamble_history(history, fidelity) do
+    entries =
+      history
+      |> Enum.take(-history_limit(fidelity))
+      |> Enum.map(fn %{node_id: node_id, status: status} ->
+        "- #{node_id} [status=#{status}]"
+      end)
+
+    if entries == [], do: nil, else: Enum.join(["Completed stages:" | entries], "\n")
+  end
+
+  defp preamble_outcomes(_outcomes, fidelity) when fidelity in ["truncate", "compact"], do: nil
+
+  defp preamble_outcomes(outcomes, fidelity) do
+    entries =
+      outcomes
+      |> Enum.sort_by(fn {node_id, _outcome} -> node_id end)
+      |> Enum.take(-outcome_limit(fidelity))
+      |> Enum.map(fn {node_id, outcome} ->
+        status = Map.get(outcome, :status) || Map.get(outcome, "status")
+        note = blank_to_nil(Map.get(outcome, :notes) || Map.get(outcome, "notes"))
+
+        if is_nil(note) do
+          "- #{node_id}: #{status}"
+        else
+          "- #{node_id}: #{status} (#{note})"
+        end
+      end)
+
+    if entries == [], do: nil, else: Enum.join(["Recent outcomes:" | entries], "\n")
+  end
+
+  defp preamble_context(context, fidelity) do
+    entries =
+      context
+      |> Map.drop(["current_node", "graph", "outcome", "responses", "run_id"])
+      |> Enum.sort_by(fn {key, _value} -> key end)
+      |> Enum.take(context_limit(fidelity))
+      |> Enum.map(fn {key, value} -> "- #{key}: #{format_context_value(value)}" end)
+
+    if entries == [], do: nil, else: Enum.join(["Context values:" | entries], "\n")
+  end
+
+  defp history_limit("compact"), do: 4
+  defp history_limit("summary:low"), do: 4
+  defp history_limit("summary:medium"), do: 8
+  defp history_limit("summary:high"), do: 12
+  defp history_limit(_fidelity), do: 4
+
+  defp outcome_limit("summary:low"), do: 3
+  defp outcome_limit("summary:medium"), do: 6
+  defp outcome_limit("summary:high"), do: 10
+  defp outcome_limit(_fidelity), do: 0
+
+  defp context_limit("truncate"), do: 0
+  defp context_limit("compact"), do: 4
+  defp context_limit("summary:low"), do: 4
+  defp context_limit("summary:medium"), do: 8
+  defp context_limit("summary:high"), do: 12
+  defp context_limit(_fidelity), do: 4
+
+  defp format_context_value(value) when is_binary(value), do: inspect(value)
+  defp format_context_value(value), do: inspect(value, printable_limit: 120)
 
   defp terminal_result(status, reason, context, outcomes, history, run_root, diagnostics, opts) do
     final = %{
@@ -792,6 +981,13 @@ defmodule AttractorEx.Engine do
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, _key, []), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
+
+  defp blank_to_nil(nil), do: nil
+
+  defp blank_to_nil(value) do
+    trimmed = value |> to_string() |> String.trim()
+    if trimmed == "", do: nil, else: trimmed
+  end
 
   defp write_json(path, value) do
     with {:ok, encoded} <- Jason.encode(value, pretty: true) do
