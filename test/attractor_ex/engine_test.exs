@@ -306,6 +306,58 @@ defmodule AttractorEx.EngineTest do
       assert result.status == :success
       assert Enum.count(result.history, &(&1.node_id == "task")) == 1
     end
+
+    test "resumes a run from checkpoint.json path" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        plan [shape=box, prompt="plan"]
+        implement [shape=box, prompt="implement"]
+        done [shape=Msquare]
+        start -> plan -> implement -> done
+      }
+      """
+
+      assert {:ok, interrupted} =
+               AttractorEx.run(dot, %{},
+                 logs_root: unique_logs_root("resume_path"),
+                 codergen_backend: AttractorExTest.EchoBackend,
+                 max_steps: 2
+               )
+
+      assert interrupted.status == :fail
+      checkpoint_path = Path.join(interrupted.logs_root, "checkpoint.json")
+      assert File.exists?(checkpoint_path)
+
+      assert {:ok, resumed} =
+               AttractorEx.resume(dot, checkpoint_path,
+                 codergen_backend: AttractorExTest.EchoBackend,
+                 max_steps: 10
+               )
+
+      assert resumed.status == :success
+      assert Enum.any?(resumed.history, &(&1.node_id == "implement"))
+      assert resumed.context["run_id"] == interrupted.context["run_id"]
+    end
+
+    test "returns error when checkpoint file path does not exist" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        done [shape=Msquare]
+        start -> done
+      }
+      """
+
+      missing =
+        Path.join(
+          System.tmp_dir!(),
+          "attractor_ex_missing_checkpoint_#{System.unique_integer([:positive])}.json"
+        )
+
+      assert {:error, %{error: message}} = AttractorEx.resume(dot, missing)
+      assert message =~ "Checkpoint file not found"
+    end
   end
 
   defp unique_logs_root(tag) do

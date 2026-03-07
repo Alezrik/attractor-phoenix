@@ -50,7 +50,7 @@ defmodule AttractorEx.LLM.Client do
         resolved_request = %{req | provider: provider_name}
 
         cond do
-          not function_exported?(adapter, :stream, 1) ->
+          not adapter_supports_stream?(adapter) ->
             {:error, {:stream_not_supported, provider_name}}
 
           true ->
@@ -62,6 +62,10 @@ defmodule AttractorEx.LLM.Client do
       end
     end)
     |> normalize_complete_result(request)
+  end
+
+  defp adapter_supports_stream?(adapter) do
+    Code.ensure_loaded?(adapter) and function_exported?(adapter, :stream, 1)
   end
 
   defp normalize_complete_result(

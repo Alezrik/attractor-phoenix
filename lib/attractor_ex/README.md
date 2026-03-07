@@ -24,6 +24,7 @@ Dependency boundary:
 
 ```elixir
 AttractorEx.run(dot_source, context_map, opts)
+AttractorEx.resume(dot_source, checkpoint_or_path, opts)
 ```
 
 Example:
@@ -40,6 +41,9 @@ digraph attractor {
 """
 
 {:ok, result} = AttractorEx.run(dot, %{})
+
+checkpoint_path = Path.join(result.logs_root, "checkpoint.json")
+{:ok, resumed} = AttractorEx.resume(dot, checkpoint_path, codergen_backend: MyApp.LLMBackend)
 ```
 
 ## Configuring LLM Nodes (`codergen`)
