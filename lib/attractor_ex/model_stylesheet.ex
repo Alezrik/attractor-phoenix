@@ -17,7 +17,7 @@ defmodule AttractorEx.ModelStylesheet do
   def parse(stylesheet) when is_list(stylesheet), do: {:ok, list_to_rules(stylesheet)}
 
   def parse(stylesheet) when is_binary(stylesheet) do
-    trimmed = String.trim(stylesheet)
+    trimmed = stylesheet |> strip_css_comments() |> String.trim()
 
     if trimmed == "" do
       {:ok, []}
@@ -33,17 +33,9 @@ defmodule AttractorEx.ModelStylesheet do
   def lint(stylesheet) when is_map(stylesheet) do
     stylesheet
     |> Enum.reduce([], fn {selector, attrs}, acc ->
-      if is_map(attrs) do
-        acc
-      else
-        [
-          lint_diag(
-            :model_stylesheet_rule_attrs_invalid,
-            "model_stylesheet rule for selector `#{selector}` should define attrs as a map."
-          )
-          | acc
-        ]
-      end
+      acc
+      |> maybe_add_invalid_selector_diag(selector)
+      |> maybe_add_invalid_rule_attrs_diag(selector, attrs)
     end)
     |> Enum.reverse()
   end
@@ -53,11 +45,11 @@ defmodule AttractorEx.ModelStylesheet do
     |> Enum.with_index()
     |> Enum.reduce([], fn {item, index}, acc ->
       case item do
-        %{"selector" => _selector, "attrs" => attrs} when is_map(attrs) ->
-          acc
+        %{"selector" => selector, "attrs" => attrs} when is_map(attrs) ->
+          maybe_add_invalid_selector_diag(acc, selector)
 
-        %{selector: _selector, attrs: attrs} when is_map(attrs) ->
-          acc
+        %{selector: selector, attrs: attrs} when is_map(attrs) ->
+          maybe_add_invalid_selector_diag(acc, selector)
 
         _ ->
           [
@@ -73,7 +65,7 @@ defmodule AttractorEx.ModelStylesheet do
   end
 
   def lint(stylesheet) when is_binary(stylesheet) do
-    trimmed = String.trim(stylesheet)
+    trimmed = stylesheet |> strip_css_comments() |> String.trim()
 
     cond do
       trimmed == "" ->
@@ -138,21 +130,13 @@ defmodule AttractorEx.ModelStylesheet do
     if trimmed == "" do
       {:ok, Enum.reverse(rules)}
     else
-      case String.split(trimmed, "{", parts: 2) do
-        [selector_text, rest] ->
-          selector = String.trim(selector_text)
+      case take_css_rule(trimmed) do
+        {:ok, selector, declarations_text, next} ->
+          attrs = parse_css_declarations(declarations_text)
+          normalized = normalize_rules(selector, attrs, index)
+          parse_css_rules(next, Enum.reverse(normalized) ++ rules, index + 1)
 
-          case String.split(rest, "}", parts: 2) do
-            [declarations_text, next] ->
-              attrs = parse_css_declarations(declarations_text)
-              normalized = normalize_rules(selector, attrs, index)
-              parse_css_rules(next, Enum.reverse(normalized) ++ rules, index + 1)
-
-            _ ->
-              :error
-          end
-
-        _ ->
+        :error ->
           :error
       end
     end
@@ -160,7 +144,7 @@ defmodule AttractorEx.ModelStylesheet do
 
   defp parse_css_declarations(text) do
     text
-    |> String.split(";", trim: true)
+    |> split_css_declarations()
     |> Enum.map(&String.trim/1)
     |> Enum.reduce(%{}, fn declaration, acc ->
       case String.split(declaration, ":", parts: 2) do
@@ -450,27 +434,18 @@ defmodule AttractorEx.ModelStylesheet do
     if trimmed == "" do
       {:ok, diagnostics}
     else
-      case String.split(trimmed, "{", parts: 2) do
-        [_selector_text, rest] ->
-          case String.split(rest, "}", parts: 2) do
-            [declarations_text, next] ->
-              declaration_diagnostics =
-                lint_css_declarations(declarations_text, index)
+      case take_css_rule(trimmed) do
+        {:ok, selector_text, declarations_text, next} ->
+          selector_diagnostics = lint_css_selector(selector_text)
+          declaration_diagnostics = lint_css_declarations(declarations_text, index)
 
-              do_lint_css_stylesheet(next, declaration_diagnostics ++ diagnostics, index + 1)
+          do_lint_css_stylesheet(
+            next,
+            Enum.reverse(selector_diagnostics) ++ declaration_diagnostics ++ diagnostics,
+            index + 1
+          )
 
-            _ ->
-              {:error,
-               [
-                 lint_diag(
-                   :model_stylesheet_css_syntax,
-                   "model_stylesheet CSS rule has unmatched braces."
-                 )
-                 | diagnostics
-               ]}
-          end
-
-        _ ->
+        :error ->
           {:error,
            [
              lint_diag(
@@ -485,7 +460,7 @@ defmodule AttractorEx.ModelStylesheet do
 
   defp lint_css_declarations(text, rule_index) do
     text
-    |> String.split(";", trim: true)
+    |> split_css_declarations()
     |> Enum.map(&String.trim/1)
     |> Enum.reduce([], fn declaration, acc ->
       case String.split(declaration, ":", parts: 2) do
@@ -530,5 +505,121 @@ defmodule AttractorEx.ModelStylesheet do
 
   defp lint_diag(code, message) do
     %{severity: :warning, code: code, message: message, node_id: nil}
+  end
+
+  defp maybe_add_invalid_rule_attrs_diag(acc, _selector, attrs) when is_map(attrs), do: acc
+
+  defp maybe_add_invalid_rule_attrs_diag(acc, selector, _attrs) do
+    [
+      lint_diag(
+        :model_stylesheet_rule_attrs_invalid,
+        "model_stylesheet rule for selector `#{selector}` should define attrs as a map."
+      )
+      | acc
+    ]
+  end
+
+  defp maybe_add_invalid_selector_diag(acc, selector) do
+    if valid_selector_list?(selector) do
+      acc
+    else
+      [
+        lint_diag(
+          :model_stylesheet_selector_invalid,
+          "model_stylesheet selector `#{selector}` is invalid and will be ignored."
+        )
+        | acc
+      ]
+    end
+  end
+
+  defp lint_css_selector(selector_text) do
+    selector = String.trim(selector_text)
+
+    if valid_selector_list?(selector) do
+      []
+    else
+      [
+        lint_diag(
+          :model_stylesheet_selector_invalid,
+          "model_stylesheet selector `#{selector}` is invalid and will be ignored."
+        )
+      ]
+    end
+  end
+
+  defp valid_selector_list?(selector_text) when is_binary(selector_text) do
+    selector_text
+    |> split_selector_list()
+    |> case do
+      [] -> false
+      selectors -> Enum.all?(selectors, &match?({:ok, _parsed, _rank}, parse_selector(&1)))
+    end
+  end
+
+  defp valid_selector_list?(_selector_text), do: false
+
+  defp strip_css_comments(stylesheet) do
+    String.replace(stylesheet, ~r/\/\*[\s\S]*?\*\//, "")
+  end
+
+  defp split_css_declarations(text) do
+    {parts, current, _quote} =
+      text
+      |> String.graphemes()
+      |> Enum.reduce({[], "", nil}, fn char, {parts, current, quote} ->
+        cond do
+          char in ["\"", "'"] and is_nil(quote) ->
+            {parts, current <> char, char}
+
+          char == quote ->
+            {parts, current <> char, nil}
+
+          char == ";" and is_nil(quote) ->
+            {[current | parts], "", quote}
+
+          true ->
+            {parts, current <> char, quote}
+        end
+      end)
+
+    [current | parts]
+    |> Enum.reverse()
+    |> Enum.reject(&(String.trim(&1) == ""))
+  end
+
+  defp take_css_rule(stylesheet) do
+    case String.split(stylesheet, "{", parts: 2) do
+      [selector, rest] ->
+        case take_until_closing_brace(rest, "", nil) do
+          {declarations, next} when is_binary(next) ->
+            {:ok, String.trim(selector), declarations, next}
+
+          {_declarations, nil} ->
+            :error
+        end
+
+      _ ->
+        :error
+    end
+  end
+
+  defp take_until_closing_brace(text, current, quote) do
+    case String.next_grapheme(text) do
+      nil ->
+        {current, nil}
+
+      {char, rest} when char in ["\"", "'"] and is_nil(quote) ->
+        take_until_closing_brace(rest, current <> char, char)
+
+      {char, rest} when char == quote ->
+        take_until_closing_brace(rest, current <> char, nil)
+
+      {"}", rest} when is_nil(quote) ->
+        {current, rest}
+
+      {char, rest} ->
+        take_until_closing_brace(rest, current <> char, quote)
+    end
   end
 end
