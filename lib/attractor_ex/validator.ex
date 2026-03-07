@@ -38,10 +38,13 @@ defmodule AttractorEx.Validator do
     |> validate_human_multiple_choice_count(graph)
     |> validate_human_timeout_default(graph)
     |> validate_human_timeout_format(graph)
+    |> validate_human_required_setting(graph)
+    |> validate_human_input_mode(graph)
     |> validate_human_choice_key_collisions(graph)
     |> validate_codergen_llm_attrs(graph)
     |> validate_parallel_attrs(graph)
     |> validate_stack_manager_attrs(graph)
+    |> validate_allow_partial(graph)
     |> validate_model_stylesheet_syntax(graph)
     |> validate_model_stylesheet_lints(graph)
     |> apply_custom_rules(graph, opts)
@@ -702,6 +705,46 @@ defmodule AttractorEx.Validator do
     end)
   end
 
+  defp validate_human_required_setting(diags, graph) do
+    Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
+      value = Map.get(node.attrs, "human.required")
+
+      if node.type == "wait.human" and not is_nil(value) and not valid_boolean_setting?(value) do
+        [
+          diag(
+            :warning,
+            :human_required_invalid,
+            "human.required should be true/false, yes/no, or 1/0.",
+            node.id
+          )
+          | acc
+        ]
+      else
+        acc
+      end
+    end)
+  end
+
+  defp validate_human_input_mode(diags, graph) do
+    Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
+      value = Map.get(node.attrs, "human.input")
+
+      if node.type == "wait.human" and not is_nil(value) and not valid_human_input_mode?(value) do
+        [
+          diag(
+            :warning,
+            :human_input_invalid,
+            "human.input should be one of: text, textarea, checkbox, boolean, confirmation, single_select, multi_select, radio, select.",
+            node.id
+          )
+          | acc
+        ]
+      else
+        acc
+      end
+    end)
+  end
+
   defp validate_codergen_llm_attrs(diags, graph) do
     Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
       if node.type == "codergen" do
@@ -737,9 +780,34 @@ defmodule AttractorEx.Validator do
         |> validate_manager_actions(node)
         |> validate_manager_max_cycles(node)
         |> validate_manager_poll_interval(node)
+        |> validate_manager_child_autostart(node)
         |> validate_manager_child_dotfile(node, graph)
       else
         acc
+      end
+    end)
+  end
+
+  defp validate_allow_partial(diags, graph) do
+    Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
+      case Map.get(node.attrs, "allow_partial") do
+        nil ->
+          acc
+
+        value ->
+          if valid_boolean_setting?(value) do
+            acc
+          else
+            [
+              diag(
+                :warning,
+                :allow_partial_invalid,
+                "allow_partial should be true/false, yes/no, or 1/0.",
+                node.id
+              )
+              | acc
+            ]
+          end
       end
     end)
   end
@@ -1092,6 +1160,28 @@ defmodule AttractorEx.Validator do
     end
   end
 
+  defp validate_manager_child_autostart(diags, node) do
+    case Map.get(node.attrs, "stack.child_autostart") do
+      nil ->
+        diags
+
+      value ->
+        if valid_boolean_setting?(value) do
+          diags
+        else
+          [
+            diag(
+              :warning,
+              :manager_child_autostart_invalid,
+              "stack.child_autostart should be true/false, yes/no, or 1/0.",
+              node.id
+            )
+            | diags
+          ]
+        end
+    end
+  end
+
   defp validate_manager_child_dotfile(diags, node, graph) do
     autostart_value = Map.get(node.attrs, "stack.child_autostart", "true")
 
@@ -1264,6 +1354,22 @@ defmodule AttractorEx.Validator do
   end
 
   defp valid_boolean_setting?(_value), do: false
+
+  defp valid_human_input_mode?(value) when is_binary(value) do
+    String.downcase(String.trim(value)) in [
+      "text",
+      "textarea",
+      "checkbox",
+      "boolean",
+      "confirmation",
+      "single_select",
+      "multi_select",
+      "radio",
+      "select"
+    ]
+  end
+
+  defp valid_human_input_mode?(_value), do: false
 
   defp duplicate_values?(values) do
     values
