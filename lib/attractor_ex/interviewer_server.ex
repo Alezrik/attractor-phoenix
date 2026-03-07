@@ -12,13 +12,13 @@ defmodule AttractorEx.Interviewers.Server do
     timeout_ms = timeout_ms(node.attrs["human.timeout"])
     question = build_question(node, choices, timeout_ms)
 
+    :ok = Manager.register_question(manager, pipeline_id, question)
+
     emit(opts, %{
       type: "InterviewStarted",
       stage: node.id,
       question: public_question(question)
     })
-
-    :ok = Manager.register_question(manager, pipeline_id, question)
 
     receive do
       {:pipeline_answer, ref, answer} when ref == question.ref ->
