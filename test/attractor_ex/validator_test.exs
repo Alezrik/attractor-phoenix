@@ -94,6 +94,28 @@ defmodule AttractorEx.ValidatorTest do
              )
     end
 
+    test "does not warn for goal gate nodes when graph-level retry targets are defined" do
+      dot = """
+      digraph attractor {
+        graph [retry_target="retry"]
+        start [shape=Mdiamond]
+        implement [shape=box, prompt="Implement", goal_gate=true]
+        retry [shape=box, prompt="Retry work"]
+        done [shape=Msquare]
+        start -> implement
+        retry -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      refute Enum.any?(
+               diagnostics,
+               &(&1.code == :goal_gate_has_retry and &1.node_id == "implement")
+             )
+    end
+
     test "warns for llm-backed box nodes without prompt or label" do
       dot = """
       digraph attractor {
@@ -201,6 +223,22 @@ defmodule AttractorEx.ValidatorTest do
                &(&1.code == :reachability and &1.severity == :error and
                    &1.node_id == "orphan")
              )
+    end
+
+    test "treats graph-level retry targets as reachable execution paths" do
+      dot = """
+      digraph attractor {
+        graph [retry_target="done"]
+        start [shape=Mdiamond]
+        task [shape=box, prompt="Or fail into done"]
+        done [shape=Msquare]
+        start -> task
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+      refute Enum.any?(diagnostics, &(&1.code == :reachability and &1.node_id == "done"))
     end
 
     test "flags missing edge targets" do

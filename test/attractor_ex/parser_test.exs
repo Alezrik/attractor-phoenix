@@ -134,6 +134,19 @@ defmodule AttractorEx.ParserTest do
       assert Enum.any?(graph.edges, &(&1.from == "plan step" and &1.to == "done-node"))
     end
 
+    test "preserves bare graph identifiers that include hyphens" do
+      dot = """
+      digraph attractor-flow {
+        start [shape=Mdiamond]
+        done [shape=Msquare]
+        start -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.id == "attractor-flow"
+    end
+
     test "preserves comment markers inside quoted values while stripping real comments" do
       dot = """
       digraph attractor {

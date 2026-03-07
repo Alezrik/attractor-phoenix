@@ -248,7 +248,11 @@ defmodule AttractorEx.Validator do
 
   defp validate_goal_gate_retry(diags, graph) do
     Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
-      if node.goal_gate and is_nil(node.retry_target) and is_nil(node.fallback_retry_target) do
+      graph_retry_target = blank_to_nil(Map.get(graph.attrs, "retry_target"))
+      graph_fallback_retry_target = blank_to_nil(Map.get(graph.attrs, "fallback_retry_target"))
+
+      if node.goal_gate and is_nil(node.retry_target) and is_nil(node.fallback_retry_target) and
+           is_nil(graph_retry_target) and is_nil(graph_fallback_retry_target) do
         [
           diag(
             :warning,
@@ -1414,12 +1418,18 @@ defmodule AttractorEx.Validator do
       |> Enum.group_by(& &1.from, & &1.to)
       |> Map.new(fn {from, to_nodes} -> {from, MapSet.new(to_nodes)} end)
 
+    global_retry_targets =
+      [Map.get(graph.attrs, "retry_target"), Map.get(graph.attrs, "fallback_retry_target")]
+      |> Enum.reject(&blank?/1)
+      |> MapSet.new()
+
     retry_adjacency =
       graph.nodes
       |> Enum.reduce(%{}, fn {_id, node}, acc ->
         targets =
           [node.retry_target, node.fallback_retry_target]
           |> Enum.reject(&is_nil/1)
+          |> Kernel.++(MapSet.to_list(global_retry_targets))
           |> MapSet.new()
 
         if MapSet.size(targets) == 0 do
