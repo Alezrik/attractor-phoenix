@@ -692,8 +692,6 @@ defmodule AttractorEx.Parser do
     end
   end
 
-  defp normalize_graph_identifier(nil), do: ""
-
   defp normalize_graph_identifier(id) do
     trimmed = String.trim(id)
 
