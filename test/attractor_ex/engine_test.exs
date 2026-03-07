@@ -444,7 +444,7 @@ defmodule AttractorEx.EngineTest do
     test "applies built-in variable expansion before execution" do
       dot = """
       digraph attractor {
-        graph [goal="Ship release"]
+        graph [goal="Ship release", summary="Workflow for $goal"]
         start [shape=Mdiamond]
         task [shape=box, prompt="Plan for $goal"]
         done [shape=Msquare]
@@ -459,9 +459,45 @@ defmodule AttractorEx.EngineTest do
                )
 
       assert result.status == :success
+      assert get_in(result.context, ["graph", "summary"]) == "Workflow for Ship release"
 
       assert File.read!(Path.join([result.logs_root, "task", "prompt.md"])) ==
                "Plan for Ship release"
+    end
+
+    test "supports legacy graph_transform option" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        task [shape=box]
+        done [shape=Msquare]
+        start -> task -> done
+      }
+      """
+
+      patch_prompt = fn graph ->
+        task = Map.fetch!(graph.nodes, "task")
+
+        patched_task = %{
+          task
+          | attrs: Map.put(task.attrs, "prompt", "legacy transformed"),
+            prompt: "legacy transformed"
+        }
+
+        %{graph | nodes: Map.put(graph.nodes, "task", patched_task)}
+      end
+
+      assert {:ok, result} =
+               AttractorEx.run(dot, %{},
+                 logs_root: unique_logs_root("legacy_graph_transform"),
+                 codergen_backend: AttractorExTest.EchoBackend,
+                 graph_transform: patch_prompt
+               )
+
+      assert result.status == :success
+
+      assert File.read!(Path.join([result.logs_root, "task", "prompt.md"])) ==
+               "legacy transformed"
     end
 
     test "supports module graph transforms via transform/1" do
