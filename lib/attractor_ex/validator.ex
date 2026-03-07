@@ -26,6 +26,7 @@ defmodule AttractorEx.Validator do
     |> validate_goal_gate_retry(graph)
     |> validate_graph_retry_target_nodes(graph)
     |> validate_retry_target_nodes(graph)
+    |> validate_retry_counts(graph)
     |> validate_codergen_prompt(graph)
     |> validate_known_node_types(graph)
     |> validate_fidelity_values(graph)
@@ -334,6 +335,57 @@ defmodule AttractorEx.Validator do
         [diag(:warning, :codergen_prompt, "Codergen node has no prompt.", node.id) | acc]
       else
         acc
+      end
+    end)
+  end
+
+  defp validate_retry_counts(diags, graph) do
+    diags
+    |> validate_graph_default_max_retry(graph)
+    |> validate_node_max_retries(graph)
+  end
+
+  defp validate_graph_default_max_retry(diags, graph) do
+    case Map.get(graph.attrs, "default_max_retry") do
+      nil ->
+        diags
+
+      value ->
+        if valid_non_negative_integer?(value) do
+          diags
+        else
+          [
+            diag(
+              :warning,
+              :default_max_retry_invalid,
+              "Graph default_max_retry should be a non-negative integer."
+            )
+            | diags
+          ]
+        end
+    end
+  end
+
+  defp validate_node_max_retries(diags, graph) do
+    Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
+      case Map.get(node.attrs, "max_retries") do
+        nil ->
+          acc
+
+        value ->
+          if valid_non_negative_integer?(value) do
+            acc
+          else
+            [
+              diag(
+                :warning,
+                :max_retries_invalid,
+                "Node max_retries should be a non-negative integer.",
+                node.id
+              )
+              | acc
+            ]
+          end
       end
     end)
   end
@@ -1119,6 +1171,17 @@ defmodule AttractorEx.Validator do
   end
 
   defp to_positive_integer(_), do: :error
+
+  defp valid_non_negative_integer?(value) when is_integer(value), do: value >= 0
+
+  defp valid_non_negative_integer?(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {parsed, ""} -> parsed >= 0
+      _ -> false
+    end
+  end
+
+  defp valid_non_negative_integer?(_value), do: false
 
   defp blank_to_nil(nil), do: nil
 

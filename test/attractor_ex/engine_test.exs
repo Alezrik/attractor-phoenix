@@ -242,6 +242,30 @@ defmodule AttractorEx.EngineTest do
       assert File.exists?(Path.join([result.logs_root, "task_attempt_2", "status.json"]))
     end
 
+    test "uses spec default_max_retry=50 when neither node nor graph override is set" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        task [shape=box, prompt="work"]
+        done [shape=Msquare]
+        start -> task
+        task -> done
+      }
+      """
+
+      assert {:ok, result} =
+               AttractorEx.run(dot, %{},
+                 logs_root: unique_logs_root("default_max_retry"),
+                 codergen_backend: AttractorExTest.AlwaysRetryBackend,
+                 retry_sleep: false,
+                 max_steps: 60
+               )
+
+      assert result.outcomes["task"].status == :fail
+      assert result.outcomes["task"].failure_reason =~ "max retries exceeded"
+      assert File.exists?(Path.join([result.logs_root, "task_attempt_51", "status.json"]))
+    end
+
     test "allow_partial returns PARTIAL_SUCCESS when retries exhausted" do
       dot = """
       digraph attractor {
@@ -305,6 +329,29 @@ defmodule AttractorEx.EngineTest do
 
       assert result.status == :success
       assert Enum.count(result.history, &(&1.node_id == "task")) == 1
+    end
+
+    test "exposes graph attrs and current_node in execution context" do
+      dot = """
+      digraph attractor {
+        graph [goal="Ship release", owner="ops"]
+        start [shape=Mdiamond]
+        task [shape=box, prompt="work"]
+        done [shape=Msquare]
+        start -> task -> done
+      }
+      """
+
+      assert {:ok, result} =
+               AttractorEx.run(dot, %{},
+                 logs_root: unique_logs_root("context_contract"),
+                 codergen_backend: AttractorExTest.EchoBackend
+               )
+
+      assert result.status == :success
+      assert get_in(result.context, ["graph", "goal"]) == "Ship release"
+      assert get_in(result.context, ["graph", "owner"]) == "ops"
+      assert result.context["current_node"] == "done"
     end
 
     test "resumes a run from checkpoint.json path" do

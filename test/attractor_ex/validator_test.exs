@@ -280,6 +280,52 @@ defmodule AttractorEx.ValidatorTest do
              )
     end
 
+    test "warns on invalid graph default_max_retry and node max_retries values" do
+      dot = """
+      digraph attractor {
+        graph [default_max_retry="later"]
+        start [shape=Mdiamond]
+        task [shape=box, prompt="Do work", max_retries="-1"]
+        done [shape=Msquare]
+        start -> task
+        task -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :default_max_retry_invalid and &1.severity == :warning)
+             )
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :max_retries_invalid and &1.severity == :warning and
+                   &1.node_id == "task")
+             )
+    end
+
+    test "accepts non-negative graph default_max_retry and node max_retries values" do
+      dot = """
+      digraph attractor {
+        graph [default_max_retry="2"]
+        start [shape=Mdiamond]
+        task [shape=box, prompt="Do work", max_retries="0"]
+        done [shape=Msquare]
+        start -> task
+        task -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      refute Enum.any?(diagnostics, &(&1.code == :default_max_retry_invalid))
+      refute Enum.any?(diagnostics, &(&1.code == :max_retries_invalid))
+    end
+
     test "flags missing graph retry_target references" do
       dot = """
       digraph attractor {
