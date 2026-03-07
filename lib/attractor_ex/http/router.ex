@@ -4,6 +4,7 @@ defmodule AttractorEx.HTTP.Router do
   use Plug.Router
 
   alias AttractorEx.Parser
+  alias AttractorEx.HTTP.GraphRenderer
   alias AttractorEx.HTTP.Manager
 
   @graph_formats MapSet.new(["dot", "json", "mermaid", "svg", "text"])
@@ -292,7 +293,7 @@ defmodule AttractorEx.HTTP.Router do
 
       "json" ->
         case Parser.parse(dot) do
-          {:ok, graph} -> json(conn, 200, graph_to_json(graph))
+          {:ok, graph} -> json(conn, 200, GraphRenderer.to_json(graph))
           {:error, reason} -> json(conn, 422, %{"error" => reason})
         end
 
@@ -306,7 +307,7 @@ defmodule AttractorEx.HTTP.Router do
               "content-disposition",
               "inline; filename=\"pipeline.mmd\""
             )
-            |> Plug.Conn.send_resp(200, graph_to_mermaid(graph))
+            |> Plug.Conn.send_resp(200, GraphRenderer.to_mermaid(graph))
 
           {:error, reason} ->
             json(conn, 422, %{"error" => reason})
@@ -322,17 +323,23 @@ defmodule AttractorEx.HTTP.Router do
               "content-disposition",
               "inline; filename=\"pipeline.txt\""
             )
-            |> Plug.Conn.send_resp(200, graph_to_text(graph))
+            |> Plug.Conn.send_resp(200, GraphRenderer.to_text(graph))
 
           {:error, reason} ->
             json(conn, 422, %{"error" => reason})
         end
 
       "svg" ->
-        conn
-        |> put_common_headers()
-        |> Plug.Conn.put_resp_content_type("image/svg+xml")
-        |> Plug.Conn.send_resp(200, dot_to_svg(dot))
+        case Parser.parse(dot) do
+          {:ok, graph} ->
+            conn
+            |> put_common_headers()
+            |> Plug.Conn.put_resp_content_type("image/svg+xml")
+            |> Plug.Conn.send_resp(200, GraphRenderer.to_svg(graph))
+
+          {:error, reason} ->
+            json(conn, 422, %{"error" => reason})
+        end
 
       {:error, format} ->
         json(conn, 400, %{
@@ -360,147 +367,6 @@ defmodule AttractorEx.HTTP.Router do
     else
       {:error, format}
     end
-  end
-
-  defp graph_to_json(graph) do
-    %{
-      "graph" => %{
-        "id" => graph.id,
-        "attrs" => graph.attrs,
-        "node_defaults" => graph.node_defaults,
-        "edge_defaults" => graph.edge_defaults,
-        "nodes" =>
-          graph.nodes
-          |> Enum.map(fn {id, node} ->
-            {id,
-             %{
-               "id" => node.id,
-               "type" => node.type,
-               "shape" => node.shape,
-               "prompt" => node.prompt,
-               "goal_gate" => node.goal_gate,
-               "retry_target" => node.retry_target,
-               "fallback_retry_target" => node.fallback_retry_target,
-               "attrs" => node.attrs
-             }}
-          end)
-          |> Map.new(),
-        "edges" =>
-          Enum.map(graph.edges, fn edge ->
-            %{
-              "from" => edge.from,
-              "to" => edge.to,
-              "condition" => edge.condition,
-              "status" => edge.status,
-              "attrs" => edge.attrs
-            }
-          end)
-      }
-    }
-  end
-
-  defp graph_to_mermaid(graph) do
-    lines =
-      [
-        "flowchart TD"
-        | Enum.map(Enum.sort_by(graph.nodes, fn {id, _node} -> id end), fn {id, node} ->
-            "  #{mermaid_id(id)}[\"#{escape_mermaid_text(node_label(node))}\"]"
-          end)
-      ] ++
-        Enum.map(graph.edges, fn edge ->
-          "  #{mermaid_id(edge.from)} -->|#{escape_mermaid_text(edge_label(edge))}| #{mermaid_id(edge.to)}"
-        end)
-
-    Enum.join(lines, "\n")
-  end
-
-  defp graph_to_text(graph) do
-    node_lines =
-      graph.nodes
-      |> Enum.sort_by(fn {id, _node} -> id end)
-      |> Enum.map(fn {id, node} ->
-        "  - #{id} [type=#{node.type}, shape=#{node.shape}]#{text_prompt_suffix(node)}"
-      end)
-
-    edge_lines =
-      Enum.map(graph.edges, fn edge ->
-        "  - #{edge.from} -> #{edge.to}#{text_edge_suffix(edge)}"
-      end)
-
-    [
-      "Graph: #{graph.id}",
-      "Goal: #{Map.get(graph.attrs, "goal", "-")}",
-      "Nodes:",
-      Enum.join(node_lines, "\n"),
-      "Edges:",
-      Enum.join(edge_lines, "\n")
-    ]
-    |> Enum.join("\n")
-  end
-
-  defp node_label(node) do
-    [node.id, node.type]
-    |> Enum.reject(&(&1 in [nil, ""]))
-    |> Enum.join(" :: ")
-  end
-
-  defp edge_label(edge) do
-    cond do
-      is_binary(edge.condition) and edge.condition != "" ->
-        edge.condition
-
-      is_binary(edge.status) and edge.status != "" ->
-        edge.status
-
-      is_binary(edge.attrs["label"]) and String.trim(edge.attrs["label"]) != "" ->
-        edge.attrs["label"]
-
-      true ->
-        ""
-    end
-  end
-
-  defp text_prompt_suffix(node) do
-    case String.trim(node.prompt || "") do
-      "" -> ""
-      prompt -> ", prompt=#{inspect(prompt)}"
-    end
-  end
-
-  defp text_edge_suffix(edge) do
-    case String.trim(edge_label(edge)) do
-      "" -> ""
-      label -> " [label=#{inspect(label)}]"
-    end
-  end
-
-  defp mermaid_id(id) do
-    id
-    |> to_string()
-    |> String.replace(~r/[^a-zA-Z0-9_]/, "_")
-  end
-
-  defp escape_mermaid_text(text) do
-    text
-    |> to_string()
-    |> String.replace("\"", "\\\"")
-  end
-
-  defp dot_to_svg(dot) do
-    escaped =
-      dot
-      |> Plug.HTML.html_escape()
-      |> IO.iodata_to_binary()
-
-    """
-    <svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
-      <rect width="100%" height="100%" fill="#f5f2ea" />
-      <text x="40" y="56" font-family="monospace" font-size="20" fill="#3a3126">Attractor Pipeline</text>
-      <foreignObject x="32" y="80" width="896" height="420">
-        <pre xmlns="http://www.w3.org/1999/xhtml" style="margin:0;font:14px/1.45 monospace;color:#2f2a24;white-space:pre-wrap;">#{escaped}</pre>
-      </foreignObject>
-    </svg>
-    """
   end
 
   defp put_common_headers(conn) do

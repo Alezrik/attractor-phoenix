@@ -74,6 +74,10 @@ defmodule AttractorEx.HTTPTest do
     assert get_resp_header(graph_conn, "cache-control") == ["no-store"]
     assert get_resp_header(graph_conn, "x-content-type-options") == ["nosniff"]
     assert graph_conn.resp_body =~ "Attractor Pipeline"
+    assert graph_conn.resp_body =~ "Goal: Ship feature"
+    assert graph_conn.resp_body =~ "marker-end=\"url(#arrowhead)\""
+    assert graph_conn.resp_body =~ "node node-codergen"
+    refute graph_conn.resp_body =~ "<foreignObject"
 
     dot_graph_conn =
       Router.call(conn(:get, "/pipelines/#{pipeline_id}/graph?format=dot"), @router_opts)
