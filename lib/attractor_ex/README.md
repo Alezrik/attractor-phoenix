@@ -65,12 +65,41 @@ Implemented endpoints:
 8. `GET /pipelines/:id/checkpoint`
 9. `GET /pipelines/:id/context`
 
+Graph endpoint formats:
+
+1. Default: `GET /pipelines/:id/graph` returns SVG.
+2. `GET /pipelines/:id/graph?format=dot` returns raw DOT.
+3. `GET /pipelines/:id/graph?format=json` returns parsed graph JSON.
+
 Human-in-the-loop web flow:
 
 1. Submit a pipeline containing `wait.human`.
 2. Poll `GET /pipelines/:id/questions` for pending questions.
 3. Send a choice to `POST /pipelines/:id/questions/:qid/answer`.
 4. Subscribe to `GET /pipelines/:id/events` for SSE status updates.
+
+## Optional Phoenix Integration
+
+If your app already runs Phoenix, you can host the AttractorEx HTTP API on the existing endpoint instead of starting a second Bandit listener.
+
+Supervision tree:
+
+```elixir
+children = [
+  # ...
+  AttractorEx.HTTP.Phoenix.child_spec(name: MyApp.AttractorHTTP)
+]
+```
+
+Phoenix router:
+
+```elixir
+forward "/attractor",
+  AttractorEx.HTTP.Router,
+  AttractorEx.HTTP.Phoenix.router_opts(name: MyApp.AttractorHTTP)
+```
+
+This integration is optional. `AttractorEx.start_http_server/1` remains the standalone path.
 
 ## Configuring LLM Nodes (`codergen`)
 

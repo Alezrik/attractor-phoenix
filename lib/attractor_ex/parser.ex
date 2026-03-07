@@ -269,22 +269,25 @@ defmodule AttractorEx.Parser do
     {parts, current, _in_quotes, _bracket_depth} =
       text
       |> String.graphemes()
-      |> Enum.reduce({[], "", false, 0}, fn char, {parts, current, in_quotes, bracket_depth} ->
+      |> Enum.reduce({[], "", nil, 0}, fn char, {parts, current, quote, bracket_depth} ->
         cond do
-          char == "\"" and not escaped_quote?(current) ->
-            {parts, current <> char, not in_quotes, bracket_depth}
+          char in ["\"", "'"] and is_nil(quote) and not escaped_quote?(current) ->
+            {parts, current <> char, char, bracket_depth}
 
-          char == "[" and not in_quotes ->
-            {parts, current <> char, in_quotes, bracket_depth + 1}
+          char == quote and not escaped_quote?(current) ->
+            {parts, current <> char, nil, bracket_depth}
 
-          char == "]" and not in_quotes and bracket_depth > 0 ->
-            {parts, current <> char, in_quotes, bracket_depth - 1}
+          char == "[" and is_nil(quote) ->
+            {parts, current <> char, quote, bracket_depth + 1}
 
-          char == "," and not in_quotes and bracket_depth == 0 ->
-            {[current | parts], "", in_quotes, bracket_depth}
+          char == "]" and is_nil(quote) and bracket_depth > 0 ->
+            {parts, current <> char, quote, bracket_depth - 1}
+
+          char == "," and is_nil(quote) and bracket_depth == 0 ->
+            {[current | parts], "", quote, bracket_depth}
 
           true ->
-            {parts, current <> char, in_quotes, bracket_depth}
+            {parts, current <> char, quote, bracket_depth}
         end
       end)
 
@@ -299,6 +302,7 @@ defmodule AttractorEx.Parser do
       |> String.trim()
       |> strip_wrapping_quotes()
       |> String.replace("\\\"", "\"")
+      |> String.replace("\\'", "'")
       |> String.replace("\\\\", "\\")
 
     cond do
@@ -319,8 +323,14 @@ defmodule AttractorEx.Parser do
     end
   end
 
-  defp strip_wrapping_quotes(<<"\"", rest::binary>>) do
-    if String.ends_with?(rest, "\""), do: binary_part(rest, 0, byte_size(rest) - 1), else: rest
+  defp strip_wrapping_quotes(<<quote, rest::binary>>) when quote in [?", ?'] do
+    closing = <<quote>>
+
+    if String.ends_with?(rest, closing) do
+      binary_part(rest, 0, byte_size(rest) - 1)
+    else
+      rest
+    end
   end
 
   defp strip_wrapping_quotes(value), do: value
