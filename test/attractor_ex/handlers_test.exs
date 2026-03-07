@@ -278,6 +278,23 @@ defmodule AttractorEx.HandlersTest do
       assert outcome.suggested_next_ids == ["fixes"]
     end
 
+    test "wait_for_human retries on blank answer when default choice is blank" do
+      node = Node.new("gate", %{"type" => "wait.human", "human.default_choice" => "   "})
+      graph = %Graph{edges: [Edge.new("gate", "ship_it", %{"label" => "[S] Ship"})]}
+
+      outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{"human" => %{"answers" => %{"gate" => "   "}}},
+          graph,
+          unique_stage_dir("human_blank_invalid_default"),
+          []
+        )
+
+      assert outcome.status == :retry
+      assert outcome.failure_reason =~ "requires answer"
+    end
+
     test "wait_for_human handles non-graph argument by failing on empty choices" do
       node = Node.new("gate", %{"type" => "wait.human"})
 

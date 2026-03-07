@@ -633,6 +633,50 @@ defmodule AttractorEx.ValidatorTest do
              )
     end
 
+    test "warns on invalid k_of_n value and missing quorum_ratio" do
+      invalid_k_dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        fork [shape=component, join_policy="k_of_n", k="zero"]
+        done [shape=Msquare]
+        alt [shape=box, prompt="Alt"]
+        start -> fork
+        fork -> done
+        fork -> alt
+        alt -> done
+      }
+      """
+
+      missing_quorum_dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        fork [shape=component, join_policy="quorum"]
+        done [shape=Msquare]
+        alt [shape=box, prompt="Alt"]
+        start -> fork
+        fork -> done
+        fork -> alt
+        alt -> done
+      }
+      """
+
+      assert {:ok, invalid_k_graph} = Parser.parse(invalid_k_dot)
+      assert {:ok, missing_quorum_graph} = Parser.parse(missing_quorum_dot)
+
+      invalid_k_diagnostics = Validator.validate(invalid_k_graph)
+      missing_quorum_diagnostics = Validator.validate(missing_quorum_graph)
+
+      assert Enum.any?(
+               invalid_k_diagnostics,
+               &(&1.code == :parallel_k_invalid and &1.node_id == "fork")
+             )
+
+      assert Enum.any?(
+               missing_quorum_diagnostics,
+               &(&1.code == :parallel_quorum_ratio_missing and &1.node_id == "fork")
+             )
+    end
+
     test "warns on invalid stack manager loop attributes" do
       dot = """
       digraph attractor {
@@ -666,6 +710,54 @@ defmodule AttractorEx.ValidatorTest do
                diagnostics,
                &(&1.code == :manager_child_dotfile_missing and &1.node_id == "manager")
              )
+    end
+
+    test "warns when manager.actions resolves to no actions" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        manager [shape=house, manager.actions=" , , "]
+        done [shape=Msquare]
+        start -> manager
+        manager -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :manager_actions_invalid and &1.node_id == "manager")
+             )
+    end
+
+    test "accepts valid parallel and stack manager attributes" do
+      dot = """
+      digraph attractor {
+        graph [stack.child_dotfile="child.dot"]
+        start [shape=Mdiamond]
+        fork [shape=component, join_policy="quorum", max_parallel="2", quorum_ratio="0.5"]
+        manager [shape=house, manager.actions="observe,wait", manager.max_cycles="3", manager.poll_interval="500ms", stack.child_autostart="false"]
+        done [shape=Msquare]
+        start -> fork
+        fork -> manager
+        fork -> done
+        manager -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      diagnostics = Validator.validate(graph)
+
+      refute Enum.any?(diagnostics, &(&1.code == :parallel_join_policy_invalid))
+      refute Enum.any?(diagnostics, &(&1.code == :parallel_max_parallel_invalid))
+      refute Enum.any?(diagnostics, &(&1.code == :parallel_quorum_ratio_missing))
+      refute Enum.any?(diagnostics, &(&1.code == :parallel_quorum_ratio_invalid))
+      refute Enum.any?(diagnostics, &(&1.code == :manager_actions_invalid))
+      refute Enum.any?(diagnostics, &(&1.code == :manager_max_cycles_invalid))
+      refute Enum.any?(diagnostics, &(&1.code == :manager_poll_interval_invalid))
+      refute Enum.any?(diagnostics, &(&1.code == :manager_child_dotfile_missing))
     end
 
     test "accepts valid codergen LLM attribute values" do
