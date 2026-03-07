@@ -2,6 +2,7 @@ defmodule AttractorEx.ModelStylesheet do
   @moduledoc false
 
   @type rule :: %{selector: String.t(), attrs: map(), rank: integer(), order: integer()}
+  @type lint_diagnostic :: %{severity: :warning, code: atom(), message: String.t(), node_id: nil}
   @selector_ident ~r/^[A-Za-z_][A-Za-z0-9_\-]*$/
   @supported_css_properties [
     "llm_model",
@@ -26,6 +27,73 @@ defmodule AttractorEx.ModelStylesheet do
   end
 
   def parse(_), do: {:error, "model_stylesheet must be a JSON object, JSON array, or map"}
+
+  def lint(nil), do: []
+
+  def lint(stylesheet) when is_map(stylesheet) do
+    stylesheet
+    |> Enum.reduce([], fn {selector, attrs}, acc ->
+      if is_map(attrs) do
+        acc
+      else
+        [
+          lint_diag(
+            :model_stylesheet_rule_attrs_invalid,
+            "model_stylesheet rule for selector `#{selector}` should define attrs as a map."
+          )
+          | acc
+        ]
+      end
+    end)
+    |> Enum.reverse()
+  end
+
+  def lint(stylesheet) when is_list(stylesheet) do
+    stylesheet
+    |> Enum.with_index()
+    |> Enum.reduce([], fn {item, index}, acc ->
+      case item do
+        %{"selector" => _selector, "attrs" => attrs} when is_map(attrs) ->
+          acc
+
+        %{selector: _selector, attrs: attrs} when is_map(attrs) ->
+          acc
+
+        _ ->
+          [
+            lint_diag(
+              :model_stylesheet_rule_invalid,
+              "model_stylesheet rule at index #{index} is invalid and will be ignored."
+            )
+            | acc
+          ]
+      end
+    end)
+    |> Enum.reverse()
+  end
+
+  def lint(stylesheet) when is_binary(stylesheet) do
+    trimmed = String.trim(stylesheet)
+
+    cond do
+      trimmed == "" ->
+        []
+
+      true ->
+        case Jason.decode(trimmed) do
+          {:ok, %{} = map} ->
+            lint(map)
+
+          {:ok, list} when is_list(list) ->
+            lint(list)
+
+          _ ->
+            lint_css_stylesheet(trimmed)
+        end
+    end
+  end
+
+  def lint(_), do: []
 
   def attrs_for_node(rules, node_id, node_attrs) when is_list(rules) do
     classes = class_tokens(Map.get(node_attrs, "class"))
@@ -364,5 +432,103 @@ defmodule AttractorEx.ModelStylesheet do
     |> String.split(~r/[,\s]+/, trim: true)
     |> Enum.map(&String.trim/1)
     |> Enum.reject(&(&1 == ""))
+  end
+
+  defp lint_css_stylesheet(stylesheet) do
+    case do_lint_css_stylesheet(stylesheet, [], 0) do
+      {:ok, diagnostics} ->
+        Enum.reverse(diagnostics)
+
+      {:error, diagnostics} ->
+        Enum.reverse(diagnostics)
+    end
+  end
+
+  defp do_lint_css_stylesheet(remaining, diagnostics, index) do
+    trimmed = String.trim(remaining)
+
+    if trimmed == "" do
+      {:ok, diagnostics}
+    else
+      case String.split(trimmed, "{", parts: 2) do
+        [_selector_text, rest] ->
+          case String.split(rest, "}", parts: 2) do
+            [declarations_text, next] ->
+              declaration_diagnostics =
+                lint_css_declarations(declarations_text, index)
+
+              do_lint_css_stylesheet(next, declaration_diagnostics ++ diagnostics, index + 1)
+
+            _ ->
+              {:error,
+               [
+                 lint_diag(
+                   :model_stylesheet_css_syntax,
+                   "model_stylesheet CSS rule has unmatched braces."
+                 )
+                 | diagnostics
+               ]}
+          end
+
+        _ ->
+          {:error,
+           [
+             lint_diag(
+               :model_stylesheet_css_syntax,
+               "model_stylesheet CSS rule has invalid syntax."
+             )
+             | diagnostics
+           ]}
+      end
+    end
+  end
+
+  defp lint_css_declarations(text, rule_index) do
+    text
+    |> String.split(";", trim: true)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reduce([], fn declaration, acc ->
+      case String.split(declaration, ":", parts: 2) do
+        [property, value] ->
+          property = String.trim(property)
+          value = String.trim(value)
+
+          cond do
+            property == "" or value == "" ->
+              [
+                lint_diag(
+                  :model_stylesheet_css_declaration_invalid,
+                  "model_stylesheet CSS declaration is invalid in rule #{rule_index}."
+                )
+                | acc
+              ]
+
+            not recognized_css_property?(property) ->
+              [
+                lint_diag(
+                  :model_stylesheet_css_property_unknown,
+                  "model_stylesheet CSS property `#{property}` is not supported."
+                )
+                | acc
+              ]
+
+            true ->
+              acc
+          end
+
+        _ ->
+          [
+            lint_diag(
+              :model_stylesheet_css_declaration_invalid,
+              "model_stylesheet CSS declaration is invalid in rule #{rule_index}."
+            )
+            | acc
+          ]
+      end
+    end)
+  end
+
+  defp lint_diag(code, message) do
+    %{severity: :warning, code: code, message: message, node_id: nil}
   end
 end

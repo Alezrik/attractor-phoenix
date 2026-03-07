@@ -228,4 +228,36 @@ defmodule AttractorEx.ModelStylesheetTest do
       assert critical_code["max_tokens"] == "256"
     end
   end
+
+  describe "lint/1" do
+    test "flags unknown CSS properties and malformed declarations" do
+      css = """
+      * { llm_provider: openai; bad_property: 1; nonsense; }
+      """
+
+      diagnostics = ModelStylesheet.lint(css)
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :model_stylesheet_css_property_unknown and &1.severity == :warning)
+             )
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :model_stylesheet_css_declaration_invalid and &1.severity == :warning)
+             )
+    end
+
+    test "flags invalid JSON-list rules" do
+      diagnostics =
+        ModelStylesheet.lint(
+          ~s([{"selector":"#review","attrs":{"llm_provider":"openai"}}, {"selector":"bad"}])
+        )
+
+      assert Enum.any?(
+               diagnostics,
+               &(&1.code == :model_stylesheet_rule_invalid and &1.severity == :warning)
+             )
+    end
+  end
 end
