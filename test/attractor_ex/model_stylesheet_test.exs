@@ -56,6 +56,19 @@ defmodule AttractorEx.ModelStylesheetTest do
       assert {:ok, rules} = ModelStylesheet.parse(%{"node" => "bad"})
       assert rules == []
     end
+
+    test "expands comma-separated selector list into multiple rules" do
+      assert {:ok, rules} =
+               ModelStylesheet.parse(%{
+                 "node.critical, node[type=tool], #review" => %{"temperature" => 0.2}
+               })
+
+      assert length(rules) == 3
+      selectors = Enum.map(rules, & &1.selector)
+      assert "node.critical" in selectors
+      assert "node[type=tool]" in selectors
+      assert "#review" in selectors
+    end
   end
 
   describe "attrs_for_node/3" do
@@ -117,6 +130,35 @@ defmodule AttractorEx.ModelStylesheetTest do
       attrs = ModelStylesheet.attrs_for_node(rules, "task", %{"shape" => "box"})
       assert attrs["llm_provider"] == "openai"
       refute Map.has_key?(attrs, "reasoning_effort")
+    end
+
+    test "supports compound selectors and specificity within same rule family" do
+      {:ok, rules} =
+        ModelStylesheet.parse(
+          ~s({"node[type=\\"codergen\\"].critical":{"llm_model":"gpt-4.1-mini"},"node.critical":{"reasoning_effort":"medium"},"#review.critical":{"reasoning_effort":"high"},"node#review":{"temperature":0.1}})
+        )
+
+      review =
+        ModelStylesheet.attrs_for_node(
+          rules,
+          "review",
+          %{"type" => "codergen", "shape" => "box", "class" => "critical ops"}
+        )
+
+      plain_critical =
+        ModelStylesheet.attrs_for_node(
+          rules,
+          "plan",
+          %{"type" => "codergen", "shape" => "box", "class" => "critical"}
+        )
+
+      assert review["llm_model"] == "gpt-4.1-mini"
+      assert review["reasoning_effort"] == "high"
+      assert review["temperature"] == 0.1
+
+      assert plain_critical["llm_model"] == "gpt-4.1-mini"
+      assert plain_critical["reasoning_effort"] == "medium"
+      refute Map.has_key?(plain_critical, "temperature")
     end
   end
 end
