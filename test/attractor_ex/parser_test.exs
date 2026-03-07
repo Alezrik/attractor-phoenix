@@ -114,9 +114,9 @@ defmodule AttractorEx.ParserTest do
       assert graph.nodes["implement"].attrs["class"] == "loop-a"
     end
 
-    test "rejects quoted node identifiers outside the supported DOT subset" do
+    test "parses quoted graph and node identifiers" do
       dot = """
-      digraph "attractor-flow" {
+      digraph "attractor flow" {
         "start-node" [shape=Mdiamond]
         "plan step" [shape=box, prompt="Plan // keep text"]
         "done-node" [shape=Msquare]
@@ -124,8 +124,14 @@ defmodule AttractorEx.ParserTest do
       }
       """
 
-      assert {:error, message} = Parser.parse(dot)
-      assert message =~ "Invalid node declaration" or message =~ "Invalid edge declaration"
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.id == "attractor flow"
+      assert graph.nodes["start-node"].type == "start"
+      assert graph.nodes["plan step"].type == "codergen"
+      assert graph.nodes["plan step"].prompt == "Plan // keep text"
+      assert graph.nodes["done-node"].type == "exit"
+      assert Enum.any?(graph.edges, &(&1.from == "start-node" and &1.to == "plan step"))
+      assert Enum.any?(graph.edges, &(&1.from == "plan step" and &1.to == "done-node"))
     end
 
     test "preserves comment markers inside quoted values while stripping real comments" do

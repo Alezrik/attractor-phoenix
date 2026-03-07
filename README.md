@@ -1,7 +1,9 @@
 # attractor-phoenix
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/Alezrik/attractor-phoenix/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/Alezrik/attractor-phoenix/tree/main)
 
-`attractor-phoenix` is a demo app whose primary deliverable is the `AttractorEx` library.
+`attractor-phoenix` is a Phoenix application built to showcase and validate `AttractorEx`, an Elixir implementation of an Attractor-style workflow engine. It gives teams a clear way to define work as a graph of stages, run that workflow end to end, inspect the outcome of each step, and manage real operational moments such as retries, human approvals, tool execution, and LLM-backed generation.
+
+This repository combines the core engine with a polished visual experience for designing and explaining pipelines. The `AttractorEx` library is the primary product artifact, while the Phoenix UI makes the system easier to understand, demo, and evaluate by turning workflow logic, execution state, and spec-compliance work into something visible and concrete.
 
 ## Project Structure
 

@@ -4,6 +4,7 @@ defmodule AttractorEx.Parser do
   alias AttractorEx.{Edge, Graph, ModelStylesheet, Node}
 
   @bare_id_pattern ~r/^[A-Za-z_][A-Za-z0-9_]*$/
+  @quoted_id_pattern ~r/^"(?:[^"\\]|\\.)+"$|^'(?:[^'\\]|\\.)+'$/
   @graph_attr_decl_pattern ~r/^([A-Za-z_][A-Za-z0-9_\.]*)\s*=\s*(.+)$/
   @type parse_scope :: %{
           node_defaults: map(),
@@ -27,13 +28,20 @@ defmodule AttractorEx.Parser do
   end
 
   defp parse_root(dot) do
-    case Regex.run(~r/digraph\s+("?[\w\-]+"?)?\s*\{(?<body>.*)\}\s*$/ms, dot, capture: :all_names) do
+    case Regex.run(
+           ~r/digraph\s+((?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[A-Za-z_][A-Za-z0-9_\-]*))?\s*\{(?<body>.*)\}\s*$/ms,
+           dot,
+           capture: :all_names
+         ) do
       [body] ->
         name =
-          case Regex.run(~r/digraph\s+("?[\w\-]+"?)?\s*\{/m, dot, capture: :all_but_first) do
+          case Regex.run(
+                 ~r/digraph\s+((?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[A-Za-z_][A-Za-z0-9_\-]*))?\s*\{/m,
+                 dot,
+                 capture: :all_but_first
+               ) do
             [value] ->
-              candidate =
-                value |> String.trim() |> String.trim_leading("\"") |> String.trim_trailing("\"")
+              candidate = normalize_identifier(value)
 
               if candidate != "", do: candidate, else: "pipeline"
 
@@ -241,10 +249,7 @@ defmodule AttractorEx.Parser do
   end
 
   defp split_attrs(statement) do
-    case String.split(statement, "[", parts: 2) do
-      [id_part, attrs] -> {String.trim(id_part), "[" <> attrs}
-      [id_part] -> {String.trim(id_part), "[]"}
-    end
+    do_split_attrs(statement, "", nil)
   end
 
   defp parse_attribute_block("[" <> rest) do
@@ -335,36 +340,26 @@ defmodule AttractorEx.Parser do
 
   defp strip_wrapping_quotes(value), do: value
 
-  defp normalize_id(id) do
-    trimmed = String.trim(id)
-
-    cond do
-      trimmed == "" ->
-        ""
-
-      Regex.match?(@bare_id_pattern, trimmed) ->
-        trimmed
-
-      true ->
-        ""
-    end
-  end
+  defp normalize_id(id), do: normalize_identifier(id)
 
   defp split_edge_path(text) do
-    {parts, current, _in_quotes} =
+    {parts, current, _quote} =
       text
       |> String.graphemes()
-      |> Enum.reduce({[], "", false}, fn char, {parts, current, in_quotes} ->
+      |> Enum.reduce({[], "", nil}, fn char, {parts, current, quote} ->
         cond do
-          char == "\"" and not escaped_quote?(current) ->
-            {parts, current <> char, not in_quotes}
+          char in ["\"", "'"] and is_nil(quote) and not escaped_quote?(current) ->
+            {parts, current <> char, char}
 
-          char == ">" and not in_quotes and String.ends_with?(current, "-") ->
+          char == quote and not escaped_quote?(current) ->
+            {parts, current <> char, nil}
+
+          char == ">" and is_nil(quote) and String.ends_with?(current, "-") ->
             segment = String.slice(current, 0, max(String.length(current) - 1, 0))
-            {parts ++ [segment], "", in_quotes}
+            {parts ++ [segment], "", quote}
 
           true ->
-            {parts, current <> char, in_quotes}
+            {parts, current <> char, quote}
         end
       end)
 
@@ -477,7 +472,9 @@ defmodule AttractorEx.Parser do
 
   defp take_subgraph(text) do
     with {:ok, body_start, rest} <- take_until_open_brace(text),
-         true <- String.trim(body_start) =~ ~r/^subgraph(\s+("?[\w\-]+"?))?$/ do
+         true <-
+           String.trim(body_start) =~
+             ~r/^subgraph(\s+(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[A-Za-z_][A-Za-z0-9_\-]*))?$/ do
       take_balanced_block(rest, "", nil, 1)
     else
       false -> {:error, "Invalid subgraph declaration."}
@@ -603,5 +600,48 @@ defmodule AttractorEx.Parser do
     |> String.split(~r/[,\s]+/, trim: true)
     |> Enum.map(&String.trim/1)
     |> Enum.reject(&(&1 == ""))
+  end
+
+  defp do_split_attrs(<<>>, current, _quote), do: {String.trim(current), "[]"}
+
+  defp do_split_attrs(<<char, rest::binary>>, current, quote) do
+    cond do
+      char in [?", ?'] and is_nil(quote) and not escaped_quote?(current) ->
+        do_split_attrs(rest, current <> <<char>>, char)
+
+      char == quote and not escaped_quote?(current) ->
+        do_split_attrs(rest, current <> <<char>>, nil)
+
+      char == ?[ and is_nil(quote) ->
+        {String.trim(current), "[" <> rest}
+
+      true ->
+        do_split_attrs(rest, current <> <<char>>, quote)
+    end
+  end
+
+  defp normalize_identifier(nil), do: ""
+
+  defp normalize_identifier(id) do
+    trimmed = String.trim(id)
+
+    cond do
+      trimmed == "" ->
+        ""
+
+      Regex.match?(@bare_id_pattern, trimmed) ->
+        trimmed
+
+      Regex.match?(@quoted_id_pattern, trimmed) ->
+        trimmed
+        |> strip_wrapping_quotes()
+        |> String.replace("\\\"", "\"")
+        |> String.replace("\\'", "'")
+        |> String.replace("\\\\", "\\")
+        |> String.trim()
+
+      true ->
+        ""
+    end
   end
 end
