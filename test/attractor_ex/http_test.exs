@@ -65,6 +65,25 @@ defmodule AttractorEx.HTTPTest do
     assert String.starts_with?(content_type, "image/svg+xml")
     assert graph_conn.resp_body =~ "Attractor Pipeline"
 
+    dot_graph_conn =
+      Router.call(conn(:get, "/pipelines/#{pipeline_id}/graph?format=dot"), @router_opts)
+
+    assert dot_graph_conn.status == 200
+    assert [dot_content_type | _] = get_resp_header(dot_graph_conn, "content-type")
+    assert String.starts_with?(dot_content_type, "text/vnd.graphviz")
+    assert dot_graph_conn.resp_body =~ "digraph attractor"
+
+    json_graph_conn =
+      Router.call(conn(:get, "/pipelines/#{pipeline_id}/graph?format=json"), @router_opts)
+
+    assert json_graph_conn.status == 200
+
+    assert %{"graph" => %{"id" => "attractor", "nodes" => nodes, "edges" => edges}} =
+             Jason.decode!(json_graph_conn.resp_body)
+
+    assert Map.has_key?(nodes, "plan")
+    assert is_list(edges)
+
     events_conn = Router.call(conn(:get, "/pipelines/#{pipeline_id}/events"), @router_opts)
     assert events_conn.status == 200
     assert events_conn.resp_body =~ "event: PipelineStarted"

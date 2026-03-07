@@ -150,6 +150,21 @@ defmodule AttractorEx.ParserTest do
       assert Enum.at(graph.edges, 0).condition == ~s(result == "//ok")
     end
 
+    test "parses single-quoted attribute values with separators and comment markers" do
+      dot = """
+      digraph attractor {
+        start [shape=Mdiamond, prompt='Keep, commas; and // markers']
+        done [shape=Msquare, prompt='Keep /* block */ markers too']
+        start -> done [condition='result == \\'ready\\'' ]
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.nodes["start"].prompt == "Keep, commas; and // markers"
+      assert graph.nodes["done"].prompt == "Keep /* block */ markers too"
+      assert Enum.at(graph.edges, 0).condition == "result == 'ready'"
+    end
+
     test "applies model_stylesheet rules with selector precedence" do
       stylesheet =
         ~s({"node":{"reasoning_effort":"low","llm_provider":"openai"},"type=codergen":{"llm_model":"gpt-4o-mini"},".critical":{"reasoning_effort":"medium"},"#review":{"reasoning_effort":"high"}})

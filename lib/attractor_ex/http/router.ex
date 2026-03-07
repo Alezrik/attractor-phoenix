@@ -3,15 +3,21 @@ defmodule AttractorEx.HTTP.Router do
 
   use Plug.Router
 
+  alias AttractorEx.Parser
   alias AttractorEx.HTTP.Manager
 
   plug Plug.Logger
-  plug :put_http_opts
   plug :match
   plug Plug.Parsers, parsers: [:json], pass: ["application/json"], json_decoder: Jason
   plug :dispatch
 
   def init(opts), do: opts
+
+  def call(conn, opts) do
+    conn
+    |> Plug.Conn.put_private(:attractor_http_opts, opts)
+    |> super(opts)
+  end
 
   post "/pipelines" do
     manager = manager!(conn)
@@ -88,9 +94,7 @@ defmodule AttractorEx.HTTP.Router do
 
     case Manager.pipeline_graph(manager, id) do
       {:ok, dot} ->
-        conn
-        |> Plug.Conn.put_resp_content_type("image/svg+xml")
-        |> Plug.Conn.send_resp(200, dot_to_svg(dot))
+        send_graph(conn, dot)
 
       {:error, :not_found} ->
         json(conn, 404, %{"error" => "pipeline not found"})
@@ -144,8 +148,6 @@ defmodule AttractorEx.HTTP.Router do
   match _ do
     json(conn, 404, %{"error" => "not found"})
   end
-
-  defp put_http_opts(conn, opts), do: Plug.Conn.put_private(conn, :attractor_http_opts, opts)
 
   defp manager!(conn) do
     get_in(conn.private, [:attractor_http_opts, :manager]) || AttractorEx.HTTP.Manager
@@ -218,6 +220,71 @@ defmodule AttractorEx.HTTP.Router do
 
   defp terminal?(status),
     do: status in [:success, :fail, :cancelled, "success", "fail", "cancelled"]
+
+  defp send_graph(conn, dot) do
+    case graph_format(conn) do
+      "dot" ->
+        conn
+        |> Plug.Conn.put_resp_content_type("text/vnd.graphviz")
+        |> Plug.Conn.send_resp(200, dot)
+
+      "json" ->
+        case Parser.parse(dot) do
+          {:ok, graph} -> json(conn, 200, graph_to_json(graph))
+          {:error, reason} -> json(conn, 422, %{"error" => reason})
+        end
+
+      _ ->
+        conn
+        |> Plug.Conn.put_resp_content_type("image/svg+xml")
+        |> Plug.Conn.send_resp(200, dot_to_svg(dot))
+    end
+  end
+
+  defp graph_format(conn) do
+    conn.params["format"]
+    |> case do
+      value when is_binary(value) -> String.downcase(String.trim(value))
+      _ -> "svg"
+    end
+  end
+
+  defp graph_to_json(graph) do
+    %{
+      "graph" => %{
+        "id" => graph.id,
+        "attrs" => graph.attrs,
+        "node_defaults" => graph.node_defaults,
+        "edge_defaults" => graph.edge_defaults,
+        "nodes" =>
+          graph.nodes
+          |> Enum.map(fn {id, node} ->
+            {id,
+             %{
+               "id" => node.id,
+               "type" => node.type,
+               "shape" => node.shape,
+               "prompt" => node.prompt,
+               "goal_gate" => node.goal_gate,
+               "retry_target" => node.retry_target,
+               "fallback_retry_target" => node.fallback_retry_target,
+               "attrs" => node.attrs
+             }}
+          end)
+          |> Map.new(),
+        "edges" =>
+          Enum.map(graph.edges, fn edge ->
+            %{
+              "from" => edge.from,
+              "to" => edge.to,
+              "condition" => edge.condition,
+              "status" => edge.status,
+              "attrs" => edge.attrs
+            }
+          end)
+      }
+    }
+  end
 
   defp dot_to_svg(dot) do
     escaped =
