@@ -3,6 +3,8 @@ defmodule AttractorEx.Interviewers.Queue do
 
   @behaviour AttractorEx.Interviewer
 
+  alias AttractorEx.Interviewers.Payload
+
   @impl true
   def ask(_node, _choices, _context, opts) do
     queue = opts[:queue]
@@ -21,9 +23,10 @@ defmodule AttractorEx.Interviewers.Queue do
 
   @impl true
   def ask_multiple(node, choices, context, opts) do
+    question = Payload.question(node, choices)
+
     case ask(node, choices, context, opts) do
-      {:ok, values} when is_list(values) -> {:ok, values}
-      {:ok, value} -> {:ok, [value]}
+      {:ok, values} -> {:ok, Payload.normalize_multiple_answer(values, question)}
       other -> other
     end
   end

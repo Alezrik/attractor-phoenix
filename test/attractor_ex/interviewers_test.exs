@@ -31,6 +31,18 @@ defmodule AttractorEx.InterviewersTest do
                  []
                )
     end
+
+    test "normalizes structured single and multiple answers" do
+      assert {:ok, "F"} =
+               AutoApprove.ask(%Node{}, [%{key: "F", label: "Fix", to: "fixes"}], %{},
+                 choice: %{"answer" => " F "}
+               )
+
+      assert {:ok, ["A", "B"]} =
+               AutoApprove.ask_multiple(%Node{}, [], %{},
+                 choices: %{"selected" => [%{"key" => "A"}, %{"value" => " B "}]}
+               )
+    end
   end
 
   describe "callback interviewer" do
@@ -150,6 +162,19 @@ defmodule AttractorEx.InterviewersTest do
         end)
     end
 
+    test "supports JSON-structured multi-select answers" do
+      _output =
+        capture_io(~s({"selected":[{"key":"A"},{"value":" B "}]}\n), fn ->
+          assert {:ok, ["A", "B"]} =
+                   Console.ask_multiple(
+                     %Node{id: "gate", attrs: %{"human.multiple" => true}},
+                     [%{key: "A", label: "Approve", to: "done"}],
+                     %{},
+                     []
+                   )
+        end)
+    end
+
     test "prints informational messages" do
       output =
         capture_io(fn ->
@@ -188,6 +213,13 @@ defmodule AttractorEx.InterviewersTest do
 
     test "supports multi-select answers from queued lists" do
       assert {:ok, ["A", "B"]} = Queue.ask_multiple(%Node{}, [], %{}, queue: [["A", "B"]])
+    end
+
+    test "normalizes structured multi-select answers from queues" do
+      assert {:ok, ["A", "B"]} =
+               Queue.ask_multiple(%Node{}, [], %{},
+                 queue: [%{"answers" => [%{"key" => "A"}, %{"value" => " B "}]}]
+               )
     end
 
     test "wraps single queued answers for ask_multiple and supports inform" do
@@ -237,6 +269,7 @@ defmodule AttractorEx.InterviewersTest do
 
       events = Agent.get(sink, & &1)
       assert Enum.any?(events, &(&1.event == :ask_multiple and &1.node_id == "gate"))
+      assert Enum.any?(events, &(&1.event == :answer and &1.answer == ["A"]))
     end
 
     test "supports function recording sinks and callback inner delegates" do

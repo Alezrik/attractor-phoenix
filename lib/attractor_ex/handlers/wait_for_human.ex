@@ -2,6 +2,7 @@ defmodule AttractorEx.Handlers.WaitForHuman do
   @moduledoc false
 
   alias AttractorEx.{Graph, HumanGate, Outcome}
+  alias AttractorEx.Interviewers.Payload
 
   def execute(node, context, %Graph{} = graph, _stage_dir, opts) do
     choices = HumanGate.choices_for(node.id, graph)
@@ -182,10 +183,12 @@ defmodule AttractorEx.Handlers.WaitForHuman do
   end
 
   defp interviewer_answer(node, choices, context, opts, multiple?) do
+    question = Payload.question(node, choices)
+
     with {:ok, module} <- resolve_interviewer(opts),
          response <-
            ask_interviewer(module, node, choices, context, interviewer_opts(opts), multiple?) do
-      normalize_interviewer_response(response)
+      normalize_interviewer_response(response, question, multiple?)
     else
       :none -> :missing
       {:error, reason} -> {:error, reason}
@@ -193,6 +196,8 @@ defmodule AttractorEx.Handlers.WaitForHuman do
   end
 
   defp ask_interviewer(module, node, choices, context, opts, true) do
+    _ = Code.ensure_loaded(module)
+
     cond do
       function_exported?(module, :ask_multiple, 4) ->
         module.ask_multiple(node, choices, context, opts)
@@ -210,6 +215,7 @@ defmodule AttractorEx.Handlers.WaitForHuman do
   end
 
   defp ask_interviewer(module, node, choices, context, opts, false) do
+    _ = Code.ensure_loaded(module)
     module.ask(node, choices, context, opts)
   end
 
@@ -271,14 +277,31 @@ defmodule AttractorEx.Handlers.WaitForHuman do
 
   defp maybe_put_recording_inner(opts, _interviewer), do: opts
 
-  defp normalize_interviewer_response({:ok, value}), do: {:ok, value}
-  defp normalize_interviewer_response({:error, reason}), do: {:error, to_string(reason)}
-  defp normalize_interviewer_response({:timeout}), do: {:ok, "timeout"}
-  defp normalize_interviewer_response(:timeout), do: {:ok, "timeout"}
-  defp normalize_interviewer_response({:skip}), do: {:ok, "skip"}
-  defp normalize_interviewer_response(:skip), do: {:ok, "skip"}
-  defp normalize_interviewer_response(nil), do: :missing
-  defp normalize_interviewer_response(value), do: {:ok, value}
+  defp normalize_interviewer_response({:ok, value}, question, true) do
+    {:ok, Payload.normalize_multiple_answer(value, question)}
+  end
+
+  defp normalize_interviewer_response({:ok, value}, question, false) do
+    {:ok, Payload.normalize_single_answer(value, question)}
+  end
+
+  defp normalize_interviewer_response({:error, reason}, _question, _multiple?),
+    do: {:error, to_string(reason)}
+
+  defp normalize_interviewer_response({:timeout}, _question, _multiple?), do: {:ok, "timeout"}
+  defp normalize_interviewer_response(:timeout, _question, _multiple?), do: {:ok, "timeout"}
+  defp normalize_interviewer_response({:skip}, _question, _multiple?), do: {:ok, "skip"}
+  defp normalize_interviewer_response(:skip, _question, _multiple?), do: {:ok, "skip"}
+  defp normalize_interviewer_response(nil, _question, _multiple?), do: :missing
+
+  defp normalize_interviewer_response(value, question, true) do
+    {:ok, Payload.normalize_multiple_answer(value, question)}
+  end
+
+  defp normalize_interviewer_response(value, question, false) do
+    {:ok, Payload.normalize_single_answer(value, question)}
+  end
+
   defp normalize_token(nil), do: ""
   defp normalize_token(%{} = value), do: normalize_token(extract_structured_answer(value))
   defp normalize_token([value]), do: normalize_token(value)
@@ -311,19 +334,6 @@ defmodule AttractorEx.Handlers.WaitForHuman do
   end
 
   defp extract_structured_answer(answer) do
-    answer["answers"] ||
-      answer[:answers] ||
-      answer["values"] ||
-      answer[:values] ||
-      answer["selected"] ||
-      answer[:selected] ||
-      answer["selection"] ||
-      answer[:selection] ||
-      answer["answer"] ||
-      answer[:answer] ||
-      answer["value"] ||
-      answer[:value] ||
-      answer["key"] ||
-      answer[:key]
+    Payload.extract_answer(answer)
   end
 end
