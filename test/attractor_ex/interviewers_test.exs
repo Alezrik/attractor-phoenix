@@ -55,6 +55,30 @@ defmodule AttractorEx.InterviewersTest do
       assert output =~ "Select a choice for human gate"
     end
 
+    test "prints prompt, default choice, and timeout metadata when configured" do
+      output =
+        capture_io("F\n", fn ->
+          assert {:ok, "F"} =
+                   Console.ask(
+                     %Node{
+                       id: "gate",
+                       attrs: %{
+                         "prompt" => "Review the release checklist",
+                         "human.default_choice" => "fixes",
+                         "human.timeout" => "30s"
+                       }
+                     },
+                     [%{key: "F", label: "[F] Fix", to: "fixes"}],
+                     %{},
+                     []
+                   )
+        end)
+
+      assert output =~ "Prompt: Review the release checklist"
+      assert output =~ "Default: fixes"
+      assert output =~ "Timeout: 30s"
+    end
+
     test "returns timeout when no stdin is available" do
       _output =
         capture_io("", fn ->
