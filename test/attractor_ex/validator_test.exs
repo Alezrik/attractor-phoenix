@@ -553,6 +553,46 @@ defmodule AttractorEx.ValidatorTest do
              )
     end
 
+    test "warns when human.multiple is invalid or has too few choices" do
+      invalid_dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        gate [shape=hexagon, prompt="Choose", human.multiple="later"]
+        done [shape=Msquare]
+        start -> gate
+        gate -> done [label="[D] Done"]
+      }
+      """
+
+      underspecified_dot = """
+      digraph attractor {
+        start [shape=Mdiamond]
+        gate [shape=hexagon, prompt="Choose", human.multiple=true]
+        done [shape=Msquare]
+        start -> gate
+        gate -> done [label="[D] Done"]
+      }
+      """
+
+      assert {:ok, invalid_graph} = Parser.parse(invalid_dot)
+      assert {:ok, underspecified_graph} = Parser.parse(underspecified_dot)
+
+      invalid_diagnostics = Validator.validate(invalid_graph)
+      underspecified_diagnostics = Validator.validate(underspecified_graph)
+
+      assert Enum.any?(
+               invalid_diagnostics,
+               &(&1.code == :human_multiple_invalid and &1.severity == :warning and
+                   &1.node_id == "gate")
+             )
+
+      assert Enum.any?(
+               underspecified_diagnostics,
+               &(&1.code == :human_multiple_requires_multiple_choices and
+                   &1.severity == :warning and &1.node_id == "gate")
+             )
+    end
+
     test "supports custom lint rules via validate/2 custom_rules option" do
       dot = """
       digraph attractor {

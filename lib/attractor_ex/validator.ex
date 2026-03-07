@@ -34,6 +34,8 @@ defmodule AttractorEx.Validator do
     |> validate_human_prompt(graph)
     |> validate_human_default_choice(graph)
     |> validate_human_default_choice_ambiguity(graph)
+    |> validate_human_multiple_setting(graph)
+    |> validate_human_multiple_choice_count(graph)
     |> validate_human_timeout_default(graph)
     |> validate_human_timeout_format(graph)
     |> validate_human_choice_key_collisions(graph)
@@ -599,6 +601,50 @@ defmodule AttractorEx.Validator do
           )
           | acc
         ]
+      else
+        acc
+      end
+    end)
+  end
+
+  defp validate_human_multiple_setting(diags, graph) do
+    Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
+      value = Map.get(node.attrs, "human.multiple")
+
+      if node.type == "wait.human" and not is_nil(value) and not valid_boolean_setting?(value) do
+        [
+          diag(
+            :warning,
+            :human_multiple_invalid,
+            "human.multiple should be true/false, yes/no, or 1/0.",
+            node.id
+          )
+          | acc
+        ]
+      else
+        acc
+      end
+    end)
+  end
+
+  defp validate_human_multiple_choice_count(diags, graph) do
+    Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
+      if node.type == "wait.human" and truthy?(Map.get(node.attrs, "human.multiple")) do
+        choices = HumanGate.choices_for(node.id, graph)
+
+        if length(choices) < 2 do
+          [
+            diag(
+              :warning,
+              :human_multiple_requires_multiple_choices,
+              "wait.human node sets human.multiple but has fewer than two outgoing choices.",
+              node.id
+            )
+            | acc
+          ]
+        else
+          acc
+        end
       else
         acc
       end
@@ -1210,6 +1256,14 @@ defmodule AttractorEx.Validator do
   end
 
   defp truthy?(_value), do: false
+
+  defp valid_boolean_setting?(value) when is_boolean(value), do: true
+
+  defp valid_boolean_setting?(value) when is_binary(value) do
+    String.downcase(String.trim(value)) in ["true", "false", "1", "0", "yes", "no"]
+  end
+
+  defp valid_boolean_setting?(_value), do: false
 
   defp duplicate_values?(values) do
     values

@@ -407,6 +407,147 @@ defmodule AttractorEx.HandlersTest do
       assert Agent.get(queue, & &1) == []
     end
 
+    test "wait_for_human supports multi-select answers from context" do
+      node = Node.new("gate", %{"type" => "wait.human", "human.multiple" => true})
+
+      graph = %Graph{
+        edges: [
+          Edge.new("gate", "ship_it", %{"label" => "[S] Ship"}),
+          Edge.new("gate", "fixes", %{"label" => "[F] Fix"})
+        ]
+      }
+
+      outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{"human" => %{"answers" => %{"gate" => ["S", %{"answer" => "F"}]}}},
+          graph,
+          unique_stage_dir("human_multiple_context"),
+          []
+        )
+
+      assert outcome.status == :success
+      assert outcome.suggested_next_ids == ["ship_it", "fixes"]
+      assert get_in(outcome.context_updates, ["human", "gate", "selected_many"]) == ["S", "F"]
+
+      assert get_in(outcome.context_updates, ["human", "gate", "targets"]) == [
+               "ship_it",
+               "fixes"
+             ]
+    end
+
+    test "wait_for_human uses ask_multiple when human.multiple is enabled" do
+      node = Node.new("gate", %{"type" => "wait.human", "human.multiple" => "yes"})
+
+      graph = %Graph{
+        edges: [
+          Edge.new("gate", "ship_it", %{"label" => "[S] Ship"}),
+          Edge.new("gate", "fixes", %{"label" => "[F] Fix"})
+        ]
+      }
+
+      callback = fn _node, _choices, _ctx -> {:ok, ["S", "F"]} end
+
+      outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{},
+          graph,
+          unique_stage_dir("human_multiple_interviewer"),
+          interviewer: :callback,
+          callback_multiple: callback
+        )
+
+      assert outcome.status == :success
+      assert outcome.suggested_next_ids == ["ship_it", "fixes"]
+    end
+
+    test "wait_for_human multi-select falls back to ask/4 for ask-only interviewers" do
+      node = Node.new("gate", %{"type" => "wait.human", "human.multiple" => true})
+
+      graph = %Graph{
+        edges: [
+          Edge.new("gate", "ship_it", %{"label" => "[S] Ship"}),
+          Edge.new("gate", "fixes", %{"label" => "[F] Fix"})
+        ]
+      }
+
+      outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{},
+          graph,
+          unique_stage_dir("human_multiple_ask_fallback"),
+          interviewer: AttractorExTest.AskOnlyInterviewer,
+          answer: %{"key" => "S"}
+        )
+
+      assert outcome.status == :success
+      assert outcome.suggested_next_ids == ["ship_it"]
+    end
+
+    test "wait_for_human multi-select uses default choice for empty or timeout lists" do
+      node =
+        Node.new("gate", %{
+          "type" => "wait.human",
+          "human.multiple" => true,
+          "human.default_choice" => "fixes"
+        })
+
+      graph = %Graph{
+        edges: [
+          Edge.new("gate", "ship_it", %{"label" => "[S] Ship"}),
+          Edge.new("gate", "fixes", %{"label" => "[F] Fix"})
+        ]
+      }
+
+      empty_outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{"human" => %{"answers" => %{"gate" => []}}},
+          graph,
+          unique_stage_dir("human_multiple_empty_default"),
+          []
+        )
+
+      timeout_outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{"human" => %{"answers" => %{"gate" => [%{"answer" => "timeout"}]}}},
+          graph,
+          unique_stage_dir("human_multiple_timeout_default"),
+          []
+        )
+
+      assert empty_outcome.status == :success
+      assert empty_outcome.suggested_next_ids == ["fixes"]
+      assert timeout_outcome.status == :success
+      assert timeout_outcome.suggested_next_ids == ["fixes"]
+    end
+
+    test "wait_for_human multi-select fails on skip markers" do
+      node = Node.new("gate", %{"type" => "wait.human", "human.multiple" => true})
+
+      graph = %Graph{
+        edges: [
+          Edge.new("gate", "ship_it", %{"label" => "[S] Ship"}),
+          Edge.new("gate", "fixes", %{"label" => "[F] Fix"})
+        ]
+      }
+
+      outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{"human" => %{"answers" => %{"gate" => [true, "skip"]}}},
+          graph,
+          unique_stage_dir("human_multiple_skip"),
+          []
+        )
+
+      assert outcome.status == :fail
+      assert outcome.failure_reason =~ "skipped"
+    end
+
     test "wait_for_human supports recording interviewer with sink" do
       node = Node.new("gate", %{"type" => "wait.human"})
       graph = %Graph{edges: [Edge.new("gate", "ship_it", %{"label" => "[S] Ship"})]}

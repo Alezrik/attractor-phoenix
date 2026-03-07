@@ -11,6 +11,7 @@ defmodule AttractorEx.ModelStylesheet do
     "fidelity",
     "goal_gate",
     "human.default_choice",
+    "human.multiple",
     "human.timeout",
     "join_policy",
     "k",

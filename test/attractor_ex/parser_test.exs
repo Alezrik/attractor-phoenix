@@ -166,6 +166,26 @@ defmodule AttractorEx.ParserTest do
       assert Enum.at(graph.edges, 0).condition == "result == 'ready'"
     end
 
+    test "parses repeated attribute blocks with semicolon separators" do
+      dot = """
+      digraph attractor {
+        node [shape=box; timeout="900s"][class="planning"]
+        edge [label="next"; fidelity="compact"][thread_id="main"]
+        start [shape=Mdiamond]
+        plan [prompt="Plan"]
+        done [shape=Msquare]
+        start -> plan -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.nodes["plan"].attrs["timeout"] == "900s"
+      assert graph.nodes["plan"].attrs["class"] == "planning"
+      assert Enum.at(graph.edges, 0).attrs["fidelity"] == "compact"
+      assert Enum.at(graph.edges, 0).attrs["thread_id"] == "main"
+      assert Enum.at(graph.edges, 1).attrs["label"] == "next"
+    end
+
     test "applies model_stylesheet rules with selector precedence" do
       stylesheet =
         ~s({"node":{"reasoning_effort":"low","llm_provider":"openai"},"type=codergen":{"llm_model":"gpt-4o-mini"},".critical":{"reasoning_effort":"medium"},"#review":{"reasoning_effort":"high"}})
