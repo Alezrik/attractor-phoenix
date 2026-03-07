@@ -70,6 +70,15 @@ Graph endpoint formats:
 1. Default: `GET /pipelines/:id/graph` returns SVG.
 2. `GET /pipelines/:id/graph?format=dot` returns raw DOT.
 3. `GET /pipelines/:id/graph?format=json` returns parsed graph JSON.
+4. `GET /pipelines/:id/graph?format=mermaid` returns Mermaid flowchart text.
+5. `GET /pipelines/:id/graph?format=text` returns a plain-text graph summary.
+
+HTTP service hardening:
+
+1. Empty pipeline submissions are rejected with `400`.
+2. Unsupported graph formats are rejected with `400` and a supported-format list.
+3. Responses include `cache-control: no-store` and `x-content-type-options: nosniff`.
+4. JSON request parsing is limited to a 1 MB body by default.
 
 Human-in-the-loop web flow:
 
@@ -77,29 +86,6 @@ Human-in-the-loop web flow:
 2. Poll `GET /pipelines/:id/questions` for pending questions.
 3. Send a choice to `POST /pipelines/:id/questions/:qid/answer`.
 4. Subscribe to `GET /pipelines/:id/events` for SSE status updates.
-
-## Optional Phoenix Integration
-
-If your app already runs Phoenix, you can host the AttractorEx HTTP API on the existing endpoint instead of starting a second Bandit listener.
-
-Supervision tree:
-
-```elixir
-children = [
-  # ...
-  AttractorEx.HTTP.Phoenix.child_spec(name: MyApp.AttractorHTTP)
-]
-```
-
-Phoenix router:
-
-```elixir
-forward "/attractor",
-  AttractorEx.HTTP.Router,
-  AttractorEx.HTTP.Phoenix.router_opts(name: MyApp.AttractorHTTP)
-```
-
-This integration is optional. `AttractorEx.start_http_server/1` remains the standalone path.
 
 ## Configuring LLM Nodes (`codergen`)
 
