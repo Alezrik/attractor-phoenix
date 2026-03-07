@@ -316,32 +316,43 @@ defmodule AttractorEx.Parser do
     {parts, current, _in_quotes, _bracket_depth} =
       text
       |> String.graphemes()
-      |> Enum.reduce({[], "", nil, 0}, fn char, {parts, current, quote, bracket_depth} ->
-        cond do
-          char in ["\"", "'"] and is_nil(quote) and not escaped_quote?(current) ->
-            {parts, current <> char, char, bracket_depth}
-
-          char == quote and not escaped_quote?(current) ->
-            {parts, current <> char, nil, bracket_depth}
-
-          char == "[" and is_nil(quote) ->
-            {parts, current <> char, quote, bracket_depth + 1}
-
-          char == "]" and is_nil(quote) and bracket_depth > 0 ->
-            {parts, current <> char, quote, bracket_depth - 1}
-
-          char in [",", ";"] and is_nil(quote) and bracket_depth == 0 ->
-            {[current | parts], "", quote, bracket_depth}
-
-          true ->
-            {parts, current <> char, quote, bracket_depth}
-        end
-      end)
+      |> Enum.reduce({[], "", nil, 0}, &consume_attr_pair_char/2)
 
     [current | parts]
     |> Enum.reverse()
     |> Enum.reject(&(String.trim(&1) == ""))
   end
+
+  defp consume_attr_pair_char(char, {parts, current, quote, bracket_depth}) do
+    cond do
+      opens_quote?(char, quote, current) ->
+        {parts, current <> char, char, bracket_depth}
+
+      closes_quote?(char, quote, current) ->
+        {parts, current <> char, nil, bracket_depth}
+
+      char == "[" and is_nil(quote) ->
+        {parts, current <> char, quote, bracket_depth + 1}
+
+      char == "]" and is_nil(quote) and bracket_depth > 0 ->
+        {parts, current <> char, quote, bracket_depth - 1}
+
+      attr_pair_separator?(char, quote, bracket_depth) ->
+        {[current | parts], "", quote, bracket_depth}
+
+      true ->
+        {parts, current <> char, quote, bracket_depth}
+    end
+  end
+
+  defp opens_quote?(char, quote, current),
+    do: char in ["\"", "'"] and is_nil(quote) and not escaped_quote?(current)
+
+  defp closes_quote?(char, quote, current),
+    do: char == quote and not escaped_quote?(current)
+
+  defp attr_pair_separator?(char, quote, bracket_depth),
+    do: is_nil(quote) and bracket_depth == 0 and char in [",", ";", "\n"]
 
   defp parse_value(value) do
     normalized =
