@@ -22,7 +22,13 @@ defmodule AttractorEx.Interviewers.Recording do
   end
 
   defp delegate(fun, node, payload, context, opts) do
-    inner = resolve_inner(opts[:inner] || opts[:recording_inner] || :auto_approve)
+    inner =
+      opts[:inner]
+      |> Kernel.||(opts[:recording_inner])
+      |> Kernel.||(:auto_approve)
+      |> resolve_inner()
+
+    _ = Code.ensure_loaded(inner)
 
     cond do
       function_exported?(inner, fun, 4) ->
