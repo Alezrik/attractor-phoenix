@@ -67,7 +67,7 @@ Implemented endpoints:
 
 Graph endpoint formats:
 
-1. Default: `GET /pipelines/:id/graph` returns SVG.
+1. Default: `GET /pipelines/:id/graph` returns a native SVG graph rendering.
 2. `GET /pipelines/:id/graph?format=dot` returns raw DOT.
 3. `GET /pipelines/:id/graph?format=json` returns parsed graph JSON.
 4. `GET /pipelines/:id/graph?format=mermaid` returns Mermaid flowchart text.
