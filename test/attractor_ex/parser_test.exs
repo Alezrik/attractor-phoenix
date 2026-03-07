@@ -213,6 +213,33 @@ defmodule AttractorEx.ParserTest do
       assert Enum.at(graph.edges, 1).attrs["label"] == "next"
     end
 
+    test "parses multiline attribute blocks while preserving quoted newlines and comment markers" do
+      dot = """
+      digraph attractor {
+        node [
+          shape=box
+          prompt="Line 1\\nLine 2 // keep"
+          class="planning"
+        ]
+        edge [
+          label="Go\\nNow"
+          condition="result == \\"/*ready*/\\""
+        ]
+        start [shape=Mdiamond]
+        plan
+        done [shape=Msquare]
+        start -> plan -> done
+      }
+      """
+
+      assert {:ok, graph} = Parser.parse(dot)
+      assert graph.nodes["plan"].prompt == "Line 1\nLine 2 // keep"
+      assert graph.nodes["plan"].attrs["class"] == "planning"
+      assert Enum.at(graph.edges, 0).attrs["label"] == "Go\nNow"
+      assert Enum.at(graph.edges, 0).condition == ~s(result == "/*ready*/")
+      assert Enum.at(graph.edges, 1).attrs["label"] == "Go\nNow"
+    end
+
     test "applies model_stylesheet rules with selector precedence" do
       stylesheet =
         ~s({"node":{"reasoning_effort":"low","llm_provider":"openai"},"type=codergen":{"llm_model":"gpt-4o-mini"},".critical":{"reasoning_effort":"medium"},"#review":{"reasoning_effort":"high"}})
