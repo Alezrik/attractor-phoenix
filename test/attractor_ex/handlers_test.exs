@@ -215,7 +215,7 @@ defmodule AttractorEx.HandlersTest do
       assert outcome.failure_reason =~ "no default"
     end
 
-    test "wait_for_human supports accelerator variants and retries on unknown answers" do
+    test "wait_for_human supports accelerator variants and falls back to first choice on unknown answers" do
       node = Node.new("gate", %{"type" => "wait.human"})
 
       graph = %Graph{
@@ -234,8 +234,9 @@ defmodule AttractorEx.HandlersTest do
           []
         )
 
-      assert outcome.status == :retry
-      assert outcome.failure_reason =~ "did not match any choice"
+      assert outcome.status == :success
+      assert outcome.suggested_next_ids == ["approved"]
+      assert get_in(outcome.context_updates, ["human", "gate", "selected"]) == "Y"
     end
 
     test "wait_for_human supports legacy context.human.<node>.answer path" do

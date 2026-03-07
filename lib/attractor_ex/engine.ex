@@ -168,7 +168,7 @@ defmodule AttractorEx.Engine do
     context =
       initial_context
       |> Map.put_new("run_id", run_id)
-      |> Map.put_new("graph", %{"goal" => Map.get(graph.attrs, "goal", "")})
+      |> Map.put_new("graph", normalize_context(graph.attrs))
 
     case start_id do
       nil ->
@@ -197,6 +197,7 @@ defmodule AttractorEx.Engine do
 
   defp loop(graph, node_id, context, outcomes, history, run_root, diagnostics, steps_left, opts) do
     node = Map.fetch!(graph.nodes, node_id)
+    context = Map.put(context, "current_node", node.id)
     retry_policy = build_retry_policy(node, graph, opts)
     {outcome, stage_dir} = execute_with_retry(node, context, graph, run_root, retry_policy, opts)
     _ = write_json(Path.join(stage_dir, "status.json"), serialize_outcome(outcome))
@@ -546,7 +547,7 @@ defmodule AttractorEx.Engine do
           String.to_integer(graph.attrs["default_max_retry"])
 
         true ->
-          0
+          50
       end
 
     max_attempts = max(1, max_retries + 1)

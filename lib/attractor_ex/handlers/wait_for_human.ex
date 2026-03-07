@@ -58,8 +58,7 @@ defmodule AttractorEx.Handlers.WaitForHuman do
         Outcome.fail("human skipped interaction")
 
       true ->
-        select_choice(answer, choices) ||
-          Outcome.retry("human gate answer did not match any choice")
+        select_choice(answer, choices) || select_first_choice(choices)
     end
   end
 
@@ -88,6 +87,9 @@ defmodule AttractorEx.Handlers.WaitForHuman do
       }
     }
   end
+
+  defp select_first_choice([choice | _rest]), do: outcome_for_choice(choice)
+  defp select_first_choice([]), do: nil
 
   defp human_answer(context, node_id) do
     case get_in(context, ["human", "answers", node_id]) ||
