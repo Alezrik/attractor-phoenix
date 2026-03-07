@@ -12,7 +12,8 @@ defmodule AttractorPhoenix.MixProject do
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader],
-      test_coverage: [tool: ExCoveralls]
+      test_coverage: [tool: ExCoveralls],
+      dialyzer: [plt_add_apps: [:mix]]
     ]
   end
 
@@ -100,7 +101,8 @@ defmodule AttractorPhoenix.MixProject do
         "deps.unlock --unused",
         "format",
         "credo --strict",
-        "test"
+        "coveralls.json",
+        "coverage.gate"
       ]
     ]
   end

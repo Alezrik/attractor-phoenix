@@ -342,13 +342,6 @@ defmodule AttractorEx.Parser do
       trimmed == "" ->
         ""
 
-      Regex.match?(~r/^"([^"\\]|\\.)*"$/, trimmed) ->
-        trimmed
-        |> String.trim_leading("\"")
-        |> String.trim_trailing("\"")
-        |> String.replace("\\\"", "\"")
-        |> String.replace("\\\\", "\\")
-
       Regex.match?(@bare_id_pattern, trimmed) ->
         trimmed
 

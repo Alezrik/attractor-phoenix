@@ -22,14 +22,16 @@ defmodule AttractorEx.Interviewers.Server do
 
     receive do
       {:pipeline_answer, ref, answer} when ref == question.ref ->
+        normalized_answer = normalize_answer(answer, question)
+
         emit(opts, %{
           type: "InterviewCompleted",
           stage: node.id,
-          answer: answer,
+          answer: normalized_answer,
           question: public_question(question)
         })
 
-        {:ok, answer}
+        {:ok, normalized_answer}
     after
       timeout_ms ->
         Manager.timeout_question(manager, pipeline_id, question.id)
@@ -58,18 +60,21 @@ defmodule AttractorEx.Interviewers.Server do
   def inform(_node, _payload, _context, _opts), do: :ok
 
   defp build_question(node, choices, timeout_ms) do
+    question_type = question_type(node, choices)
+
     %{
       id: node.id,
       ref: make_ref(),
       waiter: self(),
       text: Map.get(node.attrs, "prompt", "Choose a path"),
-      type: "MULTIPLE_CHOICE",
+      type: question_type,
       options: choices,
       default: Map.get(node.attrs, "human.default_choice"),
       timeout_seconds: timeout_ms / 1000,
       stage: node.id,
       metadata: %{
         "node_id" => node.id,
+        "question_type" => question_type,
         "timeout" => Map.get(node.attrs, "human.timeout"),
         "default_choice" => Map.get(node.attrs, "human.default_choice")
       }
@@ -106,4 +111,75 @@ defmodule AttractorEx.Interviewers.Server do
   end
 
   defp timeout_ms(_value), do: 60_000
+
+  defp question_type(node, choices) do
+    cond do
+      truthy?(Map.get(node.attrs, "human.multiple")) ->
+        "MULTIPLE_CHOICE"
+
+      choices == [] ->
+        "FREEFORM"
+
+      confirmation_choice?(choices) ->
+        "CONFIRMATION"
+
+      yes_no_choices?(choices) ->
+        "YES_NO"
+
+      true ->
+        "MULTIPLE_CHOICE"
+    end
+  end
+
+  defp confirmation_choice?([_choice]), do: true
+  defp confirmation_choice?(_choices), do: false
+
+  defp yes_no_choices?(choices) when length(choices) == 2 do
+    normalized =
+      choices
+      |> Enum.flat_map(fn choice -> [choice[:key], choice[:label], choice[:to]] end)
+      |> Enum.map(&normalize_token/1)
+      |> Enum.reject(&(&1 == ""))
+
+    Enum.any?(normalized, &(&1 in ["yes", "y", "approve", "approved"])) and
+      Enum.any?(normalized, &(&1 in ["no", "n", "reject", "rejected"]))
+  end
+
+  defp yes_no_choices?(_choices), do: false
+
+  defp normalize_token(nil), do: ""
+
+  defp normalize_token(value) do
+    value
+    |> to_string()
+    |> String.trim()
+    |> String.downcase()
+  end
+
+  defp truthy?(value) when is_boolean(value), do: value
+  defp truthy?(value) when is_binary(value), do: normalize_token(value) in ["true", "1", "yes"]
+  defp truthy?(_value), do: false
+
+  defp normalize_answer(answer, %{type: "YES_NO"}) when is_boolean(answer) do
+    if answer, do: "yes", else: "no"
+  end
+
+  defp normalize_answer(answer, %{type: "CONFIRMATION"}) when is_boolean(answer) do
+    if answer, do: "confirm", else: "cancel"
+  end
+
+  defp normalize_answer(answer, question) when is_map(answer) do
+    candidate =
+      answer["answer"] || answer[:answer] || answer["value"] || answer[:value] || answer["key"] ||
+        answer[:key]
+
+    normalize_answer(candidate, question)
+  end
+
+  defp normalize_answer(answer, question) when is_list(answer) do
+    Enum.map(answer, &normalize_answer(&1, question))
+  end
+
+  defp normalize_answer(answer, _question) when is_binary(answer), do: String.trim(answer)
+  defp normalize_answer(answer, _question), do: answer
 end
