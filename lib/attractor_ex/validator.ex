@@ -18,6 +18,7 @@ defmodule AttractorEx.Validator do
     |> validate_terminal_nodes(graph)
     |> validate_start_incoming(graph)
     |> validate_exit_outgoing(graph)
+    |> validate_edge_sources(graph)
     |> validate_edge_targets(graph)
     |> validate_unreachable_nodes(graph)
     |> validate_dead_end_nodes(graph)
@@ -28,7 +29,9 @@ defmodule AttractorEx.Validator do
     |> validate_known_node_types(graph)
     |> validate_fidelity_values(graph)
     |> validate_human_gate_choices(graph)
+    |> validate_human_prompt(graph)
     |> validate_human_default_choice(graph)
+    |> validate_human_default_choice_ambiguity(graph)
     |> validate_human_timeout_default(graph)
     |> validate_human_timeout_format(graph)
     |> validate_human_choice_key_collisions(graph)
@@ -140,6 +143,27 @@ defmodule AttractorEx.Validator do
             :error,
             :edge_target_exists,
             "Edge target references an unknown node.",
+            edge.from,
+            {edge.from, edge.to}
+          )
+          | acc
+        ]
+      end
+    end)
+  end
+
+  defp validate_edge_sources(diags, graph) do
+    node_ids = MapSet.new(Map.keys(graph.nodes))
+
+    Enum.reduce(graph.edges, diags, fn edge, acc ->
+      if MapSet.member?(node_ids, edge.from) do
+        acc
+      else
+        [
+          diag(
+            :error,
+            :edge_source_exists,
+            "Edge source references an unknown node.",
             edge.from,
             {edge.from, edge.to}
           )
@@ -369,6 +393,24 @@ defmodule AttractorEx.Validator do
     end)
   end
 
+  defp validate_human_prompt(diags, graph) do
+    Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
+      if node.type == "wait.human" and blank?(Map.get(node.attrs, "prompt")) do
+        [
+          diag(
+            :warning,
+            :human_gate_prompt,
+            "wait.human node should define a prompt for interviewer UX.",
+            node.id
+          )
+          | acc
+        ]
+      else
+        acc
+      end
+    end)
+  end
+
   defp validate_human_default_choice(diags, graph) do
     Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
       default_choice = Map.get(node.attrs, "human.default_choice")
@@ -383,6 +425,33 @@ defmodule AttractorEx.Validator do
               :warning,
               :human_default_choice,
               "human.default_choice does not match any outgoing choice.",
+              node.id
+            )
+            | acc
+          ]
+        else
+          acc
+        end
+      else
+        acc
+      end
+    end)
+  end
+
+  defp validate_human_default_choice_ambiguity(diags, graph) do
+    Enum.reduce(graph.nodes, diags, fn {_id, node}, acc ->
+      default_choice = Map.get(node.attrs, "human.default_choice")
+
+      if node.type == "wait.human" and is_binary(default_choice) and
+           String.trim(default_choice) != "" do
+        choices = HumanGate.choices_for(node.id, graph)
+
+        if ambiguous_human_default_choice?(default_choice, choices) do
+          [
+            diag(
+              :warning,
+              :human_default_choice_ambiguous,
+              "human.default_choice matches multiple outgoing choices.",
               node.id
             )
             | acc
@@ -717,6 +786,18 @@ defmodule AttractorEx.Validator do
     values
     |> Enum.frequencies()
     |> Enum.any?(fn {_value, count} -> count > 1 end)
+  end
+
+  defp ambiguous_human_default_choice?(value, choices) do
+    normalized = HumanGate.normalize_token(value)
+
+    choices
+    |> Enum.count(fn choice ->
+      HumanGate.normalize_token(choice.key) == normalized or
+        HumanGate.normalize_token(choice.label) == normalized or
+        HumanGate.normalize_token(choice.to) == normalized
+    end)
+    |> Kernel.>(1)
   end
 
   defp valid_human_timeout?(value) when is_integer(value), do: value > 0
