@@ -38,7 +38,7 @@ Legend: `implemented`, `partial`, `not implemented`.
 | `4. Node Handlers` | `implemented` | Built-ins present: `start`, `exit`, `codergen`, `wait.human`, `conditional`, `parallel`, `parallel.fan_in`, `tool`, `stack.manager_loop`, default fallback. |
 | `5. State and Context` | `implemented` | Context merge and per-node artifacts/checkpoints implemented. First-class resume API is available via `AttractorEx.resume/3` using a checkpoint struct/map or `checkpoint.json` path. |
 | `6. Human-in-the-Loop` | `partial` | `wait.human` supports context-driven answers, timeout/default handling, and interviewer abstractions (`AutoApprove`, `Console`, `Callback`, `Queue`) via handler options. Full upstream interviewer UX parity remains open. |
-| `7. Validation and Linting` | `partial` | Core diagnostics exist (start/exit, edges, condition parse, goal gate retry hints, codergen prompt warning) plus `wait.human` choice/default checks and `validate/2` custom lint rule hooks. Full lint parity matrix remains open. |
+| `7. Validation and Linting` | `partial` | Core diagnostics exist (start/exit, edges, condition parse, unreachable/dead-end flow warnings, retry target reference checks, goal gate retry hints, codergen prompt warning) plus `wait.human` choice/default checks and `validate/2` custom lint rule hooks. Full lint parity matrix remains open. |
 | `8. Model Stylesheet` | `partial` | JSON `model_stylesheet` parsing is implemented with selector application for `node`/`*`, `type=...` and `node[type=...]` (quoted/unquoted), `.class`/`node.class` (including multi-class), `#id`/`node#id`, compound selectors (for example `node[type=codergen].critical#review`), and comma-separated selector lists. Specificity now follows id > class > type > global. Full upstream selector/precedence parity is still open. |
 | `9. Transforms and Extensibility` | `partial` | Extensibility exists via handlers/backends/options. AST transform pipeline and HTTP server mode are not implemented. |
 | `10. Condition Expression Language` | `implemented` | Equality/inequality, numeric comparisons, clause chaining, nil/boolean handling, nested context and `outcome` access are implemented and tested. |
@@ -58,7 +58,7 @@ Legend: `implemented`, `partial`, `not implemented`.
 1. Broader DOT grammar edge cases beyond the supported parsing subset.
 2. Full model stylesheet selector/precedence parity beyond the implemented node selector subset (compound id/class/type/global selectors and selector lists).
 3. Full interviewer UX/interaction parity beyond the current named interfaces (`AutoApprove`, `Console`, `Callback`, `Queue`).
-4. Full linting parity matrix (custom lint rule API now available via `Validator.validate/2`).
+4. Full linting parity matrix (coverage now includes flow reachability and retry-target reference checks plus custom lint rule API via `Validator.validate/2`).
 5. AST transform registration pipeline and HTTP server mode.
 
 ## Verification Commands
