@@ -258,8 +258,6 @@ defmodule AttractorEx.Parser do
     |> do_parse_attribute_blocks(%{})
   end
 
-  defp parse_attribute_blocks(_), do: %{}
-
   defp do_parse_attribute_blocks("[" <> _rest = text, acc) do
     case take_attribute_block(text) do
       {:ok, block, rest} ->
