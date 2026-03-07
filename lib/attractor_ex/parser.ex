@@ -55,9 +55,42 @@ defmodule AttractorEx.Parser do
     body
     |> flatten_subgraphs()
     |> String.replace("\r", "")
-    |> String.split(~r/;\s*|\n/, trim: true)
+    |> split_unquoted_statements()
     |> Enum.map(&String.trim/1)
     |> Enum.reject(&(&1 in ["", "{", "}"] or String.starts_with?(&1, "subgraph ")))
+  end
+
+  defp split_unquoted_statements(text) do
+    {parts, current, _in_quotes} =
+      text
+      |> String.graphemes()
+      |> Enum.reduce({[], "", false}, fn char, {parts, current, in_quotes} ->
+        cond do
+          char == "\"" and not escaped_quote?(current) ->
+            {parts, current <> char, not in_quotes}
+
+          (char == ";" or char == "\n") and not in_quotes ->
+            {[current | parts], "", in_quotes}
+
+          true ->
+            {parts, current <> char, in_quotes}
+        end
+      end)
+
+    [current | parts]
+    |> Enum.reverse()
+    |> Enum.reject(&(String.trim(&1) == ""))
+  end
+
+  defp escaped_quote?(current) do
+    trailing_backslashes =
+      current
+      |> String.reverse()
+      |> String.graphemes()
+      |> Enum.take_while(&(&1 == "\\"))
+      |> length()
+
+    rem(trailing_backslashes, 2) == 1
   end
 
   defp parse_statement("graph " <> rest, graph),

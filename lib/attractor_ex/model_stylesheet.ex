@@ -41,11 +41,77 @@ defmodule AttractorEx.ModelStylesheet do
         {:ok, list_to_rules(list)}
 
       {:ok, _other} ->
-        {:error, "model_stylesheet JSON must decode to an object or array"}
+        parse_css_stylesheet(trimmed)
 
       {:error, _reason} ->
-        {:error, "model_stylesheet is not valid JSON"}
+        parse_css_stylesheet(trimmed)
     end
+  end
+
+  defp parse_css_stylesheet(stylesheet) do
+    stylesheet
+    |> parse_css_rules([], 0)
+    |> case do
+      {:ok, rules} when rules != [] -> {:ok, rules}
+      _ -> {:error, "model_stylesheet is not valid JSON or CSS stylesheet"}
+    end
+  end
+
+  defp parse_css_rules(remaining, rules, index) do
+    trimmed = String.trim(remaining)
+
+    if trimmed == "" do
+      {:ok, Enum.reverse(rules)}
+    else
+      case String.split(trimmed, "{", parts: 2) do
+        [selector_text, rest] ->
+          selector = String.trim(selector_text)
+
+          case String.split(rest, "}", parts: 2) do
+            [declarations_text, next] ->
+              attrs = parse_css_declarations(declarations_text)
+              normalized = normalize_rules(selector, attrs, index)
+              parse_css_rules(next, Enum.reverse(normalized) ++ rules, index + 1)
+
+            _ ->
+              :error
+          end
+
+        _ ->
+          :error
+      end
+    end
+  end
+
+  defp parse_css_declarations(text) do
+    text
+    |> String.split(";", trim: true)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reduce(%{}, fn declaration, acc ->
+      case String.split(declaration, ":", parts: 2) do
+        [property, value] ->
+          normalized_property = String.trim(property)
+
+          normalized_value =
+            value
+            |> String.trim()
+            |> String.trim_leading("\"")
+            |> String.trim_trailing("\"")
+
+          if recognized_css_property?(normalized_property) and normalized_value != "" do
+            Map.put(acc, normalized_property, normalized_value)
+          else
+            acc
+          end
+
+        _ ->
+          acc
+      end
+    end)
+  end
+
+  defp recognized_css_property?(property) do
+    property in ["llm_model", "llm_provider", "reasoning_effort"]
   end
 
   defp map_to_rules(map) do

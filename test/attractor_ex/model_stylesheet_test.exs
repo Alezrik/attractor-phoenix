@@ -37,6 +37,20 @@ defmodule AttractorEx.ModelStylesheetTest do
       assert length(array_rules) == 2
     end
 
+    test "parses CSS-like stylesheet rules" do
+      css = """
+      * { llm_provider: anthropic; llm_model: claude-sonnet-4-5; }
+      .code { llm_model: claude-opus-4-6; }
+      #critical_review { llm_model: gpt-5.2; llm_provider: openai; reasoning_effort: high; }
+      """
+
+      assert {:ok, rules} = ModelStylesheet.parse(css)
+      assert length(rules) == 3
+      assert Enum.any?(rules, &(&1.selector == "*"))
+      assert Enum.any?(rules, &(&1.selector == ".code"))
+      assert Enum.any?(rules, &(&1.selector == "#critical_review"))
+    end
+
     test "rejects invalid stylesheet values" do
       assert {:error, _} = ModelStylesheet.parse(123)
       assert {:error, _} = ModelStylesheet.parse("not-json")
@@ -159,6 +173,38 @@ defmodule AttractorEx.ModelStylesheetTest do
       assert plain_critical["llm_model"] == "gpt-4.1-mini"
       assert plain_critical["reasoning_effort"] == "medium"
       refute Map.has_key?(plain_critical, "temperature")
+    end
+
+    test "applies CSS selector specificity and later-rule precedence" do
+      {:ok, rules} =
+        ModelStylesheet.parse("""
+        * { llm_provider: anthropic; llm_model: claude-sonnet-4-5; reasoning_effort: low; }
+        .code { llm_model: claude-opus-4-6; }
+        .code { reasoning_effort: medium; }
+        #critical_review { llm_model: gpt-5.2; llm_provider: openai; reasoning_effort: high; }
+        """)
+
+      regular_code =
+        ModelStylesheet.attrs_for_node(
+          rules,
+          "implement",
+          %{"shape" => "box", "class" => "code"}
+        )
+
+      critical_code =
+        ModelStylesheet.attrs_for_node(
+          rules,
+          "critical_review",
+          %{"shape" => "box", "class" => "code"}
+        )
+
+      assert regular_code["llm_provider"] == "anthropic"
+      assert regular_code["llm_model"] == "claude-opus-4-6"
+      assert regular_code["reasoning_effort"] == "medium"
+
+      assert critical_code["llm_provider"] == "openai"
+      assert critical_code["llm_model"] == "gpt-5.2"
+      assert critical_code["reasoning_effort"] == "high"
     end
   end
 end
