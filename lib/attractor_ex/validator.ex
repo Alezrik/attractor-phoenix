@@ -1,5 +1,10 @@
 defmodule AttractorEx.Validator do
-  @moduledoc false
+  @moduledoc """
+  Validates parsed graphs against the supported Attractor runtime contract.
+
+  Validation covers structural errors, routing issues, handler-specific attributes,
+  human-gate metadata, retry configuration, and model stylesheet linting.
+  """
 
   alias AttractorEx.{Condition, Graph, HandlerRegistry, HumanGate, ModelStylesheet}
   alias AttractorEx.Handlers.Codergen
@@ -13,6 +18,7 @@ defmodule AttractorEx.Validator do
     "summary:high"
   ]
 
+  @doc "Returns all diagnostics for a normalized graph."
   def validate(%Graph{} = graph, opts \\ []) do
     []
     |> validate_start_node(graph)
@@ -51,6 +57,7 @@ defmodule AttractorEx.Validator do
     |> apply_custom_rules(graph, opts)
   end
 
+  @doc "Validates a graph and raises when error-severity diagnostics are present."
   def validate_or_raise(%Graph{} = graph, opts \\ []) do
     diagnostics = validate(graph, opts)
     errors = Enum.filter(diagnostics, &(&1.severity == :error))
@@ -75,6 +82,7 @@ defmodule AttractorEx.Validator do
     end
   end
 
+  @doc "Finds the normalized start node ID for a graph, if present."
   def start_node_id(%Graph{} = graph) do
     graph.nodes
     |> Enum.find_value(fn {id, node} ->

@@ -1,5 +1,10 @@
 defmodule AttractorEx.HTTP.Manager do
-  @moduledoc false
+  @moduledoc """
+  GenServer that owns the in-memory state for HTTP-managed pipeline runs.
+
+  It tracks pipeline status, events, checkpoints, pending human questions, and event
+  subscribers, and acts as the coordination point between the engine and the router.
+  """
 
   use GenServer
 
@@ -7,10 +12,12 @@ defmodule AttractorEx.HTTP.Manager do
 
   @terminal_statuses MapSet.new([:success, :fail, :cancelled, "success", "fail", "cancelled"])
 
+  @doc "Starts the HTTP pipeline manager."
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, %{}, opts)
   end
 
+  @doc "Creates and starts a pipeline run under HTTP management."
   def create_pipeline(server, dot, context, opts \\ []) do
     GenServer.call(server, {:create_pipeline, dot, context, opts}, :infinity)
   end

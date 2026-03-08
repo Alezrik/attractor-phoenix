@@ -1,5 +1,10 @@
 defmodule AttractorEx.Engine do
-  @moduledoc false
+  @moduledoc """
+  Core execution engine for AttractorEx pipelines.
+
+  This module owns graph transformation, validation, handler dispatch, checkpointing,
+  runtime event emission, retry logic, goal-gate enforcement, and edge selection.
+  """
 
   alias AttractorEx.{
     Checkpoint,
@@ -13,6 +18,7 @@ defmodule AttractorEx.Engine do
     Validator
   }
 
+  @doc "Parses, validates, and executes a DOT pipeline."
   def run(dot, initial_context, opts \\ []) do
     with {:ok, %Graph{} = graph} <- Parser.parse(dot),
          {:ok, %Graph{} = transformed_graph} <- apply_graph_transforms(graph, opts),
@@ -32,6 +38,7 @@ defmodule AttractorEx.Engine do
     end
   end
 
+  @doc "Resumes execution from a checkpoint file, map, or `AttractorEx.Checkpoint`."
   def resume(dot, checkpoint_or_path, opts \\ []) do
     with {:ok, %Graph{} = graph} <- Parser.parse(dot),
          {:ok, %Graph{} = transformed_graph} <- apply_graph_transforms(graph, opts),

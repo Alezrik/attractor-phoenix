@@ -1,8 +1,14 @@
 defmodule AttractorEx.Condition do
-  @moduledoc false
+  @moduledoc """
+  Evaluates the compact condition-expression language used on pipeline edges.
+
+  Supported features include truthy path checks, equality and inequality, numeric
+  comparisons, `&&` clause chaining, and nested map access with dot notation.
+  """
 
   @operators ["==", "!=", ">=", "<=", ">", "<"]
 
+  @doc "Evaluates a condition string against the current execution context."
   def evaluate(nil, _context), do: {:ok, true}
 
   def evaluate(expression, context) when is_binary(expression) and is_map(context) do
@@ -17,6 +23,7 @@ defmodule AttractorEx.Condition do
     end)
   end
 
+  @doc "Returns whether an expression parses successfully."
   def valid?(expression) when is_binary(expression) do
     match?({:ok, _}, evaluate(expression, %{}))
   end

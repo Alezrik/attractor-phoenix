@@ -1,5 +1,9 @@
 defmodule AttractorEx.Interviewers.AutoApprove do
-  @moduledoc false
+  @moduledoc """
+  Deterministic interviewer that auto-selects a configured answer or the first choice.
+
+  This adapter is mainly useful for tests and non-interactive automation.
+  """
 
   @behaviour AttractorEx.Interviewer
 

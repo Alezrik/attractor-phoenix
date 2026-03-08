@@ -1,5 +1,10 @@
 defmodule AttractorEx.Interviewer do
-  @moduledoc false
+  @moduledoc """
+  Behaviour for human-in-the-loop adapters used by `wait.human`.
+
+  Interviewers can source answers from a console, queue, callback, HTTP workflow, or
+  any custom adapter that implements the callbacks below.
+  """
 
   @callback ask(AttractorEx.Node.t(), list(map()), map(), keyword()) ::
               {:ok, term()}

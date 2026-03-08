@@ -1,5 +1,11 @@
 defmodule AttractorEx.ModelStylesheet do
-  @moduledoc false
+  @moduledoc """
+  Parses and applies the `model_stylesheet` graph attribute.
+
+  AttractorEx supports both legacy JSON-style stylesheets and a CSS-like selector
+  syntax. Styles are resolved before validation so the validator and engine see the
+  same effective node attributes.
+  """
 
   @type rule :: %{selector: String.t(), attrs: map(), rank: integer(), order: integer()}
   @type lint_diagnostic :: %{severity: :warning, code: atom(), message: String.t(), node_id: nil}
@@ -42,6 +48,7 @@ defmodule AttractorEx.ModelStylesheet do
     "model"
   ]
 
+  @doc "Parses a stylesheet definition into ranked rules."
   def parse(nil), do: {:ok, []}
   def parse(%{} = stylesheet), do: {:ok, map_to_rules(stylesheet)}
   def parse(stylesheet) when is_list(stylesheet), do: {:ok, list_to_rules(stylesheet)}
@@ -58,6 +65,7 @@ defmodule AttractorEx.ModelStylesheet do
 
   def parse(_), do: {:error, "model_stylesheet must be a JSON object, JSON array, or map"}
 
+  @doc "Returns non-fatal stylesheet diagnostics."
   def lint(nil), do: []
 
   def lint(stylesheet) when is_map(stylesheet) do
@@ -117,6 +125,7 @@ defmodule AttractorEx.ModelStylesheet do
 
   def lint(_), do: []
 
+  @doc "Resolves the effective stylesheet attributes for a node."
   def attrs_for_node(rules, node_id, node_attrs) when is_list(rules) do
     classes = class_tokens(Map.get(node_attrs, "class"))
     shape = Map.get(node_attrs, "shape") |> to_string() |> String.trim()

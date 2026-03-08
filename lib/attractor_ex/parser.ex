@@ -1,5 +1,11 @@
 defmodule AttractorEx.Parser do
-  @moduledoc false
+  @moduledoc """
+  Parses the supported Attractor DOT subset into `AttractorEx.Graph`.
+
+  The parser focuses on the executable subset used by the engine rather than full
+  Graphviz grammar parity. It also finalizes parsed graphs by applying model stylesheet
+  rules and normalizing nodes into runtime structs.
+  """
 
   alias AttractorEx.{Edge, Graph, ModelStylesheet, Node}
 
@@ -18,6 +24,7 @@ defmodule AttractorEx.Parser do
           graph_attrs: map()
         }
 
+  @doc "Parses DOT source into a normalized `AttractorEx.Graph`."
   def parse(dot) when is_binary(dot) do
     cleaned = strip_comments(dot)
 

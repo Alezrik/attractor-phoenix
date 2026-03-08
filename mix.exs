@@ -13,7 +13,8 @@ defmodule AttractorPhoenix.MixProject do
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader],
       test_coverage: [tool: ExCoveralls],
-      dialyzer: [plt_add_apps: [:mix]]
+      dialyzer: [plt_add_apps: [:mix]],
+      docs: docs()
     ]
   end
 
@@ -76,7 +77,8 @@ defmodule AttractorPhoenix.MixProject do
       {:excoveralls, "~> 0.18", only: :test},
       {:junit_formatter, "~> 3.4", only: :test, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.40.1", only: :dev, runtime: false}
     ]
   end
 
@@ -104,6 +106,92 @@ defmodule AttractorPhoenix.MixProject do
         "coveralls.json",
         "coverage.gate"
       ]
+    ]
+  end
+
+  defp docs do
+    [
+      main: "overview",
+      source_ref: "main",
+      source_url: "https://github.com/Alezrik/attractor-phoenix",
+      homepage_url: "https://github.com/Alezrik/attractor-phoenix",
+      logo: "priv/static/images/logo.svg",
+      extras: [
+        "docs/overview.md",
+        "docs/pipeline-engine.md",
+        "docs/human-in-the-loop.md",
+        "docs/http-api.md",
+        "docs/agent-loop.md",
+        "docs/spec-alignment.md",
+        "lib/attractor_ex/README.md",
+        "lib/attractor_ex/ATTRACTOR_SPEC_COMPLIANCE.md",
+        "lib/attractor_ex/CODING_AGENT_LOOP_COMPLIANCE.md",
+        "lib/attractor_ex/UNIFIED_LLM_SPEC_COMPLIANCE.md"
+      ],
+      groups_for_extras: [
+        Guides: [
+          "docs/overview.md",
+          "docs/pipeline-engine.md",
+          "docs/human-in-the-loop.md",
+          "docs/http-api.md",
+          "docs/agent-loop.md",
+          "docs/spec-alignment.md"
+        ],
+        References: [
+          "lib/attractor_ex/README.md",
+          "lib/attractor_ex/ATTRACTOR_SPEC_COMPLIANCE.md",
+          "lib/attractor_ex/CODING_AGENT_LOOP_COMPLIANCE.md",
+          "lib/attractor_ex/UNIFIED_LLM_SPEC_COMPLIANCE.md"
+        ]
+      ],
+      groups_for_modules: [
+        EntryPoints: [
+          AttractorEx,
+          AttractorEx.Engine,
+          AttractorEx.Parser,
+          AttractorEx.Validator,
+          AttractorEx.Condition,
+          AttractorEx.StatusContract
+        ],
+        GraphModel: [
+          AttractorEx.Graph,
+          AttractorEx.Node,
+          AttractorEx.Edge,
+          AttractorEx.Checkpoint,
+          AttractorEx.Outcome,
+          AttractorEx.ModelStylesheet
+        ],
+        Handlers: [
+          AttractorEx.Handler,
+          AttractorEx.HandlerRegistry,
+          AttractorEx.Handlers.Start,
+          AttractorEx.Handlers.Exit,
+          AttractorEx.Handlers.Codergen,
+          AttractorEx.Handlers.Conditional,
+          AttractorEx.Handlers.Parallel,
+          AttractorEx.Handlers.ParallelFanIn,
+          AttractorEx.Handlers.Tool,
+          AttractorEx.Handlers.WaitForHuman,
+          AttractorEx.Handlers.StackManagerLoop,
+          AttractorEx.Handlers.Default
+        ],
+        HumanInTheLoop: [
+          AttractorEx.HumanGate,
+          AttractorEx.Interviewer,
+          AttractorEx.Interviewers.Payload,
+          AttractorEx.Interviewers.AutoApprove,
+          AttractorEx.Interviewers.Callback,
+          AttractorEx.Interviewers.Console,
+          AttractorEx.Interviewers.Queue,
+          AttractorEx.Interviewers.Recording,
+          AttractorEx.Interviewers.Server
+        ],
+        HTTPService: ~r/^AttractorEx\.HTTP(\.|$)/,
+        UnifiedLLM: ~r/^AttractorEx\.LLM\./,
+        AgentLoop: ~r/^AttractorEx\.Agent\./,
+        Transforms: ~r/^AttractorEx\.Transforms\./
+      ],
+      nest_modules_by_prefix: [AttractorEx, AttractorEx.Agent, AttractorEx.HTTP, AttractorEx.LLM]
     ]
   end
 end

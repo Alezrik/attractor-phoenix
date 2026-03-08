@@ -1,9 +1,15 @@
 defmodule AttractorEx.Handlers.Parallel do
-  @moduledoc false
+  @moduledoc """
+  Handler for parallel branch fan-out nodes.
+
+  It executes each outgoing branch through a configurable branch runner and aggregates
+  the branch results according to the configured join policy.
+  """
 
   alias AttractorEx.Edge
   alias AttractorEx.Outcome
 
+  @doc "Executes all parallel branches and aggregates their outcomes."
   def execute(node, context, graph, _stage_dir, opts) do
     branches =
       graph.edges

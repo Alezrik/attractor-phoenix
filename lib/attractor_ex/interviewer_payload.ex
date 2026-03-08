@@ -1,8 +1,14 @@
 defmodule AttractorEx.Interviewers.Payload do
-  @moduledoc false
+  @moduledoc """
+  Shared question and answer normalization for interviewer adapters.
+
+  This module keeps console, queue, callback, recording, and HTTP interviewers on the
+  same wire format so `wait.human` behavior stays consistent across transports.
+  """
 
   alias AttractorEx.HumanGate
 
+  @doc "Builds the normalized question payload for a human-gate node."
   def question(node, choices, opts \\ []) do
     timeout_ms = timeout_ms(Keyword.get(opts, :timeout, Map.get(node.attrs, "human.timeout")))
     question_type = question_type(node, choices)
@@ -34,18 +40,21 @@ defmodule AttractorEx.Interviewers.Payload do
     }
   end
 
+  @doc "Normalizes an answer for single-select questions."
   def normalize_single_answer(answer, question) do
     answer
     |> normalize_answer(question)
     |> unwrap_single()
   end
 
+  @doc "Normalizes an answer for multi-select questions."
   def normalize_multiple_answer(answer, question) do
     answer
     |> normalize_answer(question)
     |> List.wrap()
   end
 
+  @doc "Builds a structured answer payload including matched options."
   def answer_payload(answer, question) do
     normalized =
       if question.multiple do
@@ -68,12 +77,14 @@ defmodule AttractorEx.Interviewers.Payload do
     }
   end
 
+  @doc "Extracts a displayable message from an interviewer payload."
   def message(payload) when is_map(payload) do
     Map.get(payload, "message", Map.get(payload, :message, inspect(payload)))
   end
 
   def message(payload), do: to_string(payload)
 
+  @doc "Parses console input, decoding JSON objects and arrays when present."
   def parse_console_input(input) when is_binary(input) do
     trimmed = String.trim(input)
 
@@ -92,6 +103,7 @@ defmodule AttractorEx.Interviewers.Payload do
     end
   end
 
+  @doc "Normalizes timeout values such as `30s`, `5m`, or `1d` into milliseconds."
   def timeout_ms(value) when is_integer(value) and value > 0, do: value
 
   def timeout_ms(value) when is_binary(value) do
@@ -115,8 +127,10 @@ defmodule AttractorEx.Interviewers.Payload do
 
   def timeout_ms(_value), do: 60_000
 
+  @doc "Returns whether a node is configured for multi-select input."
   def multiple_choice?(node), do: truthy?(Map.get(node.attrs, "human.multiple"))
 
+  @doc "Returns whether a human answer is required for the node."
   def required?(node) do
     value = Map.get(node.attrs, "human.required")
 
@@ -128,6 +142,7 @@ defmodule AttractorEx.Interviewers.Payload do
     end
   end
 
+  @doc "Infers the interviewer question type from node metadata and choice shape."
   def question_type(node, choices) do
     cond do
       multiple_choice?(node) ->
@@ -147,6 +162,7 @@ defmodule AttractorEx.Interviewers.Payload do
     end
   end
 
+  @doc "Returns the preferred input mode for the normalized question."
   def input_mode(node, question_type, choices) do
     case Map.get(node.attrs, "human.input") do
       value when is_binary(value) ->
@@ -163,6 +179,7 @@ defmodule AttractorEx.Interviewers.Payload do
     end
   end
 
+  @doc "Normalizes a single choice map into the shared interviewer shape."
   def normalize_choice(choice) when is_map(choice) do
     %{
       "key" => Map.get(choice, :key) || Map.get(choice, "key"),
@@ -173,10 +190,12 @@ defmodule AttractorEx.Interviewers.Payload do
 
   def normalize_choice(choice), do: %{"value" => choice}
 
+  @doc "Normalizes arbitrary answer values into comparable tokens."
   def normalize_token(nil), do: ""
   def normalize_token(value) when is_boolean(value), do: if(value, do: "true", else: "false")
   def normalize_token(value), do: HumanGate.normalize_token(value)
 
+  @doc "Extracts the answer field from common structured answer payload shapes."
   def extract_answer(answer) when is_map(answer) do
     answer["answers"] ||
       answer[:answers] ||

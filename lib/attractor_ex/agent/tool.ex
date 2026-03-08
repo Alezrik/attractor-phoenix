@@ -1,5 +1,7 @@
 defmodule AttractorEx.Agent.Tool do
-  @moduledoc false
+  @moduledoc """
+  Definition of a callable tool exposed to an agent session.
+  """
 
   defstruct name: "", description: "", parameters: %{}, execute: nil
 
@@ -12,6 +14,7 @@ defmodule AttractorEx.Agent.Tool do
         }
 
   @spec definition(t()) :: map()
+  @doc "Serializes a tool into the model-facing definition shape."
   def definition(%__MODULE__{} = tool) do
     %{
       name: tool.name,

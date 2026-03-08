@@ -1,5 +1,7 @@
 defmodule AttractorEx.Agent.ToolResult do
-  @moduledoc false
+  @moduledoc """
+  Normalized representation of a tool execution result fed back to the model.
+  """
 
   defstruct tool_call_id: nil, content: "", is_error: false
 

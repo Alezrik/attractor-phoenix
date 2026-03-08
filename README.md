@@ -21,6 +21,34 @@ This repository combines the core engine with a polished visual experience for d
 
 See dedicated library docs: [lib/attractor_ex/README.md](lib/attractor_ex/README.md)
 
+## Documentation
+
+This repository now ships a proper ExDoc site for `AttractorEx` and keeps the spec-alignment documents inside that published documentation set.
+
+Primary documentation locations:
+
+1. Generated ExDoc site: `doc/index.html` after running `mix docs`
+2. ExDoc guides: `docs/`
+3. Library overview: `lib/attractor_ex/README.md`
+4. Spec compliance references:
+   - `lib/attractor_ex/ATTRACTOR_SPEC_COMPLIANCE.md`
+   - `lib/attractor_ex/CODING_AGENT_LOOP_COMPLIANCE.md`
+   - `lib/attractor_ex/UNIFIED_LLM_SPEC_COMPLIANCE.md`
+
+Documentation commands:
+
+```bash
+mix docs
+mix precommit
+```
+
+Documentation policy:
+
+1. Treat documentation as part of the product, not an afterthought.
+2. Any `AttractorEx` behavior change should update the relevant module docs, guides, and compliance matrix in the same change.
+3. If you add or change a handler, public API, HTTP endpoint, LLM/agent primitive, or spec-facing behavior, update the docs before considering the work complete.
+4. Keep examples aligned with the current implementation and tests.
+
 ## Demo UI
 
 The Phoenix app provides:
@@ -185,6 +213,7 @@ Notes:
 mix test
 mix coveralls
 mix coveralls.html
+mix docs
 ```
 
 Current `AttractorEx`-focused coverage is configured via `coveralls.json` and is enforced locally by `mix precommit` via `mix coverage.gate`, targeting >= `90%`.

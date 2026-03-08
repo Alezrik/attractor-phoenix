@@ -1,5 +1,10 @@
 defmodule AttractorEx.LLM.Request do
-  @moduledoc false
+  @moduledoc """
+  Unified request struct for provider-agnostic LLM completions.
+
+  The data model is intentionally small and focuses on the fields currently required by
+  codergen nodes and the agent session layer.
+  """
 
   alias AttractorEx.LLM.Message
 

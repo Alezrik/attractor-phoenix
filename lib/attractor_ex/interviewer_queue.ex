@@ -1,5 +1,7 @@
 defmodule AttractorEx.Interviewers.Queue do
-  @moduledoc false
+  @moduledoc """
+  Interviewer backed by a list or `Agent` queue of pre-seeded answers.
+  """
 
   @behaviour AttractorEx.Interviewer
 

@@ -1,5 +1,10 @@
 defmodule AttractorEx.Interviewers.Console do
-  @moduledoc false
+  @moduledoc """
+  Terminal-backed interviewer for local manual runs.
+
+  It prints normalized question metadata and accepts either plain text or JSON-shaped
+  answers.
+  """
 
   @behaviour AttractorEx.Interviewer
 

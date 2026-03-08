@@ -1,5 +1,7 @@
 defmodule AttractorEx.Agent.ToolCall do
-  @moduledoc false
+  @moduledoc """
+  Normalized representation of a tool call requested by the model.
+  """
 
   defstruct id: nil, name: "", arguments: %{}
 

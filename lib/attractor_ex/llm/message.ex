@@ -1,5 +1,7 @@
 defmodule AttractorEx.LLM.Message do
-  @moduledoc false
+  @moduledoc """
+  Minimal chat message struct used in unified LLM requests.
+  """
 
   defstruct role: :user, content: ""
 

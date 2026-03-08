@@ -1,9 +1,16 @@
 defmodule AttractorEx.Handlers.Codergen do
-  @moduledoc false
+  @moduledoc """
+  Handler for LLM-driven `codergen` stages.
+
+  Codergen nodes derive their prompt from `prompt` or `label`, write prompt and
+  response artifacts, and can run through either the unified LLM client layer or a
+  legacy backend module.
+  """
 
   alias AttractorEx.LLM.{Client, Message, Request, Response}
   alias AttractorEx.{Outcome, SimulationBackend, StatusContract}
 
+  @doc "Executes a codergen node and returns an `AttractorEx.Outcome`."
   def execute(node, context, graph, stage_dir, opts) do
     prompt =
       node.prompt
