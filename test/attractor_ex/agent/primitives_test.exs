@@ -95,6 +95,7 @@ defmodule AttractorEx.Agent.PrimitivesTest do
     tmp_dir =
       Path.join(System.tmp_dir!(), "attractor-agent-env-#{System.unique_integer([:positive])}")
 
+    File.rm_rf!(tmp_dir)
     File.mkdir_p!(tmp_dir)
     env = LocalExecutionEnvironment.new(working_dir: tmp_dir)
     absolute_path = Path.join(tmp_dir, "absolute.txt")

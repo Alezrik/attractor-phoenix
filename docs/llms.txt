@@ -94,8 +94,8 @@ used by your application.
 
 - UnifiedLLM
   - [AttractorEx.LLM.Client](AttractorEx.LLM.Client.md): Provider-agnostic LLM client used by codergen nodes and agent sessions.
-  - [AttractorEx.LLM.Message](AttractorEx.LLM.Message.md): Minimal chat message struct used in unified LLM requests.
-
+  - [AttractorEx.LLM.Message](AttractorEx.LLM.Message.md): Unified chat message struct used in LLM requests.
+  - [AttractorEx.LLM.MessagePart](AttractorEx.LLM.MessagePart.md): Tagged content part used by `AttractorEx.LLM.Message`.
   - [AttractorEx.LLM.ProviderAdapter](AttractorEx.LLM.ProviderAdapter.md): Behaviour implemented by unified LLM provider adapters.
   - [AttractorEx.LLM.Request](AttractorEx.LLM.Request.md): Unified request struct for provider-agnostic LLM completions.
   - [AttractorEx.LLM.Response](AttractorEx.LLM.Response.md): Unified response struct returned by provider adapters.

@@ -8,7 +8,7 @@
     <meta name="project" content="attractor_phoenix v0.1.0">
 
 
-    <title>AttractorEx.Transforms.VariableExpansion — attractor_phoenix v0.1.0</title>
+    <title>AttractorEx.LLM.MessagePart — attractor_phoenix v0.1.0</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
@@ -97,19 +97,19 @@ attractor_phoenix
 <div id="top-content">
   <div class="heading-with-actions top-heading">
     <h1>
-      <span translate="no">AttractorEx.<wbr>Transforms.<wbr>VariableExpansion</span> 
+      <span translate="no">AttractorEx.<wbr>LLM.<wbr>MessagePart</span> 
       <small class="app-vsn" translate="no">(attractor_phoenix v0.1.0)</small>
 
     </h1>
 
-<a href="AttractorEx.Transforms.VariableExpansion.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+<a href="AttractorEx.LLM.MessagePart.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
   <i class="ri-markdown-line" aria-hidden="true"></i>
   <span class="sr-only">Copy Markdown</span>
 </a>
 
 
 
-      <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/transforms/variable_expansion.ex#L1" title="View Source" class="icon-action" rel="help">
+      <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/message_part.ex#L1" title="View Source" class="icon-action" rel="help">
         <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         <span class="sr-only">View Source</span>
       </a>
@@ -118,7 +118,8 @@ attractor_phoenix
 
 
     <section id="moduledoc">
-<p>Built-in graph transform that expands simple runtime variables such as <code class="inline">$goal</code>.</p>
+<p>Tagged content part used by <a href="AttractorEx.LLM.Message.html"><code class="inline">AttractorEx.LLM.Message</code></a>.</p><p>The unified client still treats multimodal payloads as pass-through data for provider
+adapters, but this struct gives requests a stable representation for richer content.</p>
     </section>
 
 </div>
@@ -130,14 +131,24 @@ attractor_phoenix
       </a>
       <span class="text">Summary</span>
     </h2>
-<div class="summary-functions summary">
+<div class="summary-types summary">
   <h3>
-    <a href="#functions">Functions</a>
+    <a href="#types">Types</a>
   </h3>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#transform/1" data-no-tooltip="" translate="no">transform(graph)</a>
+        <a href="#t:part_type/0" data-no-tooltip="" translate="no">part_type()</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Known content part kinds carried by the normalized message model.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:t/0" data-no-tooltip="" translate="no">t()</a>
 
       </div>
 
@@ -148,26 +159,26 @@ attractor_phoenix
   </section>
 
 
-  <section id="functions" class="details-list">
+  <section id="types" class="details-list">
     <h2 class="section-heading">
-      <a class="hover-link" href="#functions">
+      <a class="hover-link" href="#types">
         <i class="ri-link-m" aria-hidden="true"></i>
       </a>
-      <span class="text">Functions</span>
+      <span class="text">Types</span>
     </h2>
 
-    <div class="functions-list">
-<section class="detail" id="transform/1">
+    <div class="types-list">
+<section class="detail" id="t:part_type/0">
 
   <div class="detail-header">
-    <a href="#transform/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#t:part_type/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">transform(graph)</h1>
+      <h1 class="signature" translate="no">part_type()</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/transforms/variable_expansion.ex#L8" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/message_part.ex#L10" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -175,6 +186,53 @@ attractor_phoenix
   </div>
 
   <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> part_type() ::
+  :text
+  | :image
+  | :audio
+  | :document
+  | :tool_call
+  | :tool_result
+  | :thinking
+  | :json</pre>
+
+      </div>
+
+<p>Known content part kinds carried by the normalized message model.</p>
+  </section>
+</section>
+<section class="detail" id="t:t/0">
+
+  <div class="detail-header">
+    <a href="#t:t/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">t()</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/message_part.ex#L22" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> t() :: %AttractorEx.LLM.MessagePart{
+  data: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>(),
+  mime_type: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>() | nil,
+  text: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>() | nil,
+  type: <a href="#t:part_type/0">part_type</a>()
+}</pre>
+
+      </div>
 
 
   </section>

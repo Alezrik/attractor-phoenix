@@ -42,6 +42,7 @@ AttractorEx.Interviewers.Recording.md
 AttractorEx.Interviewers.Server.md
 AttractorEx.LLM.Client.md
 AttractorEx.LLM.Message.md
+AttractorEx.LLM.MessagePart.md
 AttractorEx.LLM.ProviderAdapter.md
 AttractorEx.LLM.Request.md
 AttractorEx.LLM.Response.md
