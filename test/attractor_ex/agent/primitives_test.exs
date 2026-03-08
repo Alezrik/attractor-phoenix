@@ -117,6 +117,43 @@ defmodule AttractorEx.Agent.PrimitivesTest do
              )
   end
 
+  test "local execution env lists the working directory with sorted entry types" do
+    tmp_dir =
+      Path.join(System.tmp_dir!(), "attractor-agent-env-#{System.unique_integer([:positive])}")
+
+    File.mkdir_p!(Path.join(tmp_dir, "b-dir"))
+    File.write!(Path.join(tmp_dir, "a-file.txt"), "alpha")
+
+    env = LocalExecutionEnvironment.new(working_dir: tmp_dir)
+
+    assert {:ok, entries} = ExecutionEnvironment.list_directory(env, ".")
+
+    assert Enum.map(entries, & &1.name) == ["a-file.txt", "b-dir"]
+    assert Enum.find(entries, &(&1.name == "a-file.txt")).type == "file"
+    assert Enum.find(entries, &(&1.name == "b-dir")).type == "directory"
+    assert Enum.map(entries, & &1.path) == ["a-file.txt", "b-dir"]
+  end
+
+  test "local execution env grep respects max_results across multiple matches" do
+    tmp_dir =
+      Path.join(System.tmp_dir!(), "attractor-agent-env-#{System.unique_integer([:positive])}")
+
+    File.mkdir_p!(tmp_dir)
+    File.write!(Path.join(tmp_dir, "matches.txt"), "hit\nhit\nhit\nmiss\n")
+
+    env = LocalExecutionEnvironment.new(working_dir: tmp_dir)
+
+    assert {:ok, matches} =
+             ExecutionEnvironment.grep(env, "hit",
+               path: "matches.txt",
+               case_sensitive: true,
+               max_results: 2
+             )
+
+    assert length(matches) == 2
+    assert Enum.map(matches, & &1.line_number) == [1, 2]
+  end
+
   test "provider profile supports custom prompt builder" do
     profile =
       ProviderProfile.new(
