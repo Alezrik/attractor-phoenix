@@ -12,7 +12,7 @@
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
-    <script defer src="dist/sidebar_items-23FF99D4.js"></script>
+    <script defer src="dist/sidebar_items-863A0271.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-YU4BZFVS.js"></script>
 
@@ -118,10 +118,10 @@ attractor_phoenix
 
 
     <section id="moduledoc">
-<p>Built-in coding-agent tools backed by an <code class="inline">ExecutionEnvironment</code>.</p><p>These tools provide a provider-neutral baseline toolset that can be attached
-to provider profiles such as OpenAI, Anthropic, and Gemini. Filesystem and
-shell tools run against the execution environment, while subagent tools are
-session-managed and operate on child <a href="AttractorEx.Agent.Session.html"><code class="inline">AttractorEx.Agent.Session</code></a> instances.</p>
+<p>Built-in coding-agent tools backed by an <code class="inline">ExecutionEnvironment</code>.</p><p>The <code class="inline">:default</code> preset exposes a provider-neutral baseline toolset. Provider
+presets then layer provider-native tool names and argument shapes on top of
+the same execution environment so OpenAI, Anthropic, and Gemini sessions can
+stay closer to their upstream agent harnesses.</p>
     </section>
 
 </div>

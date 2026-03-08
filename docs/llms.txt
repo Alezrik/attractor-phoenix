@@ -104,6 +104,7 @@ used by your application.
   - [AttractorEx.LLM.Usage](AttractorEx.LLM.Usage.md): Normalized token-usage counters returned by LLM responses and streams.
 
 - AgentLoop
+  - [AttractorEx.Agent.ApplyPatch](AttractorEx.Agent.ApplyPatch.md): Applies `apply_patch` v4a-style filesystem updates against a local execution environment.
   - [AttractorEx.Agent.BuiltinTools](AttractorEx.Agent.BuiltinTools.md): Built-in coding-agent tools backed by an `ExecutionEnvironment`.
   - [AttractorEx.Agent.Event](AttractorEx.Agent.Event.md): Typed session event emitted by `AttractorEx.Agent.Session`.
   - [AttractorEx.Agent.ExecutionEnvironment](AttractorEx.Agent.ExecutionEnvironment.md): Execution-environment behaviour for coding-agent sessions.

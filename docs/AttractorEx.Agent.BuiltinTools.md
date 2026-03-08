@@ -3,10 +3,10 @@
 
 Built-in coding-agent tools backed by an `ExecutionEnvironment`.
 
-These tools provide a provider-neutral baseline toolset that can be attached
-to provider profiles such as OpenAI, Anthropic, and Gemini. Filesystem and
-shell tools run against the execution environment, while subagent tools are
-session-managed and operate on child `AttractorEx.Agent.Session` instances.
+The `:default` preset exposes a provider-neutral baseline toolset. Provider
+presets then layer provider-native tool names and argument shapes on top of
+the same execution environment so OpenAI, Anthropic, and Gemini sessions can
+stay closer to their upstream agent harnesses.
 
 # `preset`
 

@@ -16,6 +16,8 @@ built-in OpenAI, Anthropic, and Gemini presets.
   id: String.t(),
   provider_family: atom(),
   preset: atom(),
+  supports_reasoning: boolean(),
+  supports_streaming: boolean(),
   implemented_tool_names: [String.t()],
   reference_tool_names: [String.t()],
   instruction_files: [String.t()],
@@ -36,6 +38,8 @@ built-in OpenAI, Anthropic, and Gemini presets.
   provider_family: atom(),
   provider_options: map(),
   supports_parallel_tool_calls: boolean(),
+  supports_reasoning: boolean(),
+  supports_streaming: boolean(),
   system_prompt_builder: (keyword() -&gt; String.t()) | nil,
   tool_registry: AttractorEx.Agent.ToolRegistry.t(),
   tools: [AttractorEx.Agent.Tool.t()]

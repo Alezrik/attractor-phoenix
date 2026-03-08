@@ -2,57 +2,136 @@ defmodule AttractorEx.Agent.BuiltinTools do
   @moduledoc """
   Built-in coding-agent tools backed by an `ExecutionEnvironment`.
 
-  These tools provide a provider-neutral baseline toolset that can be attached
-  to provider profiles such as OpenAI, Anthropic, and Gemini. Filesystem and
-  shell tools run against the execution environment, while subagent tools are
-  session-managed and operate on child `AttractorEx.Agent.Session` instances.
+  The `:default` preset exposes a provider-neutral baseline toolset. Provider
+  presets then layer provider-native tool names and argument shapes on top of
+  the same execution environment so OpenAI, Anthropic, and Gemini sessions can
+  stay closer to their upstream agent harnesses.
   """
 
-  alias AttractorEx.Agent.{ExecutionEnvironment, Tool}
+  alias AttractorEx.Agent.{ApplyPatch, ExecutionEnvironment, Tool}
 
   @type preset :: :openai | :anthropic | :gemini | :default
 
   @spec for_provider(preset()) :: [Tool.t()]
   def for_provider(provider) when provider in [:openai, :anthropic, :gemini, :default] do
-    base_tools = [
-      read_file_tool(),
-      write_file_tool(),
-      list_directory_tool(),
-      glob_tool(),
-      grep_tool(),
-      shell_command_tool(),
-      spawn_agent_tool(),
-      send_input_tool(),
-      wait_tool(),
-      close_agent_tool()
-    ]
-
     case provider do
-      :gemini -> base_tools
-      :anthropic -> base_tools
-      :openai -> base_tools
-      :default -> base_tools
+      :default ->
+        [
+          read_file_tool(),
+          write_file_tool(),
+          list_directory_tool(),
+          glob_tool(),
+          grep_tool(),
+          shell_command_tool(),
+          spawn_agent_tool(),
+          send_input_tool(),
+          wait_tool(),
+          close_agent_tool()
+        ]
+
+      :openai ->
+        [
+          read_file_tool(),
+          apply_patch_tool(),
+          write_file_tool(),
+          shell_tool("shell", 10_000),
+          grep_tool(),
+          glob_tool(),
+          spawn_agent_tool(),
+          send_input_tool(),
+          wait_tool(),
+          close_agent_tool()
+        ]
+
+      :anthropic ->
+        [
+          read_file_tool(),
+          write_file_tool(),
+          edit_file_tool(),
+          shell_tool("shell", 120_000),
+          grep_tool(),
+          glob_tool(),
+          spawn_agent_tool(),
+          send_input_tool(),
+          wait_tool(),
+          close_agent_tool()
+        ]
+
+      :gemini ->
+        [
+          read_file_tool(),
+          read_many_files_tool(),
+          write_file_tool(),
+          edit_file_tool(),
+          shell_tool("shell", 10_000),
+          grep_tool(),
+          glob_tool(),
+          list_dir_tool(),
+          spawn_agent_tool(),
+          send_input_tool(),
+          wait_tool(),
+          close_agent_tool()
+        ]
     end
   end
 
   defp read_file_tool do
     %Tool{
       name: "read_file",
-      description: "Read a UTF-8 text file from the execution environment.",
+      description: "Read a file from the filesystem. Returns line-numbered content.",
       parameters: %{
         "type" => "object",
         "properties" => %{
-          "path" => %{"type" => "string"}
-        },
-        "required" => ["path"]
+          "file_path" => %{"type" => "string"},
+          "path" => %{"type" => "string"},
+          "offset" => %{"type" => "integer"},
+          "limit" => %{"type" => "integer"}
+        }
       },
-      execute: fn %{"path" => path}, env ->
+      execute: fn args, env ->
         ensure_environment!(env)
+        path = required_path(args)
+        offset = Map.get(args, "offset", 1)
+        limit = Map.get(args, "limit", 2_000)
 
         case ExecutionEnvironment.read_file(env, path) do
-          {:ok, content} -> content
+          {:ok, content} -> render_line_numbered_content(content, offset, limit)
           {:error, reason} -> raise "read_file failed: #{inspect(reason)}"
         end
+      end
+    }
+  end
+
+  defp read_many_files_tool do
+    %Tool{
+      name: "read_many_files",
+      description: "Read multiple files and return line-numbered content blocks.",
+      parameters: %{
+        "type" => "object",
+        "properties" => %{
+          "paths" => %{"type" => "array"},
+          "offset" => %{"type" => "integer"},
+          "limit" => %{"type" => "integer"}
+        },
+        "required" => ["paths"]
+      },
+      execute: fn %{"paths" => paths} = args, env ->
+        ensure_environment!(env)
+        offset = Map.get(args, "offset", 1)
+        limit = Map.get(args, "limit", 2_000)
+
+        paths
+        |> Enum.map(fn path ->
+          case ExecutionEnvironment.read_file(env, path) do
+            {:ok, content} ->
+              ["FILE #{path}", render_line_numbered_content(content, offset, limit)]
+
+            {:error, reason} ->
+              ["FILE #{path}", "ERROR #{inspect(reason)}"]
+          end
+        end)
+        |> List.flatten()
+        |> Enum.join("\n")
       end
     }
   end
@@ -60,22 +139,97 @@ defmodule AttractorEx.Agent.BuiltinTools do
   defp write_file_tool do
     %Tool{
       name: "write_file",
-      description:
-        "Write a UTF-8 text file in the execution environment, creating parent directories when needed.",
+      description: "Write content to a file. Creates the file and parent directories if needed.",
       parameters: %{
         "type" => "object",
         "properties" => %{
+          "file_path" => %{"type" => "string"},
           "path" => %{"type" => "string"},
           "content" => %{"type" => "string"}
         },
-        "required" => ["path", "content"]
+        "required" => ["content"]
       },
-      execute: fn %{"path" => path, "content" => content}, env ->
+      execute: fn args, env ->
         ensure_environment!(env)
+        path = required_path(args)
+        content = Map.fetch!(args, "content")
 
         case ExecutionEnvironment.write_file(env, path, content) do
-          :ok -> "Wrote #{path}"
+          :ok -> "Wrote #{path} (#{byte_size(content)} bytes)"
           {:error, reason} -> raise "write_file failed: #{inspect(reason)}"
+        end
+      end
+    }
+  end
+
+  defp edit_file_tool do
+    %Tool{
+      name: "edit_file",
+      description: "Replace an exact string occurrence in a file.",
+      parameters: %{
+        "type" => "object",
+        "properties" => %{
+          "file_path" => %{"type" => "string"},
+          "path" => %{"type" => "string"},
+          "old_string" => %{"type" => "string"},
+          "new_string" => %{"type" => "string"},
+          "replace_all" => %{"type" => "boolean"}
+        },
+        "required" => ["old_string", "new_string"]
+      },
+      execute: fn args, env ->
+        ensure_environment!(env)
+        path = required_path(args)
+        old_string = Map.fetch!(args, "old_string")
+        new_string = Map.fetch!(args, "new_string")
+        replace_all = Map.get(args, "replace_all", false)
+
+        case ExecutionEnvironment.read_file(env, path) do
+          {:ok, content} ->
+            {updated, count} = replace_exact(content, old_string, new_string, replace_all)
+
+            cond do
+              count == 0 ->
+                raise "edit_file failed: old_string not found"
+
+              count > 1 and not replace_all ->
+                raise "edit_file failed: old_string is not unique; provide more context"
+
+              true ->
+                case ExecutionEnvironment.write_file(env, path, updated) do
+                  :ok ->
+                    "Edited #{path} (#{count} replacement#{if count == 1, do: "", else: "s"})"
+
+                  {:error, reason} ->
+                    raise "edit_file failed: #{inspect(reason)}"
+                end
+            end
+
+          {:error, reason} ->
+            raise "edit_file failed: #{inspect(reason)}"
+        end
+      end
+    }
+  end
+
+  defp apply_patch_tool do
+    %Tool{
+      name: "apply_patch",
+      description:
+        "Apply code changes using the patch format. Supports creating, deleting, and modifying files in a single operation.",
+      parameters: %{
+        "type" => "object",
+        "properties" => %{
+          "patch" => %{"type" => "string"}
+        },
+        "required" => ["patch"]
+      },
+      execute: fn %{"patch" => patch}, env ->
+        ensure_environment!(env)
+
+        case ApplyPatch.apply(env, patch) do
+          {:ok, operations} -> Jason.encode!(operations)
+          {:error, reason} -> raise "apply_patch failed: #{reason}"
         end
       end
     }
@@ -103,6 +257,29 @@ defmodule AttractorEx.Agent.BuiltinTools do
     }
   end
 
+  defp list_dir_tool do
+    %Tool{
+      name: "list_dir",
+      description: "List files and directories under a relative path.",
+      parameters: %{
+        "type" => "object",
+        "properties" => %{
+          "path" => %{"type" => "string"},
+          "depth" => %{"type" => "integer"}
+        }
+      },
+      execute: fn args, env ->
+        ensure_environment!(env)
+        path = Map.get(args, "path", ".")
+
+        case ExecutionEnvironment.list_directory(env, path) do
+          {:ok, entries} -> Jason.encode!(entries)
+          {:error, reason} -> raise "list_dir failed: #{inspect(reason)}"
+        end
+      end
+    }
+  end
+
   defp glob_tool do
     %Tool{
       name: "glob",
@@ -110,14 +287,16 @@ defmodule AttractorEx.Agent.BuiltinTools do
       parameters: %{
         "type" => "object",
         "properties" => %{
-          "pattern" => %{"type" => "string"}
+          "pattern" => %{"type" => "string"},
+          "path" => %{"type" => "string"}
         },
         "required" => ["pattern"]
       },
-      execute: fn %{"pattern" => pattern}, env ->
+      execute: fn args, env ->
         ensure_environment!(env)
+        pattern = Map.fetch!(args, "pattern")
 
-        case ExecutionEnvironment.glob(env, pattern) do
+        case ExecutionEnvironment.glob(env, prefix_pattern(Map.get(args, "path"), pattern)) do
           {:ok, matches} -> Jason.encode!(matches)
           {:error, reason} -> raise "glob failed: #{inspect(reason)}"
         end
@@ -128,13 +307,15 @@ defmodule AttractorEx.Agent.BuiltinTools do
   defp grep_tool do
     %Tool{
       name: "grep",
-      description: "Search for text in files under the working directory.",
+      description: "Search file contents using regex patterns.",
       parameters: %{
         "type" => "object",
         "properties" => %{
           "pattern" => %{"type" => "string"},
           "path" => %{"type" => "string"},
+          "glob_filter" => %{"type" => "string"},
           "case_sensitive" => %{"type" => "boolean"},
+          "case_insensitive" => %{"type" => "boolean"},
           "max_results" => %{"type" => "integer"}
         },
         "required" => ["pattern"]
@@ -142,46 +323,59 @@ defmodule AttractorEx.Agent.BuiltinTools do
       execute: fn args, env ->
         ensure_environment!(env)
 
-        options =
-          [
-            path: Map.get(args, "path", "."),
-            case_sensitive: Map.get(args, "case_sensitive", false),
-            max_results: Map.get(args, "max_results", 200)
-          ]
+        options = [
+          path: Map.get(args, "path", "."),
+          case_sensitive:
+            if(Map.get(args, "case_insensitive", false),
+              do: false,
+              else: Map.get(args, "case_sensitive", false)
+            ),
+          max_results: Map.get(args, "max_results", 200)
+        ]
 
         case ExecutionEnvironment.grep(env, args["pattern"], options) do
-          {:ok, matches} -> Jason.encode!(matches)
-          {:error, reason} -> raise "grep failed: #{inspect(reason)}"
+          {:ok, matches} ->
+            matches
+            |> maybe_filter_matches(Map.get(args, "glob_filter"))
+            |> Jason.encode!()
+
+          {:error, reason} ->
+            raise "grep failed: #{inspect(reason)}"
         end
       end
     }
   end
 
   defp shell_command_tool do
+    shell_tool("shell_command", 10_000)
+  end
+
+  defp shell_tool(name, default_timeout_ms) do
     %Tool{
-      name: "shell_command",
-      description: "Execute a shell command in the working directory.",
+      name: name,
+      description: "Execute a shell command. Returns stdout, stderr, and exit code.",
       parameters: %{
         "type" => "object",
         "properties" => %{
           "command" => %{"type" => "string"},
-          "timeout_ms" => %{"type" => "integer"}
+          "timeout_ms" => %{"type" => "integer"},
+          "description" => %{"type" => "string"}
         },
         "required" => ["command"]
       },
       execute: fn args, env ->
         ensure_environment!(env)
-        options = [timeout_ms: Map.get(args, "timeout_ms", 10_000)]
+        options = [timeout_ms: Map.get(args, "timeout_ms", default_timeout_ms)]
 
         case ExecutionEnvironment.shell_command(env, args["command"], options) do
           {:ok, %{output: output, exit_code: exit_code}} ->
             "exit_code=#{exit_code}\n#{output}"
 
           {:error, :timeout} ->
-            raise "shell_command failed: timeout"
+            raise "#{name} failed: timeout"
 
           {:error, reason} ->
-            raise "shell_command failed: #{inspect(reason)}"
+            raise "#{name} failed: #{inspect(reason)}"
         end
       end
     }
@@ -267,5 +461,73 @@ defmodule AttractorEx.Agent.BuiltinTools do
     unless ExecutionEnvironment.implementation?(env) do
       raise ArgumentError, "tool requires an ExecutionEnvironment implementation"
     end
+  end
+
+  defp required_path(args) do
+    case Map.get(args, "file_path") || Map.get(args, "path") do
+      path when is_binary(path) and path != "" -> path
+      _ -> raise KeyError, key: "file_path", term: args
+    end
+  end
+
+  defp render_line_numbered_content(content, offset, limit) do
+    start_line = normalize_positive_integer(offset, 1)
+    max_lines = normalize_positive_integer(limit, 2_000)
+
+    content
+    |> String.split("\n")
+    |> Enum.with_index(1)
+    |> Enum.drop(start_line - 1)
+    |> Enum.take(max_lines)
+    |> Enum.map_join("\n", fn {line, line_number} ->
+      "#{line_number} | #{line}"
+    end)
+  end
+
+  defp normalize_positive_integer(value, _default) when is_integer(value) and value > 0, do: value
+  defp normalize_positive_integer(_value, default), do: default
+
+  defp replace_exact(content, old_string, new_string, replace_all) do
+    count =
+      content
+      |> String.split(old_string)
+      |> length()
+      |> Kernel.-(1)
+      |> max(0)
+
+    updated =
+      if count > 0 do
+        if replace_all do
+          String.replace(content, old_string, new_string)
+        else
+          String.replace(content, old_string, new_string, global: false)
+        end
+      else
+        content
+      end
+
+    {updated, count}
+  end
+
+  defp prefix_pattern(nil, pattern), do: pattern
+  defp prefix_pattern("", pattern), do: pattern
+  defp prefix_pattern(path, pattern), do: Path.join(path, pattern)
+
+  defp maybe_filter_matches(matches, nil), do: matches
+
+  defp maybe_filter_matches(matches, glob_filter) do
+    Enum.filter(matches, fn match ->
+      wildcard_match?(match.path, glob_filter)
+    end)
+  end
+
+  defp wildcard_match?(path, glob_filter) do
+    glob_filter
+    |> Regex.escape()
+    |> String.replace("\\*\\*", ".*")
+    |> String.replace("\\*", "[^/]*")
+    |> String.replace("\\?", ".")
+    |> then(&Regex.compile!("^" <> &1 <> "$"))
+    |> Regex.match?(path)
   end
 end

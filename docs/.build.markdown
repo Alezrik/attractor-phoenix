@@ -1,3 +1,4 @@
+AttractorEx.Agent.ApplyPatch.md
 AttractorEx.Agent.BuiltinTools.md
 AttractorEx.Agent.Event.md
 AttractorEx.Agent.ExecutionEnvironment.md
