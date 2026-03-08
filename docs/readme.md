@@ -185,7 +185,7 @@ These compliance docs use `implemented` / `partial` / `not implemented` status p
 
 Current coding-agent highlights:
 
-1. `ProviderProfile.openai/1`, `ProviderProfile.anthropic/1`, and `ProviderProfile.gemini/1` now expose provider-aligned tool bundles and capability metadata instead of a single shared tool list. OpenAI includes `apply_patch`, Anthropic and Gemini include `edit_file`, and Gemini also includes `read_many_files` plus `list_dir`.
+1. `ProviderProfile.openai/1`, `ProviderProfile.anthropic/1`, and `ProviderProfile.gemini/1` now expose provider-aligned tool bundles and capability metadata instead of a single shared tool list. OpenAI includes `apply_patch`, Anthropic and Gemini include `edit_file`, and Gemini also includes `read_many_files` plus `list_dir`, with opt-in `web_search`/`web_fetch` support via `ProviderProfile.gemini(web_tools: true)`.
 2. `AttractorEx.Agent.LocalExecutionEnvironment` now exposes file IO, directory listing, globbing, grep, shell execution, and environment metadata through the `ExecutionEnvironment` behaviour.
 3. `AttractorEx.Agent.ApplyPatch` backs the OpenAI-facing `apply_patch` tool for local sessions, handling add/delete/update/move operations in the appendix-style patch envelope.
 4. `AttractorEx.Agent.Session` validates object-style tool arguments, emits spec-style typed session events (including synthesized assistant text deltas and full-output `tool_call_end` host events), loads project instruction files such as `AGENTS.md`, `CODEX.md`, and `.codex/instructions.md` into the default prompt context, and manages spec-style subagent tools (`spawn_agent`, `send_input`, `wait`, `close_agent`) with depth limits.

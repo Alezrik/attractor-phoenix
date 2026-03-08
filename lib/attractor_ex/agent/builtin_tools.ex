@@ -5,15 +5,17 @@ defmodule AttractorEx.Agent.BuiltinTools do
   The `:default` preset exposes a provider-neutral baseline toolset. Provider
   presets then layer provider-native tool names and argument shapes on top of
   the same execution environment so OpenAI, Anthropic, and Gemini sessions can
-  stay closer to their upstream agent harnesses.
+  stay closer to their upstream agent harnesses. Gemini's optional web tools can
+  also be enabled for the `:gemini` preset.
   """
 
   alias AttractorEx.Agent.{ApplyPatch, ExecutionEnvironment, Tool}
 
   @type preset :: :openai | :anthropic | :gemini | :default
 
-  @spec for_provider(preset()) :: [Tool.t()]
-  def for_provider(provider) when provider in [:openai, :anthropic, :gemini, :default] do
+  @spec for_provider(preset(), keyword()) :: [Tool.t()]
+  def for_provider(provider, opts \\ [])
+      when provider in [:openai, :anthropic, :gemini, :default] and is_list(opts) do
     case provider do
       :default ->
         [
@@ -58,20 +60,26 @@ defmodule AttractorEx.Agent.BuiltinTools do
         ]
 
       :gemini ->
-        [
-          read_file_tool(),
-          read_many_files_tool(),
-          write_file_tool(),
-          edit_file_tool(),
-          shell_tool("shell", 10_000),
-          grep_tool(),
-          glob_tool(),
-          list_dir_tool(),
-          spawn_agent_tool(),
-          send_input_tool(),
-          wait_tool(),
-          close_agent_tool()
-        ]
+        gemini_tools =
+          [
+            read_file_tool(),
+            read_many_files_tool(),
+            write_file_tool(),
+            edit_file_tool(),
+            shell_tool("shell", 10_000),
+            grep_tool(),
+            glob_tool(),
+            list_dir_tool(),
+            spawn_agent_tool(),
+            send_input_tool(),
+            wait_tool(),
+            close_agent_tool()
+          ]
+
+        case gemini_web_tool_options(opts) do
+          nil -> gemini_tools
+          web_opts -> gemini_tools ++ [web_search_tool(web_opts), web_fetch_tool(web_opts)]
+        end
     end
   end
 
@@ -276,6 +284,58 @@ defmodule AttractorEx.Agent.BuiltinTools do
           {:ok, entries} -> Jason.encode!(entries)
           {:error, reason} -> raise "list_dir failed: #{inspect(reason)}"
         end
+      end
+    }
+  end
+
+  defp web_search_tool(opts) do
+    %Tool{
+      name: "web_search",
+      description: "Search the web and return a compact list of result titles and URLs.",
+      parameters: %{
+        "type" => "object",
+        "properties" => %{
+          "query" => %{"type" => "string"},
+          "limit" => %{"type" => "integer"}
+        },
+        "required" => ["query"]
+      },
+      execute: fn %{"query" => query} = args, _env ->
+        limit = normalize_positive_integer(Map.get(args, "limit", 5), 5)
+        url = build_web_search_url(opts, query)
+        body = request_web!(url, web_request_options(opts))
+
+        body
+        |> extract_search_results()
+        |> Enum.take(limit)
+        |> Jason.encode!()
+      end
+    }
+  end
+
+  defp web_fetch_tool(opts) do
+    %Tool{
+      name: "web_fetch",
+      description: "Fetch a web page and return a bounded text summary of the response body.",
+      parameters: %{
+        "type" => "object",
+        "properties" => %{
+          "url" => %{"type" => "string"},
+          "max_bytes" => %{"type" => "integer"}
+        },
+        "required" => ["url"]
+      },
+      execute: fn %{"url" => url} = args, _env ->
+        max_bytes = normalize_positive_integer(Map.get(args, "max_bytes", 20_000), 20_000)
+        body = request_web!(url, web_request_options(opts))
+        bounded_body = binary_part(body, 0, min(byte_size(body), max_bytes))
+
+        %{
+          url: url,
+          truncated?: byte_size(body) > max_bytes,
+          content: bounded_body
+        }
+        |> Jason.encode!()
       end
     }
   end
@@ -519,6 +579,74 @@ defmodule AttractorEx.Agent.BuiltinTools do
     Enum.filter(matches, fn match ->
       wildcard_match?(match.path, glob_filter)
     end)
+  end
+
+  defp gemini_web_tool_options(opts) do
+    case Keyword.get(opts, :web_tools, false) do
+      false -> nil
+      nil -> nil
+      true -> []
+      web_opts when is_list(web_opts) -> web_opts
+    end
+  end
+
+  defp build_web_search_url(opts, query) do
+    base_url = Keyword.get(opts, :search_url, "https://duckduckgo.com/html/")
+    query_param = Keyword.get(opts, :search_query_param, "q")
+    separator = if String.contains?(base_url, "?"), do: "&", else: "?"
+
+    base_url <> separator <> URI.encode_query(%{query_param => query})
+  end
+
+  defp web_request_options(opts) do
+    timeout_ms = normalize_positive_integer(Keyword.get(opts, :timeout_ms, 5_000), 5_000)
+
+    [
+      connect_options: [timeout: timeout_ms],
+      receive_timeout: timeout_ms,
+      headers: [{"user-agent", Keyword.get(opts, :user_agent, "AttractorEx/1.0")}]
+    ]
+  end
+
+  defp request_web!(url, req_opts) do
+    case Req.get(url, req_opts) do
+      {:ok, %Req.Response{status: status, body: body}} when status in 200..299 ->
+        body
+        |> to_string()
+        |> String.trim()
+
+      {:ok, %Req.Response{status: status, body: body}} ->
+        raise "web request failed: HTTP #{status} #{inspect(body)}"
+
+      {:error, reason} ->
+        raise "web request failed: #{Exception.message(reason)}"
+    end
+  end
+
+  defp extract_search_results(body) do
+    Regex.scan(~r/<a[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/is, body, capture: :all_but_first)
+    |> Enum.map(fn [url, title] ->
+      %{
+        "title" => clean_html_fragment(title),
+        "url" => String.trim(url)
+      }
+    end)
+    |> Enum.reject(fn result ->
+      result["title"] == "" or result["url"] == ""
+    end)
+  end
+
+  defp clean_html_fragment(fragment) do
+    fragment
+    |> String.replace(~r/<[^>]+>/, " ")
+    |> String.replace("&nbsp;", " ")
+    |> String.replace("&amp;", "&")
+    |> String.replace("&lt;", "<")
+    |> String.replace("&gt;", ">")
+    |> String.replace("&quot;", "\"")
+    |> String.replace("&#39;", "'")
+    |> String.replace(~r/\s+/, " ")
+    |> String.trim()
   end
 
   defp wildcard_match?(path, glob_filter) do

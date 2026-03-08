@@ -7,7 +7,8 @@ A profile packages a model, toolset, provider options, and an optional system-pr
 builder so agent sessions can stay portable across providers.
 
 The module also exposes a maintained cross-provider integration matrix for the
-built-in OpenAI, Anthropic, and Gemini presets.
+built-in OpenAI, Anthropic, and Gemini presets. Gemini can optionally include
+web-search tools via `gemini(web_tools: true)`.
 
 # `integration_entry`
 

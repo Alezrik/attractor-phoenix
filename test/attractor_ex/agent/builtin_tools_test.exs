@@ -105,6 +105,7 @@ defmodule AttractorEx.Agent.BuiltinToolsTest do
     openai = Enum.map(BuiltinTools.for_provider(:openai), & &1.name)
     anthropic = Enum.map(BuiltinTools.for_provider(:anthropic), & &1.name)
     gemini = Enum.map(BuiltinTools.for_provider(:gemini), & &1.name)
+    gemini_with_web = Enum.map(BuiltinTools.for_provider(:gemini, web_tools: true), & &1.name)
 
     assert "apply_patch" in openai
     assert "shell" in openai
@@ -112,6 +113,9 @@ defmodule AttractorEx.Agent.BuiltinToolsTest do
     assert "shell" in anthropic
     assert "read_many_files" in gemini
     assert "list_dir" in gemini
+    refute "web_search" in gemini
+    assert "web_search" in gemini_with_web
+    assert "web_fetch" in gemini_with_web
   end
 
   test "provider-specific editing tools run against the shared environment" do
@@ -260,6 +264,33 @@ defmodule AttractorEx.Agent.BuiltinToolsTest do
     assert File.read!(Path.join(root, "seed.txt")) == "sprout"
   end
 
+  test "gemini optional web tools fetch and search via req" do
+    port = free_port()
+
+    start_supervised!(
+      {Bandit, plug: AttractorExTest.AgentWebToolsRouter, ip: {127, 0, 0, 1}, port: port}
+    )
+
+    root = tmp_dir()
+    env = LocalExecutionEnvironment.new(working_dir: root)
+
+    tools =
+      BuiltinTools.for_provider(:gemini,
+        web_tools: [search_url: "http://127.0.0.1:#{port}/search"]
+      )
+      |> tools_by_name()
+
+    search_output = run_tool(tools["web_search"], %{"query" => "phoenix", "limit" => 1}, env)
+    assert search_output =~ "\"title\":\"phoenix result\""
+    assert search_output =~ "\"url\":\"https://example.com/phoenix\""
+
+    fetch_output =
+      run_tool(tools["web_fetch"], %{"url" => "http://127.0.0.1:#{port}/page"}, env)
+
+    assert fetch_output =~ "\"content\":\"Fetched page body\""
+    assert fetch_output =~ "\"truncated?\":false"
+  end
+
   test "built-in bundle includes session-managed subagent tools" do
     tools = tools_by_name(BuiltinTools.for_provider(:default))
 
@@ -342,6 +373,13 @@ defmodule AttractorEx.Agent.BuiltinToolsTest do
     File.mkdir_p!(root)
     File.write!(Path.join(root, "seed.txt"), "seed")
     root
+  end
+
+  defp free_port do
+    {:ok, socket} = :gen_tcp.listen(0, [:binary, active: false, packet: 0])
+    {:ok, port} = :inet.port(socket)
+    :ok = :gen_tcp.close(socket)
+    port
   end
 
   defp shell_echo_command(text) do

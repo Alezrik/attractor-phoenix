@@ -12,7 +12,7 @@
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
-    <script defer src="dist/sidebar_items-863A0271.js"></script>
+    <script defer src="dist/sidebar_items-8BEC1D72.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-YU4BZFVS.js"></script>
 
@@ -121,7 +121,8 @@ attractor_phoenix
 <p>Built-in coding-agent tools backed by an <code class="inline">ExecutionEnvironment</code>.</p><p>The <code class="inline">:default</code> preset exposes a provider-neutral baseline toolset. Provider
 presets then layer provider-native tool names and argument shapes on top of
 the same execution environment so OpenAI, Anthropic, and Gemini sessions can
-stay closer to their upstream agent harnesses.</p>
+stay closer to their upstream agent harnesses. Gemini's optional web tools can
+also be enabled for the <code class="inline">:gemini</code> preset.</p>
     </section>
 
 </div>
@@ -154,7 +155,7 @@ stay closer to their upstream agent harnesses.</p>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#for_provider/1" data-no-tooltip="" translate="no">for_provider(provider)</a>
+        <a href="#for_provider/2" data-no-tooltip="" translate="no">for_provider(provider, opts \\ [])</a>
 
       </div>
 
@@ -184,7 +185,7 @@ stay closer to their upstream agent harnesses.</p>
       <h1 class="signature" translate="no">preset()</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/builtin_tools.ex#L13" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/builtin_tools.ex#L14" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -215,17 +216,19 @@ stay closer to their upstream agent harnesses.</p>
     </h2>
 
     <div class="functions-list">
-<section class="detail" id="for_provider/1">
+<section class="detail" id="for_provider/2">
+
+    <span id="for_provider/1"></span>
 
   <div class="detail-header">
-    <a href="#for_provider/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#for_provider/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">for_provider(provider)</h1>
+      <h1 class="signature" translate="no">for_provider(provider, opts \\ [])</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/builtin_tools.ex#L16" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/builtin_tools.ex#L17" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -236,7 +239,10 @@ stay closer to their upstream agent harnesses.</p>
 
       <div class="specs">
 
-          <pre translate="no"><span class="attribute">@spec</span> for_provider(<a href="#t:preset/0">preset</a>()) :: [<a href="AttractorEx.Agent.Tool.html#t:t/0">AttractorEx.Agent.Tool.t</a>()]</pre>
+          <pre translate="no"><span class="attribute">@spec</span> for_provider(
+  <a href="#t:preset/0">preset</a>(),
+  <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">keyword</a>()
+) :: [<a href="AttractorEx.Agent.Tool.html#t:t/0">AttractorEx.Agent.Tool.t</a>()]</pre>
 
       </div>
 
