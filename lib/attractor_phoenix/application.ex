@@ -8,16 +8,22 @@ defmodule AttractorPhoenix.Application do
   @impl true
   def start(_type, _args) do
     attractor_http_opts = Application.fetch_env!(:attractor_phoenix, :attractor_http)
+    manager = Keyword.fetch!(attractor_http_opts, :manager)
+    registry = Keyword.fetch!(attractor_http_opts, :registry)
 
     children = [
       AttractorPhoenixWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:attractor_phoenix, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: AttractorPhoenix.PubSub},
+      {AttractorExPhx.PubSub,
+       name: AttractorPhoenix.AttractorPubSubBridge,
+       pubsub_server: AttractorPhoenix.PubSub,
+       manager: manager},
       {AttractorExPhx.HTTPServer,
        port: Keyword.fetch!(attractor_http_opts, :port),
        ip: Keyword.fetch!(attractor_http_opts, :ip),
-       manager: AttractorPhoenix.AttractorHTTP.Manager,
-       registry: AttractorPhoenix.AttractorHTTP.Registry,
+       manager: manager,
+       registry: registry,
        name: AttractorPhoenix.AttractorHTTPServer},
       # Start a worker by calling: AttractorPhoenix.Worker.start_link(arg)
       # {AttractorPhoenix.Worker, arg},

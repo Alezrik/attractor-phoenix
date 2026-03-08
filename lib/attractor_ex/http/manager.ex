@@ -29,6 +29,7 @@ defmodule AttractorEx.HTTP.Manager do
   def pipeline_checkpoint(server, id), do: GenServer.call(server, {:pipeline_checkpoint, id})
   def pipeline_events(server, id), do: GenServer.call(server, {:pipeline_events, id})
   def pending_questions(server, id), do: GenServer.call(server, {:pending_questions, id})
+  def snapshot(server, id), do: GenServer.call(server, {:snapshot, id})
 
   def submit_answer(server, id, qid, answer),
     do: GenServer.call(server, {:submit_answer, id, qid, answer})
@@ -170,11 +171,26 @@ defmodule AttractorEx.HTTP.Manager do
     {:reply, reply, state}
   end
 
+  def handle_call({:snapshot, id}, _from, state) do
+    reply =
+      case fetch_pipeline(state, id) do
+        {:ok, pipeline} -> {:ok, pipeline_snapshot(pipeline)}
+        error -> error
+      end
+
+    {:reply, reply, state}
+  end
+
   def handle_call({:submit_answer, id, qid, answer}, _from, state) do
     with {:ok, pipeline} <- fetch_pipeline(state, id),
          {:ok, question} <- fetch_question(pipeline, qid) do
       send(question.waiter, {:pipeline_answer, question.ref, answer})
-      state = update_in(state, [:pipelines, id, :questions], &Map.delete(&1, qid))
+
+      state =
+        state
+        |> update_in([:pipelines, id, :questions], &Map.delete(&1, qid))
+        |> notify_question_state(id)
+
       {:reply, :ok, state}
     else
       error -> {:reply, error, state}
@@ -215,7 +231,11 @@ defmodule AttractorEx.HTTP.Manager do
 
   def handle_call({:register_question, id, question}, _from, state) do
     with {:ok, _pipeline} <- fetch_pipeline(state, id) do
-      state = put_in(state, [:pipelines, id, :questions, question.id], question)
+      state =
+        state
+        |> put_in([:pipelines, id, :questions, question.id], question)
+        |> notify_question_state(id)
+
       {:reply, :ok, state}
     else
       error -> {:reply, error, state}
@@ -229,9 +249,11 @@ defmodule AttractorEx.HTTP.Manager do
 
   def handle_cast({:timeout_question, id, qid}, state) do
     state =
-      update_in(state, [:pipelines, id, :questions], fn questions ->
+      state
+      |> update_in([:pipelines, id, :questions], fn questions ->
         Map.delete(questions || %{}, qid)
       end)
+      |> notify_question_state(id)
 
     {:noreply, state}
   end
@@ -316,6 +338,23 @@ defmodule AttractorEx.HTTP.Manager do
     Enum.each(subscribers, fn pid -> send(pid, {:pipeline_event, event}) end)
   end
 
+  defp notify_question_state(state, id) do
+    case get_in(state, [:pipelines, id]) do
+      nil ->
+        state
+
+      pipeline ->
+        event =
+          normalize_event(id, %{
+            type: "PipelineQuestionsUpdated",
+            questions: public_questions(pipeline.questions)
+          })
+
+        notify_subscribers(pipeline.subscribers, event)
+        state
+    end
+  end
+
   defp build_checkpoint(result) do
     %{
       "current_node" =>
@@ -382,6 +421,23 @@ defmodule AttractorEx.HTTP.Manager do
       "updated_at" => pipeline.updated_at,
       "has_checkpoint" => is_map(pipeline.checkpoint)
     }
+  end
+
+  defp pipeline_snapshot(pipeline) do
+    pipeline_summary(pipeline)
+    |> Map.merge(%{
+      "context" => pipeline.context,
+      "checkpoint" => pipeline.checkpoint,
+      "questions" => public_questions(pipeline.questions),
+      "events" => pipeline.events
+    })
+  end
+
+  defp public_questions(questions) do
+    questions
+    |> Map.values()
+    |> Enum.sort_by(& &1.id)
+    |> Enum.map(&Map.drop(&1, [:waiter, :ref]))
   end
 
   defp touch_pipeline(state, id) do

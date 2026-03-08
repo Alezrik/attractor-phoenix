@@ -25,7 +25,11 @@ That means Phoenix code should depend on `AttractorExPhx`, not reach directly in
    - Req-based client for the `AttractorEx` HTTP control plane.
    - Used by LiveViews and other Phoenix processes that need to list pipelines, create runs, inspect status, answer questions, or fetch graph output.
 
-3. `AttractorExPhx.HTTPServer`
+3. `AttractorExPhx.PubSub`
+   - Phoenix PubSub bridge for push-style pipeline updates.
+   - Gives LiveViews and other OTP processes a native subscription interface without polling the HTTP API.
+
+4. `AttractorExPhx.HTTPServer`
    - Supervision-friendly wrapper around `AttractorEx.start_http_server/1`.
    - Intended for placement in a Phoenix application's supervision tree.
 
@@ -34,13 +38,18 @@ That means Phoenix code should depend on `AttractorExPhx`, not reach directly in
 Typical Phoenix usage should look like this:
 
 1. Start the HTTP service with `AttractorExPhx.HTTPServer` in the application supervisor.
-2. Use `AttractorExPhx.Client` from LiveViews or controllers when talking to the HTTP API.
-3. Use `AttractorExPhx.run/3` when a Phoenix controller or process needs direct in-process execution instead of the HTTP transport.
+2. Start `AttractorExPhx.PubSub` in the supervision tree when Phoenix processes need push updates.
+3. Use `AttractorExPhx.Client` from LiveViews or controllers when talking to the HTTP API.
+4. Use `AttractorExPhx.run/3` when a Phoenix controller or process needs direct in-process execution instead of the HTTP transport.
 
 ## Example
 
 ```elixir
 children = [
+  {AttractorExPhx.PubSub,
+   pubsub_server: MyApp.PubSub,
+   manager: MyApp.AttractorHTTP.Manager,
+   name: MyApp.AttractorPubSubBridge},
   {AttractorExPhx.HTTPServer,
    port: 4101,
    ip: {127, 0, 0, 1},
@@ -54,6 +63,17 @@ children = [
 
 {:ok, %{"pipeline_id" => pipeline_id}} =
   AttractorExPhx.create_pipeline(dot_source, %{})
+
+{:ok, snapshot} =
+  AttractorExPhx.subscribe_pipeline(pipeline_id,
+    pubsub_server: MyApp.PubSub,
+    bridge: MyApp.AttractorPubSubBridge
+  )
+
+receive do
+  {:attractor_ex_event, event} ->
+    IO.inspect({snapshot["status"], event["type"]})
+end
 ```
 
 ## Test Coverage

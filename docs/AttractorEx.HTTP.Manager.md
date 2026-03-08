@@ -36,6 +36,8 @@ Creates and starts a pipeline run under HTTP management.
 
 # `register_question`
 
+# `snapshot`
+
 # `start_link`
 
 Starts the HTTP pipeline manager.

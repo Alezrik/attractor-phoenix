@@ -9,10 +9,13 @@ import Config
 
 config :attractor_phoenix,
   generators: [timestamp_type: :utc_datetime],
+  attractor_pubsub_bridge: AttractorPhoenix.AttractorPubSubBridge,
   attractor_http: [
     port: 4041,
     ip: {127, 0, 0, 1},
-    base_url: "http://127.0.0.1:4041"
+    base_url: "http://127.0.0.1:4041",
+    manager: AttractorPhoenix.AttractorHTTP.Manager,
+    registry: AttractorPhoenix.AttractorHTTP.Registry
   ]
 
 # Configure the endpoint
