@@ -3,6 +3,14 @@ const NODE_WIDTH = 128
 const NODE_HEIGHT = 40
 const VIEWPORT_PADDING = 24
 const STATUS_VALUES = ["success", "fail", "retry", "partial_success"]
+const FIDELITY_VALUES = [
+  "full",
+  "truncate",
+  "compact",
+  "summary:low",
+  "summary:medium",
+  "summary:high",
+]
 const NODE_TYPE_TO_SHAPE = {
   start: "Mdiamond",
   exit: "Msquare",
@@ -14,6 +22,174 @@ const NODE_TYPE_TO_SHAPE = {
   tool: "parallelogram",
   "stack.manager_loop": "house",
 }
+const NODE_FIELDS_BY_TYPE = {
+  start: ["id", "label", "type", "class", "timeout", "connections"],
+  exit: ["id", "label", "type", "class", "timeout"],
+  tool: [
+    "id",
+    "label",
+    "type",
+    "class",
+    "timeout",
+    "command",
+    "maxRetries",
+    "goalGate",
+    "retryTarget",
+    "fallbackRetryTarget",
+    "fidelity",
+    "threadId",
+    "autoStatus",
+    "allowPartial",
+    "connections",
+  ],
+  codergen: [
+    "id",
+    "label",
+    "type",
+    "class",
+    "timeout",
+    "prompt",
+    "maxRetries",
+    "goalGate",
+    "retryTarget",
+    "fallbackRetryTarget",
+    "fidelity",
+    "threadId",
+    "llmModel",
+    "llmProvider",
+    "reasoningEffort",
+    "maxTokens",
+    "temperature",
+    "autoStatus",
+    "allowPartial",
+    "connections",
+  ],
+  "wait.human": [
+    "id",
+    "label",
+    "type",
+    "class",
+    "timeout",
+    "prompt",
+    "retryTarget",
+    "fallbackRetryTarget",
+    "fidelity",
+    "threadId",
+    "humanDefaultChoice",
+    "humanTimeout",
+    "humanInput",
+    "humanMultiple",
+    "humanRequired",
+    "connections",
+  ],
+  conditional: ["id", "label", "type", "class", "timeout", "fidelity", "threadId", "connections"],
+  parallel: [
+    "id",
+    "label",
+    "type",
+    "class",
+    "timeout",
+    "fidelity",
+    "threadId",
+    "joinPolicy",
+    "maxParallel",
+    "k",
+    "quorumRatio",
+    "connections",
+  ],
+  "parallel.fan_in": ["id", "label", "type", "class", "timeout", "fidelity", "threadId", "connections"],
+  "stack.manager_loop": [
+    "id",
+    "label",
+    "type",
+    "class",
+    "timeout",
+    "fidelity",
+    "threadId",
+    "managerActions",
+    "managerMaxCycles",
+    "managerPollInterval",
+    "stackChildAutostart",
+    "connections",
+  ],
+}
+const NODE_ALLOWED_ATTRS_BY_TYPE = {
+  start: ["label", "class", "timeout"],
+  exit: ["label", "class", "timeout"],
+  tool: [
+    "label",
+    "class",
+    "timeout",
+    "tool_command",
+    "max_retries",
+    "goal_gate",
+    "retry_target",
+    "fallback_retry_target",
+    "fidelity",
+    "thread_id",
+    "auto_status",
+    "allow_partial",
+  ],
+  codergen: [
+    "label",
+    "class",
+    "timeout",
+    "prompt",
+    "max_retries",
+    "goal_gate",
+    "retry_target",
+    "fallback_retry_target",
+    "fidelity",
+    "thread_id",
+    "llm_model",
+    "llm_provider",
+    "reasoning_effort",
+    "max_tokens",
+    "temperature",
+    "auto_status",
+    "allow_partial",
+  ],
+  "wait.human": [
+    "label",
+    "class",
+    "timeout",
+    "prompt",
+    "retry_target",
+    "fallback_retry_target",
+    "fidelity",
+    "thread_id",
+    "human.default_choice",
+    "human.timeout",
+    "human.input",
+    "human.multiple",
+    "human.required",
+  ],
+  conditional: ["label", "class", "timeout", "fidelity", "thread_id"],
+  parallel: [
+    "label",
+    "class",
+    "timeout",
+    "fidelity",
+    "thread_id",
+    "join_policy",
+    "max_parallel",
+    "k",
+    "quorum_ratio",
+  ],
+  "parallel.fan_in": ["label", "class", "timeout", "fidelity", "thread_id"],
+  "stack.manager_loop": [
+    "label",
+    "class",
+    "timeout",
+    "fidelity",
+    "thread_id",
+    "manager.actions",
+    "manager.max_cycles",
+    "manager.poll_interval",
+    "stack.child_autostart",
+  ],
+}
+const EDGE_ALLOWED_ATTRS = ["label", "weight", "fidelity", "thread_id", "loop_restart", "status", "condition"]
 
 const PipelineBuilder = {
   mounted() {
@@ -63,6 +239,21 @@ const PipelineBuilder = {
     this.propLlmModel = document.getElementById("node-prop-llm-model")
     this.propLlmProvider = document.getElementById("node-prop-llm-provider")
     this.propReasoningEffort = document.getElementById("node-prop-reasoning-effort")
+    this.propMaxTokens = document.getElementById("node-prop-max-tokens")
+    this.propTemperature = document.getElementById("node-prop-temperature")
+    this.propHumanDefaultChoice = document.getElementById("node-prop-human-default-choice")
+    this.propHumanTimeout = document.getElementById("node-prop-human-timeout")
+    this.propHumanInput = document.getElementById("node-prop-human-input")
+    this.propHumanMultiple = document.getElementById("node-prop-human-multiple")
+    this.propHumanRequired = document.getElementById("node-prop-human-required")
+    this.propJoinPolicy = document.getElementById("node-prop-join-policy")
+    this.propMaxParallel = document.getElementById("node-prop-max-parallel")
+    this.propK = document.getElementById("node-prop-k")
+    this.propQuorumRatio = document.getElementById("node-prop-quorum-ratio")
+    this.propManagerActions = document.getElementById("node-prop-manager-actions")
+    this.propManagerMaxCycles = document.getElementById("node-prop-manager-max-cycles")
+    this.propManagerPollInterval = document.getElementById("node-prop-manager-poll-interval")
+    this.propStackChildAutostart = document.getElementById("node-prop-stack-child-autostart")
     this.propAutoStatus = document.getElementById("node-prop-auto-status")
     this.propAllowPartial = document.getElementById("node-prop-allow-partial")
     this.propConnectionsList = document.getElementById("node-connections-list")
@@ -90,7 +281,22 @@ const PipelineBuilder = {
       llmModel: document.getElementById("node-prop-wrap-llm-model"),
       llmProvider: document.getElementById("node-prop-wrap-llm-provider"),
       reasoningEffort: document.getElementById("node-prop-wrap-reasoning-effort"),
+      maxTokens: document.getElementById("node-prop-wrap-max-tokens"),
+      temperature: document.getElementById("node-prop-wrap-temperature"),
       command: document.getElementById("node-prop-wrap-command"),
+      humanDefaultChoice: document.getElementById("node-prop-wrap-human-default-choice"),
+      humanTimeout: document.getElementById("node-prop-wrap-human-timeout"),
+      humanInput: document.getElementById("node-prop-wrap-human-input"),
+      humanMultiple: document.getElementById("node-prop-wrap-human-multiple"),
+      humanRequired: document.getElementById("node-prop-wrap-human-required"),
+      joinPolicy: document.getElementById("node-prop-wrap-join-policy"),
+      maxParallel: document.getElementById("node-prop-wrap-max-parallel"),
+      k: document.getElementById("node-prop-wrap-k"),
+      quorumRatio: document.getElementById("node-prop-wrap-quorum-ratio"),
+      managerActions: document.getElementById("node-prop-wrap-manager-actions"),
+      managerMaxCycles: document.getElementById("node-prop-wrap-manager-max-cycles"),
+      managerPollInterval: document.getElementById("node-prop-wrap-manager-poll-interval"),
+      stackChildAutostart: document.getElementById("node-prop-wrap-stack-child-autostart"),
       goalGate: document.getElementById("node-prop-wrap-goal-gate"),
       autoStatus: document.getElementById("node-prop-wrap-auto-status"),
       allowPartial: document.getElementById("node-prop-wrap-allow-partial"),
@@ -157,7 +363,7 @@ const PipelineBuilder = {
       if (line.includes("->")) {
         const edgeMatch = line.match(/^([A-Za-z0-9_]+)\s*->\s*([A-Za-z0-9_]+)(?:\s*\[(.+)\])?/)
         if (edgeMatch) {
-          const attrs = this.parseAttrs(edgeMatch[3] || "")
+          const attrs = this.sanitizeEdgeAttrs(this.parseAttrs(edgeMatch[3] || ""))
           edges.push({
             from: edgeMatch[1],
             to: edgeMatch[2],
@@ -247,10 +453,84 @@ const PipelineBuilder = {
   },
 
   normalizeNodeAttrs(attrs, type, id) {
-    const next = { ...(attrs || {}) }
+    const next = this.sanitizeNodeAttrs(attrs, type, id)
     if (!next.label) next.label = id
     if (type === "tool" && !next.tool_command) next.tool_command = "echo hello world"
     return next
+  },
+
+  sanitizeNodeAttrs(attrs, type, id) {
+    const allowed = new Set(NODE_ALLOWED_ATTRS_BY_TYPE[type] || [])
+    const next = {}
+
+    Object.entries(attrs || {}).forEach(([key, rawValue]) => {
+      if (key === "shape" || key === "type" || !allowed.has(key)) return
+      const value = this.normalizeNodeAttrValue(key, rawValue)
+      if (value !== "" && value !== null && value !== undefined) next[key] = value
+    })
+
+    if (!next.label) next.label = id
+    return next
+  },
+
+  sanitizeEdgeAttrs(attrs) {
+    const next = {}
+
+    Object.entries(attrs || {}).forEach(([key, rawValue]) => {
+      if (!EDGE_ALLOWED_ATTRS.includes(key)) return
+      const value = this.normalizeEdgeAttrValue(key, rawValue)
+      if (value !== "" && value !== null && value !== undefined) next[key] = value
+    })
+
+    return next
+  },
+
+  normalizeNodeAttrValue(key, value) {
+    if (value === null || value === undefined) return ""
+    if (["goal_gate", "auto_status", "allow_partial", "human.multiple", "human.required", "stack.child_autostart"].includes(key)) {
+      return this.boolAttr(value) ? true : ""
+    }
+
+    const text = `${value}`.trim()
+    if (text === "") return ""
+
+    if (key === "reasoning_effort") return ["low", "medium", "high"].includes(text) ? text : ""
+    if (key === "fidelity") return FIDELITY_VALUES.includes(text) ? text : ""
+    if (key === "human.input") {
+      return [
+        "text",
+        "textarea",
+        "checkbox",
+        "boolean",
+        "confirmation",
+        "single_select",
+        "multi_select",
+        "radio",
+        "select",
+      ].includes(text)
+        ? text
+        : ""
+    }
+    if (key === "join_policy") return ["wait_all", "first_success", "k_of_n", "quorum"].includes(text) ? text : ""
+    if (key === "max_retries") return /^\d+$/.test(text) ? text : ""
+    if (["max_tokens", "max_parallel", "k", "manager.max_cycles"].includes(key)) return /^[1-9]\d*$/.test(text) ? text : ""
+    if (key === "temperature") return this.isNumberString(text) ? text : ""
+    if (key === "quorum_ratio") return this.isNumberString(text) ? text : ""
+
+    return text
+  },
+
+  normalizeEdgeAttrValue(key, value) {
+    if (value === null || value === undefined) return ""
+    if (key === "loop_restart") return this.boolAttr(value) ? true : ""
+
+    const text = `${value}`.trim()
+    if (text === "") return ""
+    if (key === "status") return STATUS_VALUES.includes(text) ? text : ""
+    if (key === "fidelity") return FIDELITY_VALUES.includes(text) ? text : ""
+    if (key === "weight") return /^-?\d+$/.test(text) ? text : ""
+
+    return text
   },
 
   bindGraphInputs() {
@@ -675,7 +955,7 @@ const PipelineBuilder = {
 
     lines.push("")
     this.state.edges.forEach((edge) => {
-      const attrs = edge.attrs || {}
+      const attrs = this.sanitizeEdgeAttrs(edge.attrs || {})
       const serialized = this.serializeAttrs(attrs)
       if (serialized) {
         lines.push(`  ${edge.from} -> ${edge.to} [${serialized}]`)
@@ -689,7 +969,7 @@ const PipelineBuilder = {
   },
 
   buildNodeAttrMap(node) {
-    const attrs = { ...(node.attrs || {}) }
+    const attrs = this.sanitizeNodeAttrs(node.attrs, node.type, node.id)
     const shape = NODE_TYPE_TO_SHAPE[node.type] || "box"
     attrs.shape = shape
     attrs.label = attrs.label || node.id
@@ -731,6 +1011,10 @@ const PipelineBuilder = {
     if (value === true) return true
     if (typeof value === "string") return value.toLowerCase() === "true"
     return false
+  },
+
+  isNumberString(value) {
+    return /^-?\d+(\.\d+)?$/.test(`${value}`.trim())
   },
 
   fitNodesInViewport() {
@@ -781,13 +1065,27 @@ const PipelineBuilder = {
     this.propTimeout.value = attrs.timeout || ""
     this.propMaxRetries.value = attrs.max_retries || ""
     this.propGoalGate.checked = this.boolAttr(attrs.goal_gate)
-    this.propRetryTarget.value = attrs.retry_target || ""
-    this.propFallbackRetryTarget.value = attrs.fallback_retry_target || ""
+    this.populateNodeTargetSelects(node.id, attrs.retry_target || "", attrs.fallback_retry_target || "")
     this.propFidelity.value = attrs.fidelity || ""
     this.propThreadId.value = attrs.thread_id || ""
     this.propLlmModel.value = attrs.llm_model || ""
     this.propLlmProvider.value = attrs.llm_provider || ""
     this.propReasoningEffort.value = attrs.reasoning_effort || ""
+    this.propMaxTokens.value = attrs.max_tokens || ""
+    this.propTemperature.value = attrs.temperature || ""
+    this.propHumanDefaultChoice.value = attrs["human.default_choice"] || ""
+    this.propHumanTimeout.value = attrs["human.timeout"] || ""
+    this.propHumanInput.value = attrs["human.input"] || ""
+    this.propHumanMultiple.checked = this.boolAttr(attrs["human.multiple"])
+    this.propHumanRequired.checked = this.boolAttr(attrs["human.required"])
+    this.propJoinPolicy.value = attrs.join_policy || ""
+    this.propMaxParallel.value = attrs.max_parallel || ""
+    this.propK.value = attrs.k || ""
+    this.propQuorumRatio.value = attrs.quorum_ratio || ""
+    this.propManagerActions.value = attrs["manager.actions"] || ""
+    this.propManagerMaxCycles.value = attrs["manager.max_cycles"] || ""
+    this.propManagerPollInterval.value = attrs["manager.poll_interval"] || ""
+    this.propStackChildAutostart.checked = this.boolAttr(attrs["stack.child_autostart"])
     this.propAutoStatus.checked = this.boolAttr(attrs.auto_status)
     this.propAllowPartial.checked = this.boolAttr(attrs.allow_partial)
     this.propCommand.value = attrs.tool_command || "echo hello world"
@@ -800,52 +1098,9 @@ const PipelineBuilder = {
     if (!this.propType) return
 
     const type = this.propType.value
-    const visible = new Set(["id", "label", "type", "class", "timeout"])
+    const visible = new Set(NODE_FIELDS_BY_TYPE[type] || NODE_FIELDS_BY_TYPE.codergen)
 
-    if (type === "tool") {
-      ;[
-        "command",
-        "maxRetries",
-        "goalGate",
-        "retryTarget",
-        "fallbackRetryTarget",
-        "fidelity",
-        "threadId",
-        "autoStatus",
-        "allowPartial",
-      ].forEach((field) => visible.add(field))
-    }
-
-    if (type === "codergen") {
-      ;[
-        "prompt",
-        "maxRetries",
-        "goalGate",
-        "retryTarget",
-        "fallbackRetryTarget",
-        "fidelity",
-        "threadId",
-        "llmModel",
-        "llmProvider",
-        "reasoningEffort",
-        "autoStatus",
-        "allowPartial",
-      ].forEach((field) => visible.add(field))
-    }
-
-    if (type === "wait.human") {
-      ;["fidelity", "threadId", "retryTarget", "fallbackRetryTarget"].forEach((field) =>
-        visible.add(field)
-      )
-    }
-
-    if (type === "parallel" || type === "parallel.fan_in" || type === "stack.manager_loop" || type === "conditional") {
-      ;["fidelity", "threadId"].forEach((field) => visible.add(field))
-    }
-
-    if (type !== "exit") {
-      visible.add("connections")
-    }
+    if (type !== "exit") visible.add("connections")
 
     Object.entries(this.nodeFieldWraps || {}).forEach(([key, element]) => {
       if (!element) return
@@ -891,29 +1146,8 @@ const PipelineBuilder = {
     const inputLabel = (this.propLabel?.value || "").trim()
     const label = inputLabel === "" || inputLabel === oldId ? node.id : inputLabel
 
-    node.type = this.propType?.value || node.type
-    node.attrs = this.cleanEmptyAttrs({
-      ...(node.attrs || {}),
-      label,
-      prompt: (this.propPrompt?.value || "").trim(),
-      max_retries: (this.propMaxRetries?.value || "").trim(),
-      goal_gate: this.propGoalGate?.checked ? true : "",
-      retry_target: (this.propRetryTarget?.value || "").trim(),
-      fallback_retry_target: (this.propFallbackRetryTarget?.value || "").trim(),
-      fidelity: (this.propFidelity?.value || "").trim(),
-      thread_id: (this.propThreadId?.value || "").trim(),
-      class: (this.propClass?.value || "").trim(),
-      timeout: (this.propTimeout?.value || "").trim(),
-      llm_model: (this.propLlmModel?.value || "").trim(),
-      llm_provider: (this.propLlmProvider?.value || "").trim(),
-      reasoning_effort: (this.propReasoningEffort?.value || "").trim(),
-      auto_status: this.propAutoStatus?.checked ? true : "",
-      allow_partial: this.propAllowPartial?.checked ? true : "",
-      tool_command:
-        node.type === "tool"
-          ? (this.propCommand?.value || "echo hello world").trim() || "echo hello world"
-          : "",
-    })
+    node.type = requestedType
+    node.attrs = this.sanitizeNodeAttrs(this.readNodePropertyAttrs(label, requestedType), requestedType, node.id)
 
     const updatedConnections = this.readConnectionRows().map((connection) => ({
       from: node.id,
@@ -925,7 +1159,64 @@ const PipelineBuilder = {
 
     this.fitNodesInViewport()
     this.sync()
-      this.propsDialog?.close()
+    this.propsDialog?.close()
+  },
+
+  readNodePropertyAttrs(label, nodeType) {
+    return this.cleanEmptyAttrs({
+      label,
+      prompt: (this.propPrompt?.value || "").trim(),
+      class: (this.propClass?.value || "").trim(),
+      timeout: (this.propTimeout?.value || "").trim(),
+      max_retries: (this.propMaxRetries?.value || "").trim(),
+      goal_gate: this.propGoalGate?.checked ? true : "",
+      retry_target: (this.propRetryTarget?.value || "").trim(),
+      fallback_retry_target: (this.propFallbackRetryTarget?.value || "").trim(),
+      fidelity: (this.propFidelity?.value || "").trim(),
+      thread_id: (this.propThreadId?.value || "").trim(),
+      llm_model: (this.propLlmModel?.value || "").trim(),
+      llm_provider: (this.propLlmProvider?.value || "").trim(),
+      reasoning_effort: (this.propReasoningEffort?.value || "").trim(),
+      max_tokens: (this.propMaxTokens?.value || "").trim(),
+      temperature: (this.propTemperature?.value || "").trim(),
+      tool_command: nodeType === "tool" ? (this.propCommand?.value || "echo hello world").trim() || "echo hello world" : "",
+      auto_status: this.propAutoStatus?.checked ? true : "",
+      allow_partial: this.propAllowPartial?.checked ? true : "",
+      "human.default_choice": (this.propHumanDefaultChoice?.value || "").trim(),
+      "human.timeout": (this.propHumanTimeout?.value || "").trim(),
+      "human.input": (this.propHumanInput?.value || "").trim(),
+      "human.multiple": this.propHumanMultiple?.checked ? true : "",
+      "human.required": this.propHumanRequired?.checked ? true : "",
+      join_policy: (this.propJoinPolicy?.value || "").trim(),
+      max_parallel: (this.propMaxParallel?.value || "").trim(),
+      k: (this.propK?.value || "").trim(),
+      quorum_ratio: (this.propQuorumRatio?.value || "").trim(),
+      "manager.actions": (this.propManagerActions?.value || "").trim(),
+      "manager.max_cycles": (this.propManagerMaxCycles?.value || "").trim(),
+      "manager.poll_interval": (this.propManagerPollInterval?.value || "").trim(),
+      "stack.child_autostart": this.propStackChildAutostart?.checked ? true : "",
+    })
+  },
+
+  populateNodeTargetSelects(nodeId, retryTarget, fallbackRetryTarget) {
+    const options = this.state.nodes
+      .filter((node) => node.id !== nodeId)
+      .map((node) => node.id)
+
+    this.populateSelect(this.propRetryTarget, options, retryTarget, "(none)")
+    this.populateSelect(this.propFallbackRetryTarget, options, fallbackRetryTarget, "(none)")
+  },
+
+  populateSelect(selectEl, values, selectedValue, emptyLabel = "(default)") {
+    if (!selectEl) return
+
+    const options = [`<option value="">${emptyLabel}</option>`]
+    values.forEach((value) => {
+      const selected = value === selectedValue ? "selected" : ""
+      options.push(`<option value="${this.escapeHtml(value)}" ${selected}>${this.escapeHtml(value)}</option>`)
+    })
+    selectEl.innerHTML = options.join("")
+    selectEl.value = selectedValue || ""
   },
 
   addEdge(fromId, toId) {
@@ -970,6 +1261,14 @@ const PipelineBuilder = {
     const fidelity = attrs.fidelity || ""
     const threadId = attrs.thread_id || ""
     const loopRestart = this.boolAttr(attrs.loop_restart)
+    const fidelityOptions = ['<option value="">(default)</option>']
+      .concat(
+        FIDELITY_VALUES.map(
+          (entry) =>
+            `<option value="${entry}" ${entry === fidelity ? "selected" : ""}>${entry}</option>`
+        )
+      )
+      .join("")
 
     const targetOptions = availableTargets
       .map((node) => `<option value="${node.id}" ${node.id === selectedTo ? "selected" : ""}>${node.id}</option>`)
@@ -1018,11 +1317,13 @@ const PipelineBuilder = {
       </div>
       <div class="col-span-2 space-y-1">
         <label class="text-[10px] font-semibold uppercase text-base-content/70">Weight</label>
-        <input class="conn-weight w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-xs" value="${weight}" />
+        <input class="conn-weight w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-xs" type="number" step="1" value="${weight}" />
       </div>
       <div class="col-span-3 space-y-1">
         <label class="text-[10px] font-semibold uppercase text-base-content/70">Fidelity</label>
-        <input class="conn-fidelity w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-xs" value="${fidelity}" />
+        <select class="conn-fidelity w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-xs">
+          ${fidelityOptions}
+        </select>
       </div>
       <div class="col-span-3 space-y-1">
         <label class="text-[10px] font-semibold uppercase text-base-content/70">Thread ID</label>
@@ -1088,12 +1389,12 @@ const PipelineBuilder = {
           loop_restart: loopRestart,
         })
 
-        if (mode === "status") return { to, attrs: this.cleanEmptyAttrs({ ...attrs, status: valueStatus || "success" }) }
+        if (mode === "status") return { to, attrs: this.sanitizeEdgeAttrs({ ...attrs, status: valueStatus || "success" }) }
         if (mode === "condition") {
-          if (STATUS_VALUES.includes(lowered)) return { to, attrs: this.cleanEmptyAttrs({ ...attrs, status: lowered }) }
-          return { to, attrs: this.cleanEmptyAttrs({ ...attrs, condition: valueInput || "true" }) }
+          if (STATUS_VALUES.includes(lowered)) return { to, attrs: this.sanitizeEdgeAttrs({ ...attrs, status: lowered }) }
+          return { to, attrs: this.sanitizeEdgeAttrs({ ...attrs, condition: valueInput || "true" }) }
         }
-        return { to, attrs }
+        return { to, attrs: this.sanitizeEdgeAttrs(attrs) }
       })
       .filter(Boolean)
   },

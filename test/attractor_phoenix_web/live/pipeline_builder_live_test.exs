@@ -15,6 +15,10 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLiveTest do
     assert html =~ "Run via /run"
     assert html =~ "Submit via /pipelines"
     assert html =~ "Graph Contract"
+    assert html =~ "node-prop-max-tokens"
+    assert html =~ "node-prop-temperature"
+    assert html =~ "node-prop-human-input"
+    assert html =~ "node-prop-join-policy"
   end
 
   test "submits pipeline through the HTTP API from the builder", %{conn: conn} do
