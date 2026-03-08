@@ -59,9 +59,11 @@ AttractorEx.Validator.md
 AttractorEx.md
 AttractorExPhx.Client.md
 AttractorExPhx.HTTPServer.md
+AttractorExPhx.PubSub.md
 AttractorExPhx.md
 AttractorPhoenix.Mailer.md
 AttractorPhoenix.md
+AttractorPhoenixWeb.AttractorChannel.md
 AttractorPhoenixWeb.CoreComponents.md
 AttractorPhoenixWeb.DashboardLive.md
 AttractorPhoenixWeb.Endpoint.md
@@ -74,6 +76,7 @@ AttractorPhoenixWeb.PageHTML.md
 AttractorPhoenixWeb.PipelineBuilderLive.md
 AttractorPhoenixWeb.Router.md
 AttractorPhoenixWeb.Telemetry.md
+AttractorPhoenixWeb.UserSocket.md
 AttractorPhoenixWeb.md
 Mix.Tasks.Coverage.Gate.md
 agent-loop.md

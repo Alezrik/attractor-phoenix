@@ -8,9 +8,10 @@ defmodule AttractorExPhx do
   - direct pipeline execution via `run/3`
   - supervision-friendly HTTP server startup via `child_spec/1` and `start_link/1`
   - Req-based access to the HTTP control plane via `AttractorExPhx.Client`
+  - PubSub subscriptions for LiveViews and other Phoenix processes via `AttractorExPhx.PubSub`
   """
 
-  alias AttractorExPhx.{Client, HTTPServer}
+  alias AttractorExPhx.{Client, HTTPServer, PubSub}
 
   @spec run(String.t(), map(), keyword()) ::
           {:ok, map()} | {:error, %{diagnostics: list()}} | {:error, %{error: String.t()}}
@@ -56,4 +57,7 @@ defmodule AttractorExPhx do
   defdelegate get_pipeline_graph_dot(id), to: Client
   defdelegate get_pipeline_graph_mermaid(id), to: Client
   defdelegate get_pipeline_graph_text(id), to: Client
+  defdelegate subscribe_pipeline(pipeline_id, opts \\ []), to: PubSub
+  defdelegate unsubscribe_pipeline(pipeline_id, opts \\ []), to: PubSub
+  defdelegate pipeline_topic(pipeline_id), to: PubSub, as: :topic
 end

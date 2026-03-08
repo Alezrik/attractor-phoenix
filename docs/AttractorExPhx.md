@@ -9,6 +9,7 @@ integration seam a Phoenix application can depend on for:
 - direct pipeline execution via `run/3`
 - supervision-friendly HTTP server startup via `child_spec/1` and `start_link/1`
 - Req-based access to the HTTP control plane via `AttractorExPhx.Client`
+- PubSub subscriptions for LiveViews and other Phoenix processes via `AttractorExPhx.PubSub`
 
 # `answer_pipeline_question`
 
@@ -50,6 +51,8 @@ integration seam a Phoenix application can depend on for:
 
 # `list_pipelines`
 
+# `pipeline_topic`
+
 # `run`
 
 ```elixir
@@ -78,6 +81,10 @@ integration seam a Phoenix application can depend on for:
 ```elixir
 @spec stop_http_server(pid() | atom()) :: :ok
 ```
+
+# `subscribe_pipeline`
+
+# `unsubscribe_pipeline`
 
 ---
 

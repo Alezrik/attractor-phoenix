@@ -12,7 +12,7 @@
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
-    <script defer src="dist/sidebar_items-CDB009B2.js"></script>
+    <script defer src="dist/sidebar_items-67DCF797.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-YU4BZFVS.js"></script>
 
@@ -119,7 +119,7 @@ attractor_phoenix
 
     <section id="moduledoc">
 <p>Phoenix-facing adapter layer for <a href="AttractorEx.html"><code class="inline">AttractorEx</code></a>.</p><p><a href="AttractorEx.html"><code class="inline">AttractorEx</code></a> remains the standalone pipeline engine. <a href="AttractorExPhx.html"><code class="inline">AttractorExPhx</code></a> is the
-integration seam a Phoenix application can depend on for:</p><ul><li>direct pipeline execution via <a href="#run/3"><code class="inline">run/3</code></a></li><li>supervision-friendly HTTP server startup via <a href="#child_spec/1"><code class="inline">child_spec/1</code></a> and <a href="#start_link/1"><code class="inline">start_link/1</code></a></li><li>Req-based access to the HTTP control plane via <a href="AttractorExPhx.Client.html"><code class="inline">AttractorExPhx.Client</code></a></li></ul>
+integration seam a Phoenix application can depend on for:</p><ul><li>direct pipeline execution via <a href="#run/3"><code class="inline">run/3</code></a></li><li>supervision-friendly HTTP server startup via <a href="#child_spec/1"><code class="inline">child_spec/1</code></a> and <a href="#start_link/1"><code class="inline">start_link/1</code></a></li><li>Req-based access to the HTTP control plane via <a href="AttractorExPhx.Client.html"><code class="inline">AttractorExPhx.Client</code></a></li><li>PubSub subscriptions for LiveViews and other Phoenix processes via <a href="AttractorExPhx.PubSub.html"><code class="inline">AttractorExPhx.PubSub</code></a></li></ul>
     </section>
 
 </div>
@@ -316,6 +316,16 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
 
     <div class="summary-row">
       <div class="summary-signature">
+        <a href="#pipeline_topic/1" data-no-tooltip="" translate="no">pipeline_topic(pipeline_id)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>See <a href="AttractorExPhx.PubSub.html#topic/1"><code class="inline">AttractorExPhx.PubSub.topic/1</code></a>.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
         <a href="#run/3" data-no-tooltip="" translate="no">run(dot, context \\ %{}, opts \\ [])</a>
 
       </div>
@@ -356,6 +366,26 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
 
     </div>
 
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#subscribe_pipeline/2" data-no-tooltip="" translate="no">subscribe_pipeline(pipeline_id, opts \\ [])</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>See <a href="AttractorExPhx.PubSub.html#subscribe_pipeline/2"><code class="inline">AttractorExPhx.PubSub.subscribe_pipeline/2</code></a>.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#unsubscribe_pipeline/2" data-no-tooltip="" translate="no">unsubscribe_pipeline(pipeline_id, opts \\ [])</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>See <a href="AttractorExPhx.PubSub.html#unsubscribe_pipeline/2"><code class="inline">AttractorExPhx.PubSub.unsubscribe_pipeline/2</code></a>.</p></div>
+
+    </div>
+
 </div>
 
   </section>
@@ -380,7 +410,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">answer_pipeline_question(id, question_id, answer)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L51" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L52" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -402,7 +432,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">answer_question(id, question_id, answer)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L52" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L53" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -424,7 +454,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">cancel_pipeline(id)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L50" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L51" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -446,7 +476,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">child_spec(opts)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L22" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L23" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -476,7 +506,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">create_pipeline(dot, context, opts \\ [])</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L42" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L43" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -498,7 +528,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">get_pipeline(id)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L44" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L45" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -520,7 +550,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">get_pipeline_checkpoint(id)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L47" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L48" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -542,7 +572,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">get_pipeline_context(id)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L46" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L47" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -564,7 +594,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">get_pipeline_events(id)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L49" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L50" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -586,7 +616,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">get_pipeline_graph(id, format)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L54" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L55" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -608,7 +638,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">get_pipeline_graph_dot(id)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L56" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L57" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -630,7 +660,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">get_pipeline_graph_json(id)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L55" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L56" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -652,7 +682,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">get_pipeline_graph_mermaid(id)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L57" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L58" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -674,7 +704,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">get_pipeline_graph_svg(id)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L53" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L54" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -696,7 +726,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">get_pipeline_graph_text(id)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L58" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L59" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -718,7 +748,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">get_pipeline_questions(id)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L48" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L49" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -740,7 +770,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">get_status(id)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L45" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L46" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -762,7 +792,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">list_pipelines()</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L41" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L42" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -772,6 +802,28 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
   <section class="docstring">
 
 <p>See <a href="AttractorExPhx.Client.html#list_pipelines/0"><code class="inline">AttractorExPhx.Client.list_pipelines/0</code></a>.</p>
+  </section>
+</section>
+<section class="detail" id="pipeline_topic/1">
+
+  <div class="detail-header">
+    <a href="#pipeline_topic/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">pipeline_topic(pipeline_id)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L62" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>See <a href="AttractorExPhx.PubSub.html#topic/1"><code class="inline">AttractorExPhx.PubSub.topic/1</code></a>.</p>
   </section>
 </section>
 <section class="detail" id="run/3">
@@ -788,7 +840,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">run(dot, context \\ %{}, opts \\ [])</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L17" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L18" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -821,7 +873,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">run_pipeline(dot, context, opts \\ [])</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L43" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L44" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -845,7 +897,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">start_http_server(opts \\ [])</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L32" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L33" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -875,7 +927,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">start_link(opts \\ [])</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L27" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L28" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -903,7 +955,7 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       <h1 class="signature" translate="no">stop_http_server(server)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L37" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L38" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -919,6 +971,54 @@ integration seam a Phoenix application can depend on for:</p><ul><li>direct pipe
       </div>
 
 
+  </section>
+</section>
+<section class="detail" id="subscribe_pipeline/2">
+
+    <span id="subscribe_pipeline/1"></span>
+
+  <div class="detail-header">
+    <a href="#subscribe_pipeline/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">subscribe_pipeline(pipeline_id, opts \\ [])</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L60" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>See <a href="AttractorExPhx.PubSub.html#subscribe_pipeline/2"><code class="inline">AttractorExPhx.PubSub.subscribe_pipeline/2</code></a>.</p>
+  </section>
+</section>
+<section class="detail" id="unsubscribe_pipeline/2">
+
+    <span id="unsubscribe_pipeline/1"></span>
+
+  <div class="detail-header">
+    <a href="#unsubscribe_pipeline/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">unsubscribe_pipeline(pipeline_id, opts \\ [])</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx.ex#L61" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>See <a href="AttractorExPhx.PubSub.html#unsubscribe_pipeline/2"><code class="inline">AttractorExPhx.PubSub.unsubscribe_pipeline/2</code></a>.</p>
   </section>
 </section>
 

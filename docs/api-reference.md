@@ -7,6 +7,7 @@ and business logic.
 - [AttractorPhoenix.Mailer](AttractorPhoenix.Mailer.md)
 - [AttractorPhoenixWeb](AttractorPhoenixWeb.md): The entrypoint for defining your web interface, such
 as controllers, components, channels, and so on.
+- [AttractorPhoenixWeb.AttractorChannel](AttractorPhoenixWeb.AttractorChannel.md)
 - [AttractorPhoenixWeb.CoreComponents](AttractorPhoenixWeb.CoreComponents.md): Provides core UI components.
 - [AttractorPhoenixWeb.DashboardLive](AttractorPhoenixWeb.DashboardLive.md)
 - [AttractorPhoenixWeb.Endpoint](AttractorPhoenixWeb.Endpoint.md)
@@ -21,6 +22,7 @@ used by your application.
 - [AttractorPhoenixWeb.PipelineBuilderLive](AttractorPhoenixWeb.PipelineBuilderLive.md)
 - [AttractorPhoenixWeb.Router](AttractorPhoenixWeb.Router.md)
 - [AttractorPhoenixWeb.Telemetry](AttractorPhoenixWeb.Telemetry.md)
+- [AttractorPhoenixWeb.UserSocket](AttractorPhoenixWeb.UserSocket.md)
 - [AttractorEx.SimulationBackend](AttractorEx.SimulationBackend.md): Minimal fallback backend used by `AttractorEx.Handlers.Codergen` in tests and demos.
 
 - EntryPoints
@@ -80,6 +82,7 @@ used by your application.
   - [AttractorExPhx](AttractorExPhx.md): Phoenix-facing adapter layer for `AttractorEx`.
   - [AttractorExPhx.Client](AttractorExPhx.Client.md): Req-based client for the `AttractorEx` HTTP control plane.
   - [AttractorExPhx.HTTPServer](AttractorExPhx.HTTPServer.md): Supervision-friendly HTTP server wrapper for `AttractorEx`.
+  - [AttractorExPhx.PubSub](AttractorExPhx.PubSub.md): Phoenix PubSub bridge for `AttractorEx` pipeline updates.
 
 - UnifiedLLM
   - [AttractorEx.LLM.Client](AttractorEx.LLM.Client.md): Provider-agnostic LLM client used by codergen nodes and agent sessions.

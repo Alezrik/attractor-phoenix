@@ -8,7 +8,7 @@ This repository combines the core engine with a polished visual experience for d
 ## Project Structure
 
 1. `lib/attractor_ex/` - standalone Attractor-style DOT pipeline engine (the main artifact).
-2. `lib/attractor_ex_phx/` - Phoenix adapter layer that plugs the web app into `AttractorEx`.
+2. `lib/attractor_ex_phx/` - Phoenix adapter layer that plugs the web app into `AttractorEx` through HTTP, PubSub, and channel-friendly integration seams.
 3. `lib/attractor_phoenix_web/live/` - Phoenix LiveView UI demonstrating the library.
 4. `assets/js/pipeline_builder.js` - graph-builder interactions for the demo UI.
 
@@ -66,6 +66,7 @@ The Phoenix app provides:
 1. Live graphical pipeline builder.
 2. DOT text editing and round-trip sync.
 3. Pipeline execution and output display.
+4. Phoenix-native push integration through PubSub topics and WebSocket channels.
 
 ## Phoenix Setup and Run
 
