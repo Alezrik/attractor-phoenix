@@ -112,6 +112,7 @@ defmodule AttractorEx.Agent.PrimitivesTest do
     assert is_integer(profile.context_window_size)
     assert "read_file" in tool_names
     assert "shell_command" in tool_names
+    assert "spawn_agent" in tool_names
   end
 
   test "anthropic and gemini presets preserve provider-specific metadata" do
@@ -133,11 +134,15 @@ defmodule AttractorEx.Agent.PrimitivesTest do
 
     assert Enum.sort(tool_names) ==
              Enum.sort([
+               "close_agent",
                "glob",
                "grep",
                "list_directory",
                "read_file",
+               "send_input",
                "shell_command",
+               "spawn_agent",
+               "wait",
                "write_file"
              ])
   end
@@ -183,6 +188,7 @@ defmodule AttractorEx.Agent.PrimitivesTest do
     assert prompt =~ "AvailableTools=read_file, shell_command"
     assert prompt =~ "FILE /tmp/project/AGENTS.md"
     assert prompt =~ "Follow repo rules"
+    assert prompt =~ "SubagentToolsAvailable="
   end
 
   defp shell_echo_command(text) do

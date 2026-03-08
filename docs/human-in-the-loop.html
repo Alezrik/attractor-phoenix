@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.40.1">
+    <meta name="project" content="attractor_phoenix v0.1.0">
+
+
+    <title>Human-in-the-Loop — attractor_phoenix v0.1.0</title>
+
+    <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
+
+    <script defer src="dist/sidebar_items-ED94E38E.js"></script>
+    <script defer src="docs_config.js"></script>
+    <script defer src="dist/html-YU4BZFVS.js"></script>
+
+  </head>
+  <body>
+    <script>(()=>{var t="ex_doc:settings",e="dark";var o="dark",s="light";var E="sidebar_state",n="closed";var r="sidebar_width";var a="sidebar-open";var i=new URLSearchParams(window.location.search),S=i.get("theme")||JSON.parse(localStorage.getItem(t)||"{}").theme;(S===o||S!==s&&window.matchMedia("(prefers-color-scheme: dark)").matches)&&document.body.classList.add(e);var d=sessionStorage.getItem(E),A=d!==n&&!window.matchMedia(`screen and (max-width: ${768}px)`).matches;document.body.classList.toggle(a,A);var c=sessionStorage.getItem(r);c&&document.body.style.setProperty("--sidebarWidth",`${c}px`);var p=/(Macintosh|iPhone|iPad|iPod)/.test(window.navigator.userAgent);document.documentElement.classList.toggle("apple-os",p);})();
+</script>
+
+<div class="body-wrapper">
+
+<button id="sidebar-menu" class="sidebar-button sidebar-toggle" aria-label="toggle sidebar" aria-controls="sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<nav id="sidebar" class="sidebar">
+
+  <div class="sidebar-header">
+    <div class="sidebar-projectInfo">
+
+        <a href="https://github.com/Alezrik/attractor-phoenix" class="sidebar-projectImage">
+          <img src="assets/logo.svg" alt="attractor_phoenix" />
+        </a>
+
+      <div>
+        <a href="https://github.com/Alezrik/attractor-phoenix" class="sidebar-projectName" translate="no">
+attractor_phoenix
+        </a>
+        <div class="sidebar-projectVersion" translate="no">
+          v0.1.0
+        </div>
+      </div>
+    </div>
+    <ul id="sidebar-list-nav" class="sidebar-list-nav" role="tablist" data-extras="Pages"></ul>
+  </div>
+</nav>
+
+<output role="status" id="toast"></output>
+
+<main class="content page-extra" id="main" data-type="extras">
+  <div id="content" class="content-inner">
+    <div class="top-search">
+      <div class="search-settings">
+        <form class="search-bar" action="search.html">
+          <label class="search-label">
+            <span class="sr-only">Search documentation of attractor_phoenix</span>
+            <div class="search-input-wrapper">
+              <input name="q" type="text" class="search-input" placeholder="Press / to search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <button type="button" tabindex="-1" class="search-close-button" aria-hidden="true">
+                <i class="ri-close-line ri-lg" title="Cancel search"></i>
+              </button>
+            </div>
+          </label>
+        </form>
+        <div class="autocomplete">
+        </div>
+        <div class="engine-selector" data-multiple="false">
+          <button type="button" class="engine-button" aria-label="Select search engine" aria-haspopup="true" aria-expanded="false">
+            <i class="ri-search-2-line" aria-hidden="true"></i>
+            <span class="engine-name">Default</span>
+            <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+          </button>
+          <div class="engine-dropdown" hidden role="menu">
+
+              <button type="button"
+                      class="engine-option"
+                      data-engine-url="search.html?q="
+                      role="menuitemradio"
+                      aria-checked="true">
+                <span class="name">Default</span>
+                <span class="help">In-browser search</span>
+              </button>
+
+          </div>
+        </div>
+        <button class="icon-settings display-settings">
+          <i class="ri-settings-3-line"></i>
+          <span class="sr-only">Settings</span>
+        </button>
+      </div>
+    </div>
+
+<div id="top-content">
+  <div class="heading-with-actions top-heading">
+    <h1>Human-in-the-Loop</h1>
+
+<a href="human-in-the-loop.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+  <i class="ri-markdown-line" aria-hidden="true"></i>
+  <span class="sr-only">Copy Markdown</span>
+</a>
+
+
+      <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/docs/human-in-the-loop.md#L1" title="View Source" class="icon-action" rel="help">
+        <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        <span class="sr-only">View Source</span>
+      </a>
+
+  </div>
+
+
+<p><code class="inline">wait.human</code> is the AttractorEx mechanism for pausing pipeline execution until a person, service, or test adapter provides an answer.</p><h2 id="core-modules" class="section-heading"><a href="#core-modules" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Core Modules</span></h2><ul><li><a href="AttractorEx.Handlers.WaitForHuman.html"><code class="inline">AttractorEx.Handlers.WaitForHuman</code></a></li><li><a href="AttractorEx.HumanGate.html"><code class="inline">AttractorEx.HumanGate</code></a></li><li><a href="AttractorEx.Interviewer.html"><code class="inline">AttractorEx.Interviewer</code></a></li><li><a href="AttractorEx.Interviewers.Payload.html"><code class="inline">AttractorEx.Interviewers.Payload</code></a></li><li><code class="inline">AttractorEx.Interviewers.*</code></li></ul><h2 id="flow" class="section-heading"><a href="#flow" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Flow</span></h2><p>When the engine reaches a <code class="inline">wait.human</code> node:</p><ol><li>Outgoing edges are converted into normalized choices.</li><li>The runtime looks for an answer in context first.</li><li>If no answer is present, an interviewer adapter is invoked.</li><li>The answer is normalized into a single or multi-select payload.</li><li>The handler returns an <a href="AttractorEx.Outcome.html"><code class="inline">AttractorEx.Outcome</code></a> with suggested next targets.</li></ol><h2 id="supported-interviewers" class="section-heading"><a href="#supported-interviewers" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Supported Interviewers</span></h2><p>The library ships with several adapters:</p><ul><li><code class="inline">AutoApprove</code> for deterministic test or local automation flows.</li><li><code class="inline">Console</code> for terminal-driven interaction.</li><li><code class="inline">Callback</code> for embedding custom functions.</li><li><code class="inline">Queue</code> for list- or <a href="https://hexdocs.pm/elixir/Agent.html"><code class="inline">Agent</code></a>-backed scripted answers.</li><li><code class="inline">Recording</code> for wrapping another interviewer while capturing events.</li><li><code class="inline">Server</code> for HTTP-backed pending-question workflows.</li></ul><h2 id="question-model" class="section-heading"><a href="#question-model" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Question Model</span></h2><p><a href="AttractorEx.Interviewers.Payload.html"><code class="inline">AttractorEx.Interviewers.Payload</code></a> normalizes questions and answers into a shared contract with fields like:</p><ul><li><code class="inline">type</code></li><li><code class="inline">options</code></li><li><code class="inline">default</code></li><li><code class="inline">multiple</code></li><li><code class="inline">required</code></li><li><code class="inline">metadata.input_mode</code></li></ul><p>That shared shape is what allows the HTTP server, console adapter, tests, and custom callbacks to behave consistently.</p><h2 id="routing-semantics" class="section-heading"><a href="#routing-semantics" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Routing Semantics</span></h2><p><code class="inline">wait.human</code> supports:</p><ul><li>direct choice keys</li><li>labels</li><li>node IDs</li><li>structured answer payloads</li><li>defaults on blank answers or timeouts</li><li>multi-select answers</li><li>skip and timeout signaling</li></ul><p>If a response cannot be matched, the handler falls back to the first outgoing choice, which keeps the pipeline executable even under ambiguous input.</p>
+
+</div>
+
+<div class="bottom-actions" id="bottom-actions">
+  <div class="bottom-actions-item">
+
+      <a href="pipeline-engine.html" class="bottom-actions-button" rel="prev">
+        <span class="subheader">
+          ← Previous Page
+        </span>
+        <span class="title">
+Pipeline Engine
+        </span>
+      </a>
+
+  </div>
+  <div class="bottom-actions-item">
+
+      <a href="http-api.html" class="bottom-actions-button" rel="next">
+        <span class="subheader">
+          Next Page →
+        </span>
+        <span class="title">
+HTTP API
+        </span>
+      </a>
+
+  </div>
+</div>
+    <footer class="footer">
+
+        <p>
+
+          <span class="line">
+            <button class="a-main footer-button display-quick-switch" title="Go to package docs">
+              Go to package docs
+            </button>
+
+              <a href="llms.txt" target="_blank">
+                View llms.txt
+              </a>
+
+
+              <a href="attractor_phoenix.epub">
+                Download ePub version
+              </a>
+
+          </span>
+        </p>
+
+        <p class="built-using">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.40.1) for the
+
+            <a href="https://elixir-lang.org" title="Elixir" target="_blank" translate="no">Elixir programming language</a>
+
+        </p>
+
+
+    </footer>
+  </div>
+</main>
+</div>
+
+  </body>
+</html>

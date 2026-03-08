@@ -11,6 +11,7 @@ defmodule AttractorEx.Agent.SessionConfig do
     "shell_command" => 30_000,
     "grep" => 20_000,
     "glob" => 20_000,
+    "spawn_agent" => 20_000,
     "__default__" => 20_000
   }
 

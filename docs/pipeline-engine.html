@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.40.1">
+    <meta name="project" content="attractor_phoenix v0.1.0">
+
+
+    <title>Pipeline Engine — attractor_phoenix v0.1.0</title>
+
+    <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
+
+    <script defer src="dist/sidebar_items-ED94E38E.js"></script>
+    <script defer src="docs_config.js"></script>
+    <script defer src="dist/html-YU4BZFVS.js"></script>
+
+  </head>
+  <body>
+    <script>(()=>{var t="ex_doc:settings",e="dark";var o="dark",s="light";var E="sidebar_state",n="closed";var r="sidebar_width";var a="sidebar-open";var i=new URLSearchParams(window.location.search),S=i.get("theme")||JSON.parse(localStorage.getItem(t)||"{}").theme;(S===o||S!==s&&window.matchMedia("(prefers-color-scheme: dark)").matches)&&document.body.classList.add(e);var d=sessionStorage.getItem(E),A=d!==n&&!window.matchMedia(`screen and (max-width: ${768}px)`).matches;document.body.classList.toggle(a,A);var c=sessionStorage.getItem(r);c&&document.body.style.setProperty("--sidebarWidth",`${c}px`);var p=/(Macintosh|iPhone|iPad|iPod)/.test(window.navigator.userAgent);document.documentElement.classList.toggle("apple-os",p);})();
+</script>
+
+<div class="body-wrapper">
+
+<button id="sidebar-menu" class="sidebar-button sidebar-toggle" aria-label="toggle sidebar" aria-controls="sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<nav id="sidebar" class="sidebar">
+
+  <div class="sidebar-header">
+    <div class="sidebar-projectInfo">
+
+        <a href="https://github.com/Alezrik/attractor-phoenix" class="sidebar-projectImage">
+          <img src="assets/logo.svg" alt="attractor_phoenix" />
+        </a>
+
+      <div>
+        <a href="https://github.com/Alezrik/attractor-phoenix" class="sidebar-projectName" translate="no">
+attractor_phoenix
+        </a>
+        <div class="sidebar-projectVersion" translate="no">
+          v0.1.0
+        </div>
+      </div>
+    </div>
+    <ul id="sidebar-list-nav" class="sidebar-list-nav" role="tablist" data-extras="Pages"></ul>
+  </div>
+</nav>
+
+<output role="status" id="toast"></output>
+
+<main class="content page-extra" id="main" data-type="extras">
+  <div id="content" class="content-inner">
+    <div class="top-search">
+      <div class="search-settings">
+        <form class="search-bar" action="search.html">
+          <label class="search-label">
+            <span class="sr-only">Search documentation of attractor_phoenix</span>
+            <div class="search-input-wrapper">
+              <input name="q" type="text" class="search-input" placeholder="Press / to search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <button type="button" tabindex="-1" class="search-close-button" aria-hidden="true">
+                <i class="ri-close-line ri-lg" title="Cancel search"></i>
+              </button>
+            </div>
+          </label>
+        </form>
+        <div class="autocomplete">
+        </div>
+        <div class="engine-selector" data-multiple="false">
+          <button type="button" class="engine-button" aria-label="Select search engine" aria-haspopup="true" aria-expanded="false">
+            <i class="ri-search-2-line" aria-hidden="true"></i>
+            <span class="engine-name">Default</span>
+            <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+          </button>
+          <div class="engine-dropdown" hidden role="menu">
+
+              <button type="button"
+                      class="engine-option"
+                      data-engine-url="search.html?q="
+                      role="menuitemradio"
+                      aria-checked="true">
+                <span class="name">Default</span>
+                <span class="help">In-browser search</span>
+              </button>
+
+          </div>
+        </div>
+        <button class="icon-settings display-settings">
+          <i class="ri-settings-3-line"></i>
+          <span class="sr-only">Settings</span>
+        </button>
+      </div>
+    </div>
+
+<div id="top-content">
+  <div class="heading-with-actions top-heading">
+    <h1>Pipeline Engine</h1>
+
+<a href="pipeline-engine.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+  <i class="ri-markdown-line" aria-hidden="true"></i>
+  <span class="sr-only">Copy Markdown</span>
+</a>
+
+
+      <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/docs/pipeline-engine.md#L1" title="View Source" class="icon-action" rel="help">
+        <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        <span class="sr-only">View Source</span>
+      </a>
+
+  </div>
+
+
+<h2 id="public-api" class="section-heading"><a href="#public-api" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Public API</span></h2><p>The primary entry points are:</p><ul><li><a href="AttractorEx.html#run/3"><code class="inline">AttractorEx.run/3</code></a></li><li><a href="AttractorEx.html#resume/3"><code class="inline">AttractorEx.resume/3</code></a></li><li><a href="AttractorEx.html#validate/2"><code class="inline">AttractorEx.validate/2</code></a></li><li><a href="AttractorEx.html#validate_or_raise/2"><code class="inline">AttractorEx.validate_or_raise/2</code></a></li></ul><p><code class="inline">run/3</code> executes a pipeline from its start node. <code class="inline">resume/3</code> restores execution from a checkpoint map, struct, or <code class="inline">checkpoint.json</code> path.</p><h2 id="dot-model" class="section-heading"><a href="#dot-model" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">DOT Model</span></h2><p>The parser converts DOT into these runtime structs:</p><ul><li><a href="AttractorEx.Graph.html"><code class="inline">AttractorEx.Graph</code></a></li><li><a href="AttractorEx.Node.html"><code class="inline">AttractorEx.Node</code></a></li><li><a href="AttractorEx.Edge.html"><code class="inline">AttractorEx.Edge</code></a></li></ul><p>This model is intentionally smaller than full Graphviz DOT. It prioritizes the subset needed to execute Attractor-style workflows reliably.</p><h2 id="handler-mapping" class="section-heading"><a href="#handler-mapping" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Handler Mapping</span></h2><p>Node execution is determined by either an explicit <code class="inline">type</code> attribute or the node shape:</p><table><thead><tr><th style="text-align: left;">Shape</th><th style="text-align: left;">Default handler type</th></tr></thead><tbody><tr><td style="text-align: left;"><code class="inline">Mdiamond</code></td><td style="text-align: left;"><code class="inline">start</code></td></tr><tr><td style="text-align: left;"><code class="inline">Msquare</code></td><td style="text-align: left;"><code class="inline">exit</code></td></tr><tr><td style="text-align: left;"><code class="inline">diamond</code></td><td style="text-align: left;"><code class="inline">conditional</code></td></tr><tr><td style="text-align: left;"><code class="inline">component</code></td><td style="text-align: left;"><code class="inline">parallel</code></td></tr><tr><td style="text-align: left;"><code class="inline">tripleoctagon</code></td><td style="text-align: left;"><code class="inline">parallel.fan_in</code></td></tr><tr><td style="text-align: left;"><code class="inline">hexagon</code></td><td style="text-align: left;"><code class="inline">wait.human</code></td></tr><tr><td style="text-align: left;"><code class="inline">parallelogram</code></td><td style="text-align: left;"><code class="inline">tool</code></td></tr><tr><td style="text-align: left;"><code class="inline">house</code></td><td style="text-align: left;"><code class="inline">stack.manager_loop</code></td></tr><tr><td style="text-align: left;"><code class="inline">box</code></td><td style="text-align: left;"><code class="inline">codergen</code></td></tr></tbody></table><p>You can override this with <code class="inline">type=&quot;...&quot;</code>, and you can register new handler modules through <a href="AttractorEx.HandlerRegistry.html"><code class="inline">AttractorEx.HandlerRegistry</code></a>.</p><h2 id="routing-rules" class="section-heading"><a href="#routing-rules" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Routing Rules</span></h2><p>The engine selects the next edge in this order:</p><ol><li>Matching <code class="inline">condition=...</code></li><li>Matching <code class="inline">status=...</code></li><li>Matching the handler outcome's <code class="inline">preferred_label</code></li><li>Matching the handler outcome's <code class="inline">suggested_next_ids</code></li><li>Unconditional edge by weight</li><li>Lexical fallback</li></ol><p>This is implemented in <a href="AttractorEx.Engine.html"><code class="inline">AttractorEx.Engine</code></a> and matches the spec-driven behavior documented in the local compliance notes.</p><h2 id="retries-and-goal-gates" class="section-heading"><a href="#retries-and-goal-gates" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Retries And Goal Gates</span></h2><p><a href="AttractorEx.Engine.html"><code class="inline">AttractorEx.Engine</code></a> supports:</p><ul><li>Node retry policies with exponential backoff.</li><li>Graph-level and node-level retry targets.</li><li>Goal-gate nodes that must end in success or partial success.</li><li>Loop restart semantics via edge metadata.</li></ul><p>Outcomes are represented as <a href="AttractorEx.Outcome.html"><code class="inline">AttractorEx.Outcome</code></a> values and serialized through <a href="AttractorEx.StatusContract.html"><code class="inline">AttractorEx.StatusContract</code></a>.</p><h2 id="styling-and-transforms" class="section-heading"><a href="#styling-and-transforms" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Styling And Transforms</span></h2><p>Before validation and execution, the engine applies:</p><ol><li>Model stylesheet resolution through <a href="AttractorEx.ModelStylesheet.html"><code class="inline">AttractorEx.ModelStylesheet</code></a></li><li>Variable expansion through <a href="AttractorEx.Transforms.VariableExpansion.html"><code class="inline">AttractorEx.Transforms.VariableExpansion</code></a></li><li>Any custom graph transforms passed in <code class="inline">opts</code></li></ol><p>At runtime, codergen stages may also receive synthesized context carryover text based on fidelity settings.</p><h2 id="recommended-reading" class="section-heading"><a href="#recommended-reading" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Recommended Reading</span></h2><p>For the precise implementation details:</p><ul><li><a href="AttractorEx.Engine.html"><code class="inline">AttractorEx.Engine</code></a> for orchestration</li><li><a href="AttractorEx.Validator.html"><code class="inline">AttractorEx.Validator</code></a> for lint rules</li><li><code class="inline">AttractorEx.Handlers.*</code> for node behavior</li><li><a href="AttractorEx.StatusContract.html"><code class="inline">AttractorEx.StatusContract</code></a> for artifact payloads</li></ul>
+
+</div>
+
+<div class="bottom-actions" id="bottom-actions">
+  <div class="bottom-actions-item">
+
+      <a href="overview.html" class="bottom-actions-button" rel="prev">
+        <span class="subheader">
+          ← Previous Page
+        </span>
+        <span class="title">
+AttractorEx Overview
+        </span>
+      </a>
+
+  </div>
+  <div class="bottom-actions-item">
+
+      <a href="human-in-the-loop.html" class="bottom-actions-button" rel="next">
+        <span class="subheader">
+          Next Page →
+        </span>
+        <span class="title">
+Human-in-the-Loop
+        </span>
+      </a>
+
+  </div>
+</div>
+    <footer class="footer">
+
+        <p>
+
+          <span class="line">
+            <button class="a-main footer-button display-quick-switch" title="Go to package docs">
+              Go to package docs
+            </button>
+
+              <a href="llms.txt" target="_blank">
+                View llms.txt
+              </a>
+
+
+              <a href="attractor_phoenix.epub">
+                Download ePub version
+              </a>
+
+          </span>
+        </p>
+
+        <p class="built-using">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.40.1) for the
+
+            <a href="https://elixir-lang.org" title="Elixir" target="_blank" translate="no">Elixir programming language</a>
+
+        </p>
+
+
+    </footer>
+  </div>
+</main>
+</div>
+
+  </body>
+</html>

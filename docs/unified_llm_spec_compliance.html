@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.40.1">
+    <meta name="project" content="attractor_phoenix v0.1.0">
+
+
+    <title>Unified LLM Spec Compliance (AttractorEx) — attractor_phoenix v0.1.0</title>
+
+    <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
+
+    <script defer src="dist/sidebar_items-ED94E38E.js"></script>
+    <script defer src="docs_config.js"></script>
+    <script defer src="dist/html-YU4BZFVS.js"></script>
+
+  </head>
+  <body>
+    <script>(()=>{var t="ex_doc:settings",e="dark";var o="dark",s="light";var E="sidebar_state",n="closed";var r="sidebar_width";var a="sidebar-open";var i=new URLSearchParams(window.location.search),S=i.get("theme")||JSON.parse(localStorage.getItem(t)||"{}").theme;(S===o||S!==s&&window.matchMedia("(prefers-color-scheme: dark)").matches)&&document.body.classList.add(e);var d=sessionStorage.getItem(E),A=d!==n&&!window.matchMedia(`screen and (max-width: ${768}px)`).matches;document.body.classList.toggle(a,A);var c=sessionStorage.getItem(r);c&&document.body.style.setProperty("--sidebarWidth",`${c}px`);var p=/(Macintosh|iPhone|iPad|iPod)/.test(window.navigator.userAgent);document.documentElement.classList.toggle("apple-os",p);})();
+</script>
+
+<div class="body-wrapper">
+
+<button id="sidebar-menu" class="sidebar-button sidebar-toggle" aria-label="toggle sidebar" aria-controls="sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<nav id="sidebar" class="sidebar">
+
+  <div class="sidebar-header">
+    <div class="sidebar-projectInfo">
+
+        <a href="https://github.com/Alezrik/attractor-phoenix" class="sidebar-projectImage">
+          <img src="assets/logo.svg" alt="attractor_phoenix" />
+        </a>
+
+      <div>
+        <a href="https://github.com/Alezrik/attractor-phoenix" class="sidebar-projectName" translate="no">
+attractor_phoenix
+        </a>
+        <div class="sidebar-projectVersion" translate="no">
+          v0.1.0
+        </div>
+      </div>
+    </div>
+    <ul id="sidebar-list-nav" class="sidebar-list-nav" role="tablist" data-extras="Pages"></ul>
+  </div>
+</nav>
+
+<output role="status" id="toast"></output>
+
+<main class="content page-extra" id="main" data-type="extras">
+  <div id="content" class="content-inner">
+    <div class="top-search">
+      <div class="search-settings">
+        <form class="search-bar" action="search.html">
+          <label class="search-label">
+            <span class="sr-only">Search documentation of attractor_phoenix</span>
+            <div class="search-input-wrapper">
+              <input name="q" type="text" class="search-input" placeholder="Press / to search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <button type="button" tabindex="-1" class="search-close-button" aria-hidden="true">
+                <i class="ri-close-line ri-lg" title="Cancel search"></i>
+              </button>
+            </div>
+          </label>
+        </form>
+        <div class="autocomplete">
+        </div>
+        <div class="engine-selector" data-multiple="false">
+          <button type="button" class="engine-button" aria-label="Select search engine" aria-haspopup="true" aria-expanded="false">
+            <i class="ri-search-2-line" aria-hidden="true"></i>
+            <span class="engine-name">Default</span>
+            <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+          </button>
+          <div class="engine-dropdown" hidden role="menu">
+
+              <button type="button"
+                      class="engine-option"
+                      data-engine-url="search.html?q="
+                      role="menuitemradio"
+                      aria-checked="true">
+                <span class="name">Default</span>
+                <span class="help">In-browser search</span>
+              </button>
+
+          </div>
+        </div>
+        <button class="icon-settings display-settings">
+          <i class="ri-settings-3-line"></i>
+          <span class="sr-only">Settings</span>
+        </button>
+      </div>
+    </div>
+
+<div id="top-content">
+  <div class="heading-with-actions top-heading">
+    <h1>Unified LLM Spec Compliance (AttractorEx)</h1>
+
+<a href="unified_llm_spec_compliance.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+  <i class="ri-markdown-line" aria-hidden="true"></i>
+  <span class="sr-only">Copy Markdown</span>
+</a>
+
+
+      <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/UNIFIED_LLM_SPEC_COMPLIANCE.md#L1" title="View Source" class="icon-action" rel="help">
+        <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        <span class="sr-only">View Source</span>
+      </a>
+
+  </div>
+
+
+<p>This file tracks compliance of <code class="inline">AttractorEx.LLM.*</code> with the upstream unified LLM client specification.</p><h2 id="source-documents" class="section-heading"><a href="#source-documents" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Source Documents</span></h2><ul><li>Unified LLM spec: <a href="https://github.com/strongdm/attractor/blob/main/unified-llm-spec.md">https://github.com/strongdm/attractor/blob/main/unified-llm-spec.md</a></li><li>Coding-agent loop spec (consumer of this layer): <a href="https://github.com/strongdm/attractor/blob/main/coding-agent-loop-spec.md">https://github.com/strongdm/attractor/blob/main/coding-agent-loop-spec.md</a></li><li>Upstream HEAD reviewed: <code class="inline">2f892efd63ee7c11f038856b90aae57c067b77c2</code> (checked 2026-03-06)</li></ul><h2 id="scope" class="section-heading"><a href="#scope" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Scope</span></h2><p>Implementation:</p><ol><li><code class="inline">lib/attractor_ex/llm/client.ex</code></li><li><code class="inline">lib/attractor_ex/llm/request.ex</code></li><li><code class="inline">lib/attractor_ex/llm/response.ex</code></li><li><code class="inline">lib/attractor_ex/llm/message.ex</code></li><li><code class="inline">lib/attractor_ex/llm/usage.ex</code></li><li><code class="inline">lib/attractor_ex/llm/stream_event.ex</code></li><li><code class="inline">lib/attractor_ex/llm/provider_adapter.ex</code></li></ol><p>Tests and fixtures:</p><ol><li><code class="inline">test/attractor_ex/llm_client_test.exs</code></li><li><code class="inline">test/support/attractor_ex_test_llm_adapter.ex</code></li><li><code class="inline">test/support/attractor_ex_test_llm_error_adapter.ex</code></li><li><code class="inline">test/support/attractor_ex_test_unified_llm_adapter.ex</code></li></ol><h2 id="section-by-section-status" class="section-heading"><a href="#section-by-section-status" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Section-by-Section Status</span></h2><p>Legend: <code class="inline">implemented</code>, <code class="inline">partial</code>, <code class="inline">not implemented</code>.</p><table><thead><tr><th style="text-align: left;">Upstream section</th><th style="text-align: left;">Status</th><th style="text-align: left;">Notes</th></tr></thead><tbody><tr><td style="text-align: left;"><code class="inline">2. Architecture</code></td><td style="text-align: left;"><code class="inline">partial</code></td><td style="text-align: left;">Programmatic client config, provider resolution, middleware chain, adapter boundary are implemented. Env-based construction, model catalog, prompt caching machinery, and module-level default client are not complete.</td></tr><tr><td style="text-align: left;"><code class="inline">3. Data Model</code></td><td style="text-align: left;"><code class="inline">partial</code></td><td style="text-align: left;">Core request/response/usage/stream event/message structs exist. Full multimodal tagged unions and richer content part model are not fully implemented.</td></tr><tr><td style="text-align: left;"><code class="inline">4. Generation and Streaming</code></td><td style="text-align: left;"><code class="inline">partial</code></td><td style="text-align: left;">Low-level <code class="inline">complete</code> and <code class="inline">stream</code> implemented; <code class="inline">complete_with_request</code> and <code class="inline">stream_with_request</code> included. High-level <code class="inline">generate</code>, <code class="inline">stream</code> accumulator APIs, and object generation APIs are not implemented.</td></tr><tr><td style="text-align: left;"><code class="inline">5. Tool Calling</code></td><td style="text-align: left;"><code class="inline">partial</code></td><td style="text-align: left;">Request/response fields support tool call payload transfer. Automatic high-level multi-step tool loop at this SDK layer is not implemented here (handled in agent session layer).</td></tr><tr><td style="text-align: left;"><code class="inline">6. Error Handling and Retry</code></td><td style="text-align: left;"><code class="inline">not implemented</code></td><td style="text-align: left;">Typed error hierarchy, retry taxonomy, backoff/retry-after handling are not implemented in this layer.</td></tr><tr><td style="text-align: left;"><code class="inline">7. Provider Adapter Contract</code></td><td style="text-align: left;"><code class="inline">partial</code></td><td style="text-align: left;">Adapter behavior contract (<code class="inline">complete</code>, optional <code class="inline">stream</code>) and unsupported-stream handling exist. Full provider translation guidance and concrete provider implementations are not included.</td></tr><tr><td style="text-align: left;"><code class="inline">8. Definition of Done</code></td><td style="text-align: left;"><code class="inline">partial</code></td><td style="text-align: left;">Core routing/middleware coverage exists; large parts (provider-native adapters, full message model, high-level APIs, retry/caching parity matrix) remain open.</td></tr></tbody></table><h2 id="verified-behaviors-with-tests" class="section-heading"><a href="#verified-behaviors-with-tests" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Verified Behaviors (with tests)</span></h2><ol><li>Provider routing by explicit/default provider.</li><li>Errors for missing/unregistered providers.</li><li>Middleware request transformation for complete and stream.</li><li><code class="inline">complete_with_request/2</code> and <code class="inline">stream_with_request/2</code> return resolved requests.</li><li>Stream adapter dispatch and unsupported-stream error path.</li><li>Request field pass-through including reasoning/cache usage counters.</li></ol><h2 id="known-gaps-vs-spec" class="section-heading"><a href="#known-gaps-vs-spec" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Known Gaps vs Spec</span></h2><ol><li><code class="inline">Client.from_env()</code> and module-level default singleton client.</li><li>Full content-part model (image/audio/document/tool/thinking blocks) and round-trip semantics.</li><li>High-level APIs: <code class="inline">generate</code>, <code class="inline">stream</code> result accumulators, <code class="inline">generate_object</code>, <code class="inline">stream_object</code>.</li><li>Built-in tool-loop orchestration at unified client layer.</li><li>Error taxonomy and automatic retries with jitter/retry-after.</li><li>Native provider adapters for OpenAI Responses, Anthropic Messages, Gemini APIs.</li><li>Prompt caching provider-specific behaviors.</li></ol><h2 id="verification-commands" class="section-heading"><a href="#verification-commands" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Verification Commands</span></h2><pre><code class="makeup bash" translate="no"><span class="">mix test test/attractor_ex/llm_client_test.exs
+</span><span class="">mix precommit
+</span></code></pre>
+
+</div>
+
+<div class="bottom-actions" id="bottom-actions">
+  <div class="bottom-actions-item">
+
+      <a href="coding_agent_loop_compliance.html" class="bottom-actions-button" rel="prev">
+        <span class="subheader">
+          ← Previous Page
+        </span>
+        <span class="title">
+Coding Agent Loop Spec Compliance (AttractorEx)
+        </span>
+      </a>
+
+  </div>
+  <div class="bottom-actions-item">
+
+  </div>
+</div>
+    <footer class="footer">
+
+        <p>
+
+          <span class="line">
+            <button class="a-main footer-button display-quick-switch" title="Go to package docs">
+              Go to package docs
+            </button>
+
+              <a href="llms.txt" target="_blank">
+                View llms.txt
+              </a>
+
+
+              <a href="attractor_phoenix.epub">
+                Download ePub version
+              </a>
+
+          </span>
+        </p>
+
+        <p class="built-using">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.40.1) for the
+
+            <a href="https://elixir-lang.org" title="Elixir" target="_blank" translate="no">Elixir programming language</a>
+
+        </p>
+
+
+    </footer>
+  </div>
+</main>
+</div>
+
+  </body>
+</html>
