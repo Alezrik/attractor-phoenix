@@ -260,7 +260,7 @@ defmodule AttractorEx.LLMClientTest do
     test "arity-1 helpers use the configured default client" do
       _client =
         %Client{
-          providers: %{"openai" => AttractorExTest.LLMAdapter},
+          providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
           default_provider: "openai"
         }
         |> Client.put_default()
@@ -273,10 +273,24 @@ defmodule AttractorEx.LLMClientTest do
                  messages: [%Message{role: :user, content: "hi"}]
                })
 
-      assert text =~ "provider=openai"
+      assert text == "ok"
 
-      assert %Response{text: "provider=openai"} =
+      assert %Response{text: "final"} =
                Client.accumulate_stream(%Request{model: "gpt-5.2", messages: []})
+
+      assert {:ok, %{"provider" => "openai", "model" => "gpt-5.2"}} =
+               Client.generate_object(%Request{
+                 model: "gpt-5.2",
+                 messages: [%Message{role: :user, content: "hi"}],
+                 metadata: %{"json_mode" => true}
+               })
+
+      assert {:ok, %{"provider" => "openai", "streamed" => true}} =
+               Client.stream_object(%Request{
+                 model: "gpt-5.2",
+                 messages: [%Message{role: :user, content: "hi"}],
+                 metadata: %{"json_mode" => true}
+               })
     end
   end
 
@@ -349,6 +363,25 @@ defmodule AttractorEx.LLMClientTest do
 
       assert {:ok, %Response{text: "ok"}, %Request{provider: "openai"}} =
                Client.generate_with_request(client, request)
+    end
+
+    test "complete_with_request preserves middleware-short-circuited requests" do
+      middleware = fn request, _next ->
+        %Response{text: "middleware", raw: %{"request_snapshot" => %{"model" => request.model}}}
+      end
+
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai",
+        middleware: [middleware]
+      }
+
+      request = %Request{model: "gpt-5.2", messages: [%Message{role: :user, content: "hi"}]}
+
+      assert {:ok, %Response{text: "middleware"}, %Request{model: "gpt-5.2"} = resolved_request} =
+               Client.complete_with_request(client, request)
+
+      assert is_nil(resolved_request.provider)
     end
 
     test "stream_with_request returns stream events and resolved provider" do
@@ -487,6 +520,40 @@ defmodule AttractorEx.LLMClientTest do
                Client.accumulate_stream(client, %Request{model: "gpt-5.2", messages: []})
     end
 
+    test "accumulate_stream keeps final response text when reasoning is blank and raw errors are absent" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai",
+        streaming_middleware: [
+          fn request, _next ->
+            {:ok,
+             [
+               %StreamEvent{type: :text_delta, text: "draft"},
+               %StreamEvent{
+                 type: :response,
+                 response: %Response{
+                   text: "final",
+                   reasoning: "",
+                   tool_calls: [],
+                   usage: %Usage{input_tokens: 1, output_tokens: 1},
+                   raw: %{"source" => "middleware"}
+                 }
+               }
+             ], %{request | provider: "openai"}}
+          end
+        ]
+      }
+
+      assert %Response{} =
+               response =
+               Client.accumulate_stream(client, %Request{model: "gpt-5.2", messages: []})
+
+      assert response.text == "final"
+      assert response.reasoning == nil
+      assert response.usage.total_tokens == 2
+      assert response.raw == %{"source" => "middleware"}
+    end
+
     test "generate_object decodes JSON responses" do
       client = %Client{
         providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
@@ -511,6 +578,21 @@ defmodule AttractorEx.LLMClientTest do
                Client.generate_object(client, %Request{
                  model: "gpt-5.2",
                  messages: [%Message{role: :user, content: "hi"}]
+               })
+    end
+
+    test "generate_object_with_request returns decoded objects and transport data" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
+        default_provider: "openai"
+      }
+
+      assert {:ok, %{"provider" => "openai", "model" => "gpt-5.2"}, %Response{},
+              %Request{provider: "openai"}} =
+               Client.generate_object_with_request(client, %Request{
+                 model: "gpt-5.2",
+                 messages: [%Message{role: :user, content: "hi"}],
+                 metadata: %{"json_mode" => true}
                })
     end
 
@@ -547,6 +629,23 @@ defmodule AttractorEx.LLMClientTest do
                  messages: [%Message{role: :user, content: "hi"}],
                  metadata: %{"json_mode" => true}
                })
+    end
+
+    test "stream_object_with_request returns decoded objects and accumulated response data" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
+        default_provider: "openai"
+      }
+
+      assert {:ok, %{"provider" => "openai", "streamed" => true}, %Response{text: text},
+              %Request{provider: "openai"}} =
+               Client.stream_object_with_request(client, %Request{
+                 model: "gpt-5.2",
+                 messages: [%Message{role: :user, content: "hi"}],
+                 metadata: %{"json_mode" => true}
+               })
+
+      assert text == Jason.encode!(%{"provider" => "openai", "streamed" => true})
     end
   end
 end
