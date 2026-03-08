@@ -146,6 +146,19 @@ defmodule AttractorEx.Agent.SessionTest do
     assert Enum.map(user_turns, & &1.content) == ["first prompt", "second prompt"]
   end
 
+  test "multiple sequential inputs reuse the same session history" do
+    session = build_session("followup_echo", [echo_tool()])
+
+    after_first = Session.submit(session, "first prompt")
+    after_second = Session.submit(after_first, "second prompt")
+
+    assert Enum.filter(after_second.history, &(&1.type == :user))
+           |> Enum.map(& &1.content) == ["first prompt", "second prompt"]
+
+    assert Enum.filter(after_second.history, &(&1.type == :assistant))
+           |> Enum.map(& &1.content) == ["ack:first prompt", "ack:second prompt"]
+  end
+
   test "returns unchanged session for submit when state is closed" do
     closed =
       build_session("no_tools", [echo_tool()])
@@ -919,6 +932,42 @@ defmodule AttractorEx.Agent.SessionTest do
     assert last_assistant_text(completed) =~ "Codex instructions"
   end
 
+  test "project instruction discovery layers ancestor files and enforces the shared 32KB budget" do
+    root =
+      Path.join(
+        System.tmp_dir!(),
+        "attractor-agent-layered-docs-#{System.unique_integer([:positive])}"
+      )
+
+    nested = Path.join([root, "apps", "nested"])
+    File.mkdir_p!(Path.join(root, ".codex"))
+    File.mkdir_p!(nested)
+    File.write!(Path.join(root, "AGENTS.md"), "Root instructions")
+    File.write!(Path.join(root, "CODEX.md"), "Root codex")
+    File.write!(Path.join([root, ".codex", "instructions.md"]), String.duplicate("x", 40_000))
+    File.write!(Path.join([root, "apps", "AGENTS.md"]), "Nested instructions")
+
+    completed =
+      Session.submit(
+        build_session("echo_system_prompt", [echo_tool()],
+          execution_env: LocalExecutionEnvironment.new(working_dir: nested)
+        ),
+        "show prompt"
+      )
+
+    prompt = last_assistant_text(completed)
+
+    assert prompt =~ "FILE "
+    assert prompt =~ "/AGENTS.md"
+    assert prompt =~ "/apps/AGENTS.md"
+    assert prompt =~ "Root instructions"
+    assert prompt =~ "Nested instructions"
+    assert prompt =~ "[Project instructions truncated at 32KB]"
+
+    assert :binary.match(prompt, "Root instructions") <
+             :binary.match(prompt, "Nested instructions")
+  end
+
   test "anthropic and gemini instruction discovery use provider-specific filenames" do
     root =
       Path.join(
@@ -1012,6 +1061,8 @@ defmodule AttractorEx.Agent.SessionTest do
     assert "edit_file" in anthropic.reference_tool_names
     assert "GEMINI.md" in gemini.instruction_files
     assert "web_search" in gemini.reference_tool_names
+    assert :context_warning in openai.event_kinds
+    assert :subagent_wait_completed in openai.event_kinds
   end
 
   test "openai anthropic and gemini presets all emit the maintained session event surface" do

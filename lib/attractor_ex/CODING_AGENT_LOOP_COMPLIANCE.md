@@ -38,10 +38,10 @@ Legend: `implemented`, `partial`, `not implemented`.
 | `3. Provider-Aligned Toolsets` | `implemented` | OpenAI/Anthropic/Gemini presets now expose provider-specific tool bundles and capability flags, including OpenAI `apply_patch`, Anthropic/Gemini `edit_file`, Gemini `read_many_files`/`list_dir`, provider-native `shell` naming, and opt-in Gemini `web_search`/`web_fetch` support via `ProviderProfile.gemini(web_tools: true)`. Byte-for-byte upstream harness/prompt parity is still not claimed. |
 | `4. Tool Execution Environment` | `implemented` | `ExecutionEnvironment` now covers working directory, platform, file reads/writes, directory listing, globbing, grep, shell execution, and environment context, with `LocalExecutionEnvironment` implementing the contract. |
 | `5. Tool Output and Context Management` | `implemented` | Character-first then line truncation, per-tool limits, timeout controls, and bounded event payload behavior are implemented/tested. |
-| `6. System Prompts and Environment Context` | `implemented` | Layered prompt construction now includes provider/model metadata, platform, tool inventory, serialized environment context, and ancestor-discovered instruction docs (`AGENTS.md`, provider files, `.codex/instructions.md`) with custom builder hooks preserved. |
+| `6. System Prompts and Environment Context` | `implemented` | Layered prompt construction now includes provider-specific base guidance, provider/model metadata, platform, tool inventory, serialized environment context, and ancestor-discovered instruction docs (`AGENTS.md`, provider files, `.codex/instructions.md`) with root-to-leaf ordering, a shared 32 KB budget, and custom builder hooks preserved. |
 | `7. Subagents` | `implemented` | Session-managed `spawn_agent`, `send_input`, `wait`, and `close_agent` tools now create child sessions with independent history, shared execution environment, model/turn overrides, and enforced `max_subagent_depth`. |
 | `8. Out of Scope` | `n/a` | Informational section. |
-| `9. Definition of Done` | `partial` | Core loop behavior, provider-specific tool bundles, prompt context, local environment contract, and subagent lifecycle are covered. Exact provider-native prompt/tool-harness parity remains open. |
+| `9. Definition of Done` | `implemented` | The session loop, provider presets, registry dispatch/error paths, truncation policy, steering/follow-up controls, reasoning controls, layered prompt context, local execution environment contract, subagent lifecycle, and maintained event surface are implemented and covered by tests. Exact provider-native prompt/tool-harness parity is still tracked separately as a known non-blocking gap. |
 | `Appendix A (apply_patch v4a)` | `partial` | A built-in `apply_patch` tool now parses and applies add/delete/update/move operations in the appendix-style envelope for local sessions. Full appendix-edge-case coverage and exhaustive parity validation remain open. |
 | `Appendix B (error handling)` | `partial` | Tool/session error propagation and recovery behaviors are implemented, but full cross-provider SDK retry hierarchy is delegated to Unified LLM layer. |
 
@@ -61,13 +61,15 @@ Legend: `implemented`, `partial`, `not implemented`.
 12. Provider presets with provider-specific coding-agent tool bundles, capability flags, and a maintained OpenAI/Anthropic/Gemini integration matrix.
 13. Execution-environment file/glob/grep/shell primitives.
 14. Tool-argument schema validation and session/context warning events.
-15. Ancestor-based project instruction discovery for prompt context.
+15. Root-to-leaf ancestor-based project instruction discovery for prompt context with a shared 32 KB truncation budget.
 16. Subagent lifecycle including spawn/input/wait/close flows, depth enforcement, and recoverable missing-agent errors.
 17. OpenAI-style `apply_patch` execution for local sessions plus Anthropic/Gemini-native edit/read-many/list-dir tool variants and opt-in Gemini `web_search`/`web_fetch`.
+18. Deterministic custom-tool registration on top of provider presets, including name-collision override behavior.
+19. Provider-specific base system-prompt guidance and the full typed session event inventory exposed via `Event.supported_kinds/0`.
 
 ## Known Gaps vs Spec
 
-1. Provider-packaged toolsets are closer to codex-rs, Claude Code, and gemini-cli, but are not yet byte-for-byte harness copies.
+1. Provider-packaged toolsets and prompt bodies are aligned to codex-rs, Claude Code, and gemini-cli behaviors, but are not yet byte-for-byte harness copies.
 2. Built-in Gemini web tools are opt-in rather than enabled in the default preset to preserve a conservative local/network posture.
 3. `apply_patch` coverage is intentionally conservative and not yet validated against every appendix edge case.
 

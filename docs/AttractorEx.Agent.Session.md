@@ -5,7 +5,8 @@ Stateful coding-agent loop built on top of `AttractorEx.LLM.Client`.
 
 A session owns request construction, conversation history, tool execution, tool
 result truncation, steering and follow-up queues, loop detection, subagent
-lifecycle management, and lifecycle events.
+lifecycle management, lifecycle events, and layered project-instruction discovery
+across ancestor `AGENTS.md`/provider-specific docs with a shared 32 KB prompt budget.
 
 # `state`
 

@@ -4,7 +4,8 @@ defmodule AttractorEx.Agent.Session do
 
   A session owns request construction, conversation history, tool execution, tool
   result truncation, steering and follow-up queues, loop detection, subagent
-  lifecycle management, and lifecycle events.
+  lifecycle management, lifecycle events, and layered project-instruction discovery
+  across ancestor `AGENTS.md`/provider-specific docs with a shared 32 KB prompt budget.
   """
 
   alias AttractorEx.Agent.{
@@ -794,56 +795,69 @@ defmodule AttractorEx.Agent.Session do
   end
 
   defp discover_project_docs(working_dir, provider_id) do
-    common = find_doc_in_ancestors(working_dir, "AGENTS.md")
+    common_docs = find_docs_in_ancestors(working_dir, "AGENTS.md")
 
-    provider_doc =
+    provider_docs =
       case provider_id do
-        "anthropic" -> find_doc_in_ancestors(working_dir, "CLAUDE.md")
-        "gemini" -> find_doc_in_ancestors(working_dir, "GEMINI.md")
-        "openai" -> find_doc_in_ancestors(working_dir, "CODEX.md")
-        _ -> nil
+        "anthropic" -> find_docs_in_ancestors(working_dir, "CLAUDE.md")
+        "gemini" -> find_docs_in_ancestors(working_dir, "GEMINI.md")
+        "openai" -> find_docs_in_ancestors(working_dir, "CODEX.md")
+        _ -> []
       end
 
-    codex_instruction_doc =
-      find_doc_in_ancestors(working_dir, Path.join(".codex", "instructions.md"))
+    codex_instruction_docs =
+      find_docs_in_ancestors(working_dir, Path.join(".codex", "instructions.md"))
 
-    [common, provider_doc, codex_instruction_doc]
-    |> Enum.reject(&is_nil/1)
+    common_docs ++ provider_docs ++ codex_instruction_docs
   end
 
   defp load_project_docs(working_dir, provider_id) do
     working_dir
     |> discover_project_docs(provider_id)
     |> Enum.uniq()
-    |> Enum.flat_map(&read_project_doc/1)
+    |> load_project_doc_contents()
   end
 
-  defp read_project_doc(path) do
-    case File.read(path) do
-      {:ok, content} ->
-        [
-          %{
-            path: path,
-            content: String.slice(content, 0, 32_000)
-          }
-        ]
+  defp load_project_doc_contents(paths) do
+    marker = "[Project instructions truncated at 32KB]"
 
-      {:error, _reason} ->
-        []
-    end
+    {docs, _remaining, _truncated?} =
+      Enum.reduce_while(paths, {[], 32_000, false}, fn path, {docs, remaining, _truncated?} ->
+        case File.read(path) do
+          {:ok, content} ->
+            content_bytes = byte_size(content)
+
+            cond do
+              remaining <= 0 ->
+                {:halt, {docs, 0, true}}
+
+              content_bytes <= remaining ->
+                {:cont,
+                 {docs ++ [%{path: path, content: content}], remaining - content_bytes, false}}
+
+              true ->
+                allowed = max(remaining - byte_size(marker), 0)
+                truncated_content = :binary.part(content, 0, allowed) <> marker
+                {:halt, {docs ++ [%{path: path, content: truncated_content}], 0, true}}
+            end
+
+          {:error, _reason} ->
+            {:cont, {docs, remaining, false}}
+        end
+      end)
+
+    docs
   end
 
-  defp find_doc_in_ancestors(dir, filename) do
+  defp find_docs_in_ancestors(dir, filename) do
     dir
     |> Path.expand()
     |> ancestor_paths()
-    |> Enum.find(fn current_dir ->
+    |> Enum.reverse()
+    |> Enum.filter(fn current_dir ->
       File.exists?(Path.join(current_dir, filename))
     end)
-    |> case do
-      nil -> nil
-      parent -> Path.join(parent, filename)
-    end
+    |> Enum.map(&Path.join(&1, filename))
   end
 
   defp ancestor_paths(dir) do
