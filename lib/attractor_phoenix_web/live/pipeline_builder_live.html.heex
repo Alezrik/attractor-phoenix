@@ -144,10 +144,18 @@
               </label>
               <label id="node-prop-wrap-fidelity" class="block space-y-1">
                 <span class="text-xs font-semibold">Fidelity</span>
-                <input
+                <select
                   id="node-prop-fidelity"
                   class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
+                >
+                  <option value="">(default)</option>
+                  <option value="full">full</option>
+                  <option value="truncate">truncate</option>
+                  <option value="compact">compact</option>
+                  <option value="summary:low">summary:low</option>
+                  <option value="summary:medium">summary:medium</option>
+                  <option value="summary:high">summary:high</option>
+                </select>
               </label>
               <label id="node-prop-wrap-thread-id" class="block space-y-1">
                 <span class="text-xs font-semibold">Thread ID</span>
@@ -158,17 +166,21 @@
               </label>
               <label id="node-prop-wrap-retry-target" class="block space-y-1">
                 <span class="text-xs font-semibold">Retry Target</span>
-                <input
+                <select
                   id="node-prop-retry-target"
                   class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
+                >
+                  <option value="">(none)</option>
+                </select>
               </label>
               <label id="node-prop-wrap-fallback-retry-target" class="block space-y-1">
                 <span class="text-xs font-semibold">Fallback Retry Target</span>
-                <input
+                <select
                   id="node-prop-fallback-retry-target"
                   class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
+                >
+                  <option value="">(none)</option>
+                </select>
               </label>
               <label id="node-prop-wrap-llm-model" class="block space-y-1">
                 <span class="text-xs font-semibold">LLM Model</span>
@@ -196,6 +208,26 @@
                   <option value="high">high</option>
                 </select>
               </label>
+              <label id="node-prop-wrap-max-tokens" class="block space-y-1">
+                <span class="text-xs font-semibold">Max Tokens</span>
+                <input
+                  id="node-prop-max-tokens"
+                  type="number"
+                  min="1"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label id="node-prop-wrap-temperature" class="block space-y-1">
+                <span class="text-xs font-semibold">Temperature</span>
+                <input
+                  id="node-prop-temperature"
+                  type="number"
+                  min="0"
+                  max="2"
+                  step="0.1"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
               <div id="node-prop-wrap-command" class="space-y-1">
                 <span class="text-xs font-semibold">Tool Command</span>
                 <input
@@ -203,6 +235,125 @@
                   class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm font-mono"
                 />
               </div>
+              <label id="node-prop-wrap-human-default-choice" class="block space-y-1">
+                <span class="text-xs font-semibold">Human Default Choice</span>
+                <input
+                  id="node-prop-human-default-choice"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label id="node-prop-wrap-human-timeout" class="block space-y-1">
+                <span class="text-xs font-semibold">Human Timeout</span>
+                <input
+                  id="node-prop-human-timeout"
+                  placeholder="30s"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label id="node-prop-wrap-human-input" class="block space-y-1">
+                <span class="text-xs font-semibold">Human Input</span>
+                <select
+                  id="node-prop-human-input"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                >
+                  <option value="">(default)</option>
+                  <option value="text">text</option>
+                  <option value="textarea">textarea</option>
+                  <option value="checkbox">checkbox</option>
+                  <option value="boolean">boolean</option>
+                  <option value="confirmation">confirmation</option>
+                  <option value="single_select">single_select</option>
+                  <option value="multi_select">multi_select</option>
+                  <option value="radio">radio</option>
+                  <option value="select">select</option>
+                </select>
+              </label>
+              <label
+                id="node-prop-wrap-human-multiple"
+                class="flex items-center gap-2 text-xs font-semibold"
+              >
+                <input id="node-prop-human-multiple" type="checkbox" /> human.multiple
+              </label>
+              <label
+                id="node-prop-wrap-human-required"
+                class="flex items-center gap-2 text-xs font-semibold"
+              >
+                <input id="node-prop-human-required" type="checkbox" /> human.required
+              </label>
+              <label id="node-prop-wrap-join-policy" class="block space-y-1">
+                <span class="text-xs font-semibold">Join Policy</span>
+                <select
+                  id="node-prop-join-policy"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                >
+                  <option value="">(default)</option>
+                  <option value="wait_all">wait_all</option>
+                  <option value="first_success">first_success</option>
+                  <option value="k_of_n">k_of_n</option>
+                  <option value="quorum">quorum</option>
+                </select>
+              </label>
+              <label id="node-prop-wrap-max-parallel" class="block space-y-1">
+                <span class="text-xs font-semibold">Max Parallel</span>
+                <input
+                  id="node-prop-max-parallel"
+                  type="number"
+                  min="1"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label id="node-prop-wrap-k" class="block space-y-1">
+                <span class="text-xs font-semibold">K</span>
+                <input
+                  id="node-prop-k"
+                  type="number"
+                  min="1"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label id="node-prop-wrap-quorum-ratio" class="block space-y-1">
+                <span class="text-xs font-semibold">Quorum Ratio</span>
+                <input
+                  id="node-prop-quorum-ratio"
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label id="node-prop-wrap-manager-actions" class="block space-y-1">
+                <span class="text-xs font-semibold">Manager Actions</span>
+                <input
+                  id="node-prop-manager-actions"
+                  placeholder="observe,wait,steer"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label id="node-prop-wrap-manager-max-cycles" class="block space-y-1">
+                <span class="text-xs font-semibold">Manager Max Cycles</span>
+                <input
+                  id="node-prop-manager-max-cycles"
+                  type="number"
+                  min="1"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label id="node-prop-wrap-manager-poll-interval" class="block space-y-1">
+                <span class="text-xs font-semibold">Manager Poll Interval</span>
+                <input
+                  id="node-prop-manager-poll-interval"
+                  placeholder="500ms"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label
+                id="node-prop-wrap-stack-child-autostart"
+                class="flex items-center gap-2 text-xs font-semibold"
+              >
+                <input id="node-prop-stack-child-autostart" type="checkbox" />
+                stack.child_autostart
+              </label>
               <label
                 id="node-prop-wrap-goal-gate"
                 class="flex items-center gap-2 text-xs font-semibold"
@@ -326,10 +477,16 @@
               <p class="font-mono">
                 id, type, shape, prompt, goal_gate, retry_target, fallback_retry_target, attrs
               </p>
+              <p class="mt-1 text-[11px] text-base-content/60">
+                The editor only exposes attrs supported by the runtime for the selected node type.
+              </p>
             </div>
             <div>
               <p class="font-semibold text-base-content">Edge JSON</p>
               <p class="font-mono">from, to, condition, status, attrs</p>
+              <p class="mt-1 text-[11px] text-base-content/60">
+                Edge rules are limited to default routing, status routing, or condition routing.
+              </p>
             </div>
             <p>
               The builder keeps authoring DOT, but the live contract is the parsed
