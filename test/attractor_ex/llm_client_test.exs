@@ -108,6 +108,21 @@ defmodule AttractorEx.LLMClientTest do
     assert text =~ "provider=anthropic"
   end
 
+  test "middleware can short-circuit complete with a direct response" do
+    middleware = fn _request, _next ->
+      %Response{text: "short-circuited", usage: %Usage{}, finish_reason: "stop"}
+    end
+
+    client = %Client{
+      providers: %{"openai" => AttractorExTest.LLMAdapter},
+      default_provider: "openai",
+      middleware: [middleware]
+    }
+
+    assert %Response{text: "short-circuited"} =
+             Client.complete(client, %Request{model: "gpt-5.2", messages: []})
+  end
+
   test "stream routes to adapter and returns stream events" do
     client = %Client{
       providers: %{"openai" => AttractorExTest.LLMAdapter},
@@ -217,6 +232,29 @@ defmodule AttractorEx.LLMClientTest do
 
       assert client.default_provider == "openai"
       assert client.providers["openai"] == AttractorExTest.LLMAdapter
+    end
+
+    test "from_env opts override configured middleware values" do
+      configured = fn request, next -> next.(%{request | provider: "anthropic"}) end
+      override = fn request, next -> next.(%{request | provider: "openai"}) end
+
+      Application.put_env(:attractor_phoenix, :attractor_ex_llm,
+        providers: %{
+          "openai" => AttractorExTest.LLMAdapter,
+          "anthropic" => AttractorExTest.LLMAdapter
+        },
+        default_provider: "anthropic",
+        middleware: [configured]
+      )
+
+      on_exit(fn -> Application.delete_env(:attractor_phoenix, :attractor_ex_llm) end)
+
+      client = Client.from_env(middleware: [override])
+
+      assert %Response{text: text} =
+               Client.complete(client, %Request{model: "gpt-5.2", messages: []})
+
+      assert text =~ "provider=openai"
     end
 
     test "arity-1 helpers use the configured default client" do
