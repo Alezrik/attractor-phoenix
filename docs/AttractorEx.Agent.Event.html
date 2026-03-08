@@ -8,7 +8,7 @@
     <meta name="project" content="attractor_phoenix v0.1.0">
 
 
-    <title>AttractorPhoenixWeb.Router — attractor_phoenix v0.1.0</title>
+    <title>AttractorEx.Agent.Event — attractor_phoenix v0.1.0</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
@@ -97,25 +97,30 @@ attractor_phoenix
 <div id="top-content">
   <div class="heading-with-actions top-heading">
     <h1>
-      <span translate="no">AttractorPhoenixWeb.<wbr>Router</span> 
+      <span translate="no">AttractorEx.<wbr>Agent.<wbr>Event</span> 
       <small class="app-vsn" translate="no">(attractor_phoenix v0.1.0)</small>
 
     </h1>
 
-<a href="AttractorPhoenixWeb.Router.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+<a href="AttractorEx.Agent.Event.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
   <i class="ri-markdown-line" aria-hidden="true"></i>
   <span class="sr-only">Copy Markdown</span>
 </a>
 
 
 
-      <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/router.ex#L1" title="View Source" class="icon-action" rel="help">
+      <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/event.ex#L1" title="View Source" class="icon-action" rel="help">
         <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         <span class="sr-only">View Source</span>
       </a>
 
   </div>
 
+
+    <section id="moduledoc">
+<p>Typed session event emitted by <a href="AttractorEx.Agent.Session.html"><code class="inline">AttractorEx.Agent.Session</code></a>.</p><p>The shape mirrors the coding-agent loop spec's session-event contract while
+keeping a <code class="inline">payload</code> alias for backward compatibility with older callers.</p>
+    </section>
 
 </div>
 
@@ -126,6 +131,28 @@ attractor_phoenix
       </a>
       <span class="text">Summary</span>
     </h2>
+<div class="summary-types summary">
+  <h3>
+    <a href="#types">Types</a>
+  </h3>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:kind/0" data-no-tooltip="" translate="no">kind()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:t/0" data-no-tooltip="" translate="no">t()</a>
+
+      </div>
+
+    </div>
+
+</div>
 <div class="summary-functions summary">
   <h3>
     <a href="#functions">Functions</a>
@@ -133,7 +160,7 @@ attractor_phoenix
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#api/2" data-no-tooltip="" translate="no">api(conn, _)</a>
+        <a href="#new/4" data-no-tooltip="" translate="no">new(kind, session_id, data, timestamp \\ DateTime.utc_now())</a>
 
       </div>
 
@@ -141,50 +168,9 @@ attractor_phoenix
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#browser/2" data-no-tooltip="" translate="no">browser(conn, _)</a>
+        <a href="#supported_kinds/0" data-no-tooltip="" translate="no">supported_kinds()</a>
 
       </div>
-
-    </div>
-
-    <div class="summary-row">
-      <div class="summary-signature">
-        <a href="#call/2" data-no-tooltip="" translate="no">call(conn, opts)</a>
-
-      </div>
-
-        <div class="summary-synopsis"><p>Callback invoked by Plug on every request.</p></div>
-
-    </div>
-
-    <div class="summary-row">
-      <div class="summary-signature">
-        <a href="#formatted_routes/1" data-no-tooltip="" translate="no">formatted_routes(_)</a>
-
-      </div>
-
-        <div class="summary-synopsis"><p>Callback implementation for <a href="https://hexdocs.pm/phoenix/1.8.5/Phoenix.VerifiedRoutes.html#c:formatted_routes/1"><code class="inline">Phoenix.VerifiedRoutes.formatted_routes/1</code></a>.</p></div>
-
-    </div>
-
-    <div class="summary-row">
-      <div class="summary-signature">
-        <a href="#init/1" data-no-tooltip="" translate="no">init(opts)</a>
-
-      </div>
-
-        <div class="summary-synopsis"><p>Callback required by Plug that initializes the router
-for serving web requests.</p></div>
-
-    </div>
-
-    <div class="summary-row">
-      <div class="summary-signature">
-        <a href="#verified_route?/2" data-no-tooltip="" translate="no">verified_route?(_, split_path)</a>
-
-      </div>
-
-        <div class="summary-synopsis"><p>Callback implementation for <a href="https://hexdocs.pm/phoenix/1.8.5/Phoenix.VerifiedRoutes.html#c:verified_route?/2"><code class="inline">Phoenix.VerifiedRoutes.verified_route?/2</code></a>.</p></div>
 
     </div>
 
@@ -192,6 +178,99 @@ for serving web requests.</p></div>
 
   </section>
 
+
+  <section id="types" class="details-list">
+    <h2 class="section-heading">
+      <a class="hover-link" href="#types">
+        <i class="ri-link-m" aria-hidden="true"></i>
+      </a>
+      <span class="text">Types</span>
+    </h2>
+
+    <div class="types-list">
+<section class="detail" id="t:kind/0">
+
+  <div class="detail-header">
+    <a href="#t:kind/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">kind()</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/event.ex#L9" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> kind() ::
+  :session_start
+  | :session_end
+  | :user_input
+  | :assistant_text_start
+  | :assistant_text_delta
+  | :assistant_text_end
+  | :tool_call_start
+  | :tool_call_output_delta
+  | :tool_call_end
+  | :steering_injected
+  | :turn_limit
+  | :loop_detection
+  | :context_warning
+  | :subagent_spawned
+  | :subagent_input_sent
+  | :subagent_wait_completed
+  | :subagent_closed
+  | :error</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:t/0">
+
+  <div class="detail-header">
+    <a href="#t:t/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">t()</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/event.ex#L35" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> t() :: %AttractorEx.Agent.Event{
+  data: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>(),
+  kind: <a href="#t:kind/0">kind</a>(),
+  payload: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>(),
+  session_id: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(),
+  timestamp: <a href="https://hexdocs.pm/elixir/DateTime.html#t:t/0">DateTime.t</a>()
+}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+
+    </div>
+  </section>
 
   <section id="functions" class="details-list">
     <h2 class="section-heading">
@@ -202,17 +281,19 @@ for serving web requests.</p></div>
     </h2>
 
     <div class="functions-list">
-<section class="detail" id="api/2">
+<section class="detail" id="new/4">
+
+    <span id="new/3"></span>
 
   <div class="detail-header">
-    <a href="#api/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#new/4" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">api(conn, _)</h1>
+      <h1 class="signature" translate="no">new(kind, session_id, data, timestamp \\ DateTime.utc_now())</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/router.ex#L13" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/event.ex#L44" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -220,21 +301,27 @@ for serving web requests.</p></div>
   </div>
 
   <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> new(<a href="#t:kind/0">kind</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>(), <a href="https://hexdocs.pm/elixir/DateTime.html#t:t/0">DateTime.t</a>()) :: <a href="#t:t/0">t</a>()</pre>
+
+      </div>
 
 
   </section>
 </section>
-<section class="detail" id="browser/2">
+<section class="detail" id="supported_kinds/0">
 
   <div class="detail-header">
-    <a href="#browser/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#supported_kinds/0" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">browser(conn, _)</h1>
+      <h1 class="signature" translate="no">supported_kinds()</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/router.ex#L4" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/event.ex#L56" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -243,96 +330,13 @@ for serving web requests.</p></div>
 
   <section class="docstring">
 
+      <div class="specs">
 
-  </section>
-</section>
-<section class="detail" id="call/2">
+          <pre translate="no"><span class="attribute">@spec</span> supported_kinds() :: [<a href="#t:kind/0">kind</a>()]</pre>
 
-  <div class="detail-header">
-    <a href="#call/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
-      <i class="ri-link-m" aria-hidden="true"></i>
-    </a>
-    <div class="heading-with-actions">
-      <h1 class="signature" translate="no">call(conn, opts)</h1>
+      </div>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/router.ex#L2" class="icon-action" rel="help" aria-label="View Source">
-          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
-        </a>
-
-    </div>
-  </div>
-
-  <section class="docstring">
-
-<p>Callback invoked by Plug on every request.</p>
-  </section>
-</section>
-<section class="detail" id="formatted_routes/1">
-
-  <div class="detail-header">
-    <a href="#formatted_routes/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
-      <i class="ri-link-m" aria-hidden="true"></i>
-    </a>
-    <div class="heading-with-actions">
-      <h1 class="signature" translate="no">formatted_routes(_)</h1>
-
-
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/router.ex#L2" class="icon-action" rel="help" aria-label="View Source">
-          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
-        </a>
-
-    </div>
-  </div>
-
-  <section class="docstring">
-
-<p>Callback implementation for <a href="https://hexdocs.pm/phoenix/1.8.5/Phoenix.VerifiedRoutes.html#c:formatted_routes/1"><code class="inline">Phoenix.VerifiedRoutes.formatted_routes/1</code></a>.</p>
-  </section>
-</section>
-<section class="detail" id="init/1">
-
-  <div class="detail-header">
-    <a href="#init/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
-      <i class="ri-link-m" aria-hidden="true"></i>
-    </a>
-    <div class="heading-with-actions">
-      <h1 class="signature" translate="no">init(opts)</h1>
-
-
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/router.ex#L2" class="icon-action" rel="help" aria-label="View Source">
-          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
-        </a>
-
-    </div>
-  </div>
-
-  <section class="docstring">
-
-<p>Callback required by Plug that initializes the router
-for serving web requests.</p>
-  </section>
-</section>
-<section class="detail" id="verified_route?/2">
-
-  <div class="detail-header">
-    <a href="#verified_route?/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
-      <i class="ri-link-m" aria-hidden="true"></i>
-    </a>
-    <div class="heading-with-actions">
-      <h1 class="signature" translate="no">verified_route?(_, split_path)</h1>
-
-
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/router.ex#L2" class="icon-action" rel="help" aria-label="View Source">
-          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
-        </a>
-
-    </div>
-  </div>
-
-  <section class="docstring">
-
-<p>Callback implementation for <a href="https://hexdocs.pm/phoenix/1.8.5/Phoenix.VerifiedRoutes.html#c:verified_route?/2"><code class="inline">Phoenix.VerifiedRoutes.verified_route?/2</code></a>.</p>
   </section>
 </section>
 

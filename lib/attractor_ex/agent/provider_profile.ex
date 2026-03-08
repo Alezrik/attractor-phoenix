@@ -4,9 +4,12 @@ defmodule AttractorEx.Agent.ProviderProfile do
 
   A profile packages a model, toolset, provider options, and an optional system-prompt
   builder so agent sessions can stay portable across providers.
+
+  The module also exposes a maintained cross-provider integration matrix for the
+  built-in OpenAI, Anthropic, and Gemini presets.
   """
 
-  alias AttractorEx.Agent.{BuiltinTools, Tool, ToolRegistry}
+  alias AttractorEx.Agent.{BuiltinTools, Event, Tool, ToolRegistry}
 
   defstruct id: "",
             model: "",
@@ -30,6 +33,18 @@ defmodule AttractorEx.Agent.ProviderProfile do
           provider_options: map(),
           system_prompt_builder: (keyword() -> String.t()) | nil,
           preset: atom() | nil
+        }
+
+  @type integration_entry :: %{
+          id: String.t(),
+          provider_family: atom(),
+          preset: atom(),
+          implemented_tool_names: [String.t()],
+          reference_tool_names: [String.t()],
+          instruction_files: [String.t()],
+          reasoning_option_path: [String.t()],
+          system_prompt_style: String.t(),
+          event_kinds: [Event.kind()]
         }
 
   @spec new(keyword()) :: t()
@@ -99,6 +114,107 @@ defmodule AttractorEx.Agent.ProviderProfile do
       ] ++ opts
     )
   end
+
+  @spec integration_matrix() :: [integration_entry()]
+  @doc "Returns the maintained cross-provider integration matrix for built-in presets."
+  def integration_matrix do
+    for profile <- [openai(), anthropic(), gemini()] do
+      %{
+        id: profile.id,
+        provider_family: profile.provider_family,
+        preset: profile.preset,
+        implemented_tool_names: Enum.map(profile.tools, & &1.name),
+        reference_tool_names: reference_tool_names(profile),
+        instruction_files: instruction_files(profile),
+        reasoning_option_path: reasoning_option_path(profile),
+        system_prompt_style: system_prompt_style(profile),
+        event_kinds: Event.supported_kinds()
+      }
+    end
+  end
+
+  @spec instruction_files(t()) :: [String.t()]
+  @doc "Returns the project-instruction files relevant to the active provider profile."
+  def instruction_files(%__MODULE__{id: "anthropic"}), do: ["AGENTS.md", "CLAUDE.md"]
+  def instruction_files(%__MODULE__{id: "gemini"}), do: ["AGENTS.md", "GEMINI.md"]
+
+  def instruction_files(%__MODULE__{id: "openai"}),
+    do: ["AGENTS.md", "CODEX.md", ".codex/instructions.md"]
+
+  def instruction_files(%__MODULE__{}), do: ["AGENTS.md"]
+
+  @spec reasoning_option_path(t()) :: [String.t()]
+  @doc "Returns the provider-native request path associated with reasoning/thinking controls."
+  def reasoning_option_path(%__MODULE__{id: "anthropic"}),
+    do: ["provider_options", "anthropic", "thinking"]
+
+  def reasoning_option_path(%__MODULE__{id: "gemini"}),
+    do: ["provider_options", "gemini", "thinkingConfig"]
+
+  def reasoning_option_path(%__MODULE__{id: "openai"}),
+    do: ["provider_options", "reasoning", "effort"]
+
+  def reasoning_option_path(%__MODULE__{}), do: ["provider_options", "reasoning_effort"]
+
+  @spec reference_tool_names(t()) :: [String.t()]
+  @doc "Returns the upstream native tool names the preset is intended to align with."
+  def reference_tool_names(%__MODULE__{id: "anthropic"}) do
+    [
+      "read_file",
+      "write_file",
+      "edit_file",
+      "shell",
+      "grep",
+      "glob",
+      "spawn_agent",
+      "send_input",
+      "wait",
+      "close_agent"
+    ]
+  end
+
+  def reference_tool_names(%__MODULE__{id: "gemini"}) do
+    [
+      "read_file",
+      "read_many_files",
+      "write_file",
+      "edit_file",
+      "shell",
+      "grep",
+      "glob",
+      "list_dir",
+      "web_search",
+      "web_fetch",
+      "spawn_agent",
+      "send_input",
+      "wait",
+      "close_agent"
+    ]
+  end
+
+  def reference_tool_names(%__MODULE__{id: "openai"}) do
+    [
+      "read_file",
+      "apply_patch",
+      "write_file",
+      "shell",
+      "grep",
+      "glob",
+      "spawn_agent",
+      "send_input",
+      "wait",
+      "close_agent"
+    ]
+  end
+
+  def reference_tool_names(%__MODULE__{} = profile), do: Enum.map(profile.tools, & &1.name)
+
+  @spec system_prompt_style(t()) :: String.t()
+  @doc "Returns the reference-agent prompt family used as the preset target."
+  def system_prompt_style(%__MODULE__{id: "anthropic"}), do: "Claude Code-aligned"
+  def system_prompt_style(%__MODULE__{id: "gemini"}), do: "gemini-cli-aligned"
+  def system_prompt_style(%__MODULE__{id: "openai"}), do: "codex-rs-aligned"
+  def system_prompt_style(%__MODULE__{}), do: "generic"
 
   @spec tool_definitions(t()) :: [map()]
   @doc "Returns the serialized tool definitions exposed to the model."

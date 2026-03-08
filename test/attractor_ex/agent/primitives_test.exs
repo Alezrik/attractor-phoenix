@@ -89,6 +89,34 @@ defmodule AttractorEx.Agent.PrimitivesTest do
     assert {:error, _reason} = ExecutionEnvironment.list_directory(env, "missing")
   end
 
+  test "local execution env handles missing files, direct file grep, and absolute paths" do
+    tmp_dir =
+      Path.join(System.tmp_dir!(), "attractor-agent-env-#{System.unique_integer([:positive])}")
+
+    File.mkdir_p!(tmp_dir)
+    env = LocalExecutionEnvironment.new(working_dir: tmp_dir)
+    absolute_path = Path.join(tmp_dir, "absolute.txt")
+    File.write!(absolute_path, "Alpha\nbeta\n")
+
+    assert {:error, :enoent} = ExecutionEnvironment.read_file(env, "missing.txt")
+    assert :ok = ExecutionEnvironment.write_file(env, absolute_path, "Alpha\nbeta\n")
+    assert {:ok, ["absolute.txt"]} = ExecutionEnvironment.glob(env, "*.txt")
+
+    assert {:ok, [%{line_number: 1, path: "absolute.txt"}]} =
+             ExecutionEnvironment.grep(env, "Alpha",
+               path: "absolute.txt",
+               case_sensitive: true,
+               max_results: 5
+             )
+
+    assert {:ok, []} =
+             ExecutionEnvironment.grep(env, "alpha",
+               path: "absolute.txt",
+               case_sensitive: true,
+               max_results: 5
+             )
+  end
+
   test "provider profile supports custom prompt builder" do
     profile =
       ProviderProfile.new(
@@ -125,6 +153,46 @@ defmodule AttractorEx.Agent.PrimitivesTest do
     assert gemini.id == "gemini"
     assert gemini.provider_family == :gemini
     assert gemini.preset == :gemini
+  end
+
+  test "provider profile helper metadata covers provider-specific and generic fallbacks" do
+    generic_tool = %Tool{
+      name: "echo",
+      description: "",
+      parameters: %{},
+      execute: fn _args, _env -> "" end
+    }
+
+    generic =
+      ProviderProfile.new(
+        id: "custom",
+        model: "custom-model",
+        tools: [generic_tool]
+      )
+
+    assert ProviderProfile.instruction_files(generic) == ["AGENTS.md"]
+
+    assert ProviderProfile.reasoning_option_path(generic) == [
+             "provider_options",
+             "reasoning_effort"
+           ]
+
+    assert ProviderProfile.reference_tool_names(generic) == ["echo"]
+    assert ProviderProfile.system_prompt_style(generic) == "generic"
+  end
+
+  test "provider integration matrix includes reasoning paths and prompt styles" do
+    matrix = ProviderProfile.integration_matrix()
+    openai = Enum.find(matrix, &(&1.id == "openai"))
+    anthropic = Enum.find(matrix, &(&1.id == "anthropic"))
+    gemini = Enum.find(matrix, &(&1.id == "gemini"))
+
+    assert openai.reasoning_option_path == ["provider_options", "reasoning", "effort"]
+    assert openai.system_prompt_style == "codex-rs-aligned"
+    assert anthropic.reasoning_option_path == ["provider_options", "anthropic", "thinking"]
+    assert anthropic.system_prompt_style == "Claude Code-aligned"
+    assert gemini.reasoning_option_path == ["provider_options", "gemini", "thinkingConfig"]
+    assert gemini.system_prompt_style == "gemini-cli-aligned"
   end
 
   test "built-in tool bundle is available across provider presets" do

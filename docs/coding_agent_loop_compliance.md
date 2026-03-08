@@ -31,7 +31,7 @@ Legend: `implemented`, `partial`, `not implemented`.
 
 | Upstream section | Status | Notes |
 |---|---|---|
-| `2. Agentic Loop` | `implemented` | Session lifecycle, loop rounds, natural completion, limits, steering/follow-up, loop detection, session/context event emission, and model-recoverable tool validation failures are covered. |
+| `2. Agentic Loop` | `implemented` | Session lifecycle, loop rounds, natural completion, limits, steering/follow-up, loop detection, spec-style session event emission, full-output tool-call host events, and model-recoverable tool validation failures are covered. |
 | `3. Provider-Aligned Toolsets` | `partial` | OpenAI/Anthropic/Gemini provider presets now bundle a shared baseline coding-agent toolset and capability metadata. Exact upstream per-provider tool parity and SDK-specific formatting are still not one-to-one. |
 | `4. Tool Execution Environment` | `implemented` | `ExecutionEnvironment` now covers working directory, platform, file reads/writes, directory listing, globbing, grep, shell execution, and environment context, with `LocalExecutionEnvironment` implementing the contract. |
 | `5. Tool Output and Context Management` | `implemented` | Character-first then line truncation, per-tool limits, timeout controls, and bounded event payload behavior are implemented/tested. |
@@ -53,18 +53,18 @@ Legend: `implemented`, `partial`, `not implemented`.
 7. Timeout handling including late message drainage.
 8. Character+line truncation behavior and bounded event output.
 9. Tool failure capture (`raise`/`throw`/`exit`) and LLM error shutdown.
-10. Reasoning effort default/override and working-dir fallback logic.
-11. Provider presets with built-in coding-agent tool bundles.
-12. Execution-environment file/glob/grep/shell primitives.
-13. Tool-argument schema validation and session/context warning events.
-14. Ancestor-based project instruction discovery for prompt context.
-15. Subagent lifecycle including spawn/input/wait/close flows, depth enforcement, and recoverable missing-agent errors.
+10. Spec-aligned session event surface including `assistant_text_start`, `assistant_text_delta`, `tool_call_output_delta`, `error`, and full untruncated `tool_call_end` payloads for host integrations.
+11. Reasoning effort default/override and working-dir fallback logic.
+12. Provider presets with built-in coding-agent tool bundles plus a maintained OpenAI/Anthropic/Gemini integration matrix.
+13. Execution-environment file/glob/grep/shell primitives.
+14. Tool-argument schema validation and session/context warning events.
+15. Ancestor-based project instruction discovery for prompt context.
+16. Subagent lifecycle including spawn/input/wait/close flows, depth enforcement, and recoverable missing-agent errors.
 
 ## Known Gaps vs Spec
 
 1. Provider-packaged toolsets are baseline-compatible, but not yet exact one-to-one mirrors of codex-rs, Claude Code, or gemini-cli.
-2. Full event surface parity and cross-provider integration matrix.
-3. Built-in `apply_patch` grammar enforcement utility as a first-class profile tool.
+2. Built-in `apply_patch` grammar enforcement utility as a first-class profile tool.
 
 ## Verification Commands
 

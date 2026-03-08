@@ -105,6 +105,7 @@ used by your application.
 
 - AgentLoop
   - [AttractorEx.Agent.BuiltinTools](AttractorEx.Agent.BuiltinTools.md): Built-in coding-agent tools backed by an `ExecutionEnvironment`.
+  - [AttractorEx.Agent.Event](AttractorEx.Agent.Event.md): Typed session event emitted by `AttractorEx.Agent.Session`.
   - [AttractorEx.Agent.ExecutionEnvironment](AttractorEx.Agent.ExecutionEnvironment.md): Execution-environment behaviour for coding-agent sessions.
   - [AttractorEx.Agent.LocalExecutionEnvironment](AttractorEx.Agent.LocalExecutionEnvironment.md): Local filesystem-backed execution environment for agent sessions.
   - [AttractorEx.Agent.ProviderProfile](AttractorEx.Agent.ProviderProfile.md): Provider-aligned configuration for the coding-agent loop.
