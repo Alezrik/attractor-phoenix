@@ -30,5 +30,6 @@ The highest-confidence parts of the implementation today are:
 - human-in-the-loop flows
 - HTTP service mode
 - the low-level unified LLM client contract
+- the coding-agent loop's local tool/runtime contract, including subagent lifecycle support
 
 Areas explicitly documented as partial or not implemented remain partial or not implemented in the generated docs. The goal of this documentation set is to be accurate first, then polished.

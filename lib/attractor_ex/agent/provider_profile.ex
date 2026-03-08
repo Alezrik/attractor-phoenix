@@ -137,7 +137,8 @@ defmodule AttractorEx.Agent.ProviderProfile do
         "Date=#{date}",
         "ParallelToolCalls=#{profile.supports_parallel_tool_calls}",
         "AvailableTools=#{Enum.join(tool_names, ", ")}",
-        "EnvironmentContext=#{Jason.encode!(environment_context)}"
+        "EnvironmentContext=#{Jason.encode!(environment_context)}",
+        "SubagentToolsAvailable=#{Enum.any?(tool_names, &(&1 in ["spawn_agent", "send_input", "wait", "close_agent"]))}"
       ] ++ doc_section
 
     Enum.join(lines, "\n")

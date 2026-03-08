@@ -74,8 +74,23 @@ The environment contract now includes the local tool surface used by the coding-
 - `glob`
 - `grep`
 - `shell_command`
+- `spawn_agent`
+- `send_input`
+- `wait`
+- `close_agent`
 
-These tools are backed by the execution-environment behaviour, so alternative environments can swap in sandboxed or remote implementations without changing the session loop.
+Filesystem and shell tools are backed by the execution-environment behaviour, so alternative environments can swap in sandboxed or remote implementations without changing the session loop. Subagent tools are session-managed and create child `AttractorEx.Agent.Session` instances that keep independent history while sharing the parent's execution environment.
+
+## Subagents
+
+The coding-agent loop now implements the spec's subagent lifecycle:
+
+- `spawn_agent` creates a child session, inherits the parent profile/tool bundle, optionally overrides model, working directory, and `max_turns`, and immediately runs the scoped task
+- `send_input` continues an existing child session with another message
+- `wait` returns a JSON payload containing subagent output, success, and turns used
+- `close_agent` removes the child session from the active subagent map
+
+Subagents inherit the parent's execution environment and are depth-limited by `SessionConfig.max_subagent_depth` (default `1`).
 
 ## Prompt Context
 

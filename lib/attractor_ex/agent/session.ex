@@ -3,8 +3,8 @@ defmodule AttractorEx.Agent.Session do
   Stateful coding-agent loop built on top of `AttractorEx.LLM.Client`.
 
   A session owns request construction, conversation history, tool execution, tool
-  result truncation, steering and follow-up queues, loop detection, and lifecycle
-  events.
+  result truncation, steering and follow-up queues, loop detection, subagent
+  lifecycle management, and lifecycle events.
   """
 
   alias AttractorEx.Agent.{
@@ -12,6 +12,7 @@ defmodule AttractorEx.Agent.Session do
     LocalExecutionEnvironment,
     ProviderProfile,
     SessionConfig,
+    Tool,
     ToolCall,
     ToolRegistry,
     ToolResult
@@ -32,6 +33,7 @@ defmodule AttractorEx.Agent.Session do
             steering_queue: :queue.new(),
             followup_queue: :queue.new(),
             subagents: %{},
+            depth: 0,
             abort_signaled: false
 
   @type state :: :idle | :processing | :awaiting_input | :closed
@@ -63,6 +65,7 @@ defmodule AttractorEx.Agent.Session do
           steering_queue: :queue.queue(String.t()),
           followup_queue: :queue.queue(String.t()),
           subagents: map(),
+          depth: non_neg_integer(),
           abort_signaled: boolean()
         }
 
@@ -102,6 +105,21 @@ defmodule AttractorEx.Agent.Session do
   @doc "Closes the session without aborting an in-flight tool."
   def close(%__MODULE__{} = session) do
     %{session | state: :closed}
+  end
+
+  @spec run_subagent_tool(t(), String.t(), map()) ::
+          {String.t() | map() | list() | term(), t()} | no_return()
+  @doc """
+  Executes a session-managed subagent tool and returns `{output, updated_session}`.
+  """
+  def run_subagent_tool(%__MODULE__{} = session, tool_name, args)
+      when tool_name in ["spawn_agent", "send_input", "wait", "close_agent"] and is_map(args) do
+    case tool_name do
+      "spawn_agent" -> spawn_subagent(session, args)
+      "send_input" -> send_subagent_input(session, args)
+      "wait" -> wait_on_subagent(session, args)
+      "close_agent" -> close_subagent(session, args)
+    end
   end
 
   @spec submit(t(), String.t()) :: t()
@@ -192,10 +210,11 @@ defmodule AttractorEx.Agent.Session do
   end
 
   defp execute_tool_round(%__MODULE__{} = session, tool_calls, round_count) do
-    {results, events} = execute_tool_calls(session, normalize_tool_calls(tool_calls))
+    {results, events, updated_session} =
+      execute_tool_calls(session, normalize_tool_calls(tool_calls))
 
     next_session =
-      session
+      updated_session
       |> append_events(events)
       |> append_turn(%{type: :tool_results, results: results, timestamp: DateTime.utc_now()})
       |> drain_steering()
@@ -234,9 +253,11 @@ defmodule AttractorEx.Agent.Session do
       provider_options: profile.provider_options,
       metadata: %{
         "session_id" => session.id,
+        "session_depth" => session.depth,
         "working_directory" => working_dir,
         "platform" => platform,
-        "project_docs" => Enum.map(project_docs, & &1.path)
+        "project_docs" => Enum.map(project_docs, & &1.path),
+        "active_subagent_ids" => session.subagents |> Map.keys() |> Enum.sort()
       }
     }
   end
@@ -272,8 +293,18 @@ defmodule AttractorEx.Agent.Session do
 
   defp execute_tool_calls(%__MODULE__{} = session, tool_calls) do
     profile = session.provider_profile
+    registry = profile.tool_registry
 
-    if profile.supports_parallel_tool_calls and length(tool_calls) > 1 do
+    all_environment_tools? =
+      Enum.all?(tool_calls, fn tool_call ->
+        case ToolRegistry.get(registry, tool_call.name) do
+          %Tool{target: :session} -> false
+          %Tool{} -> true
+          nil -> true
+        end
+      end)
+
+    if profile.supports_parallel_tool_calls and length(tool_calls) > 1 and all_environment_tools? do
       stream_results =
         tool_calls
         |> Task.async_stream(&execute_single_tool(session, &1),
@@ -298,21 +329,22 @@ defmodule AttractorEx.Agent.Session do
               [
                 build_event(:tool_call_start, %{tool_name: tool_call.name, call_id: tool_call.id}),
                 end_event
-              ]
+              ],
+              session
             }
         end)
 
       {
-        Enum.map(task_results, fn {result, _events} -> result end),
-        Enum.flat_map(task_results, fn {_result, events} -> events end)
+        Enum.map(task_results, fn {result, _events, _updated_session} -> result end),
+        Enum.flat_map(task_results, fn {_result, events, _updated_session} -> events end),
+        session
       }
     else
-      task_results = Enum.map(tool_calls, &execute_single_tool(session, &1))
-
-      {
-        Enum.map(task_results, fn {result, _events} -> result end),
-        Enum.flat_map(task_results, fn {_result, events} -> events end)
-      }
+      Enum.reduce(tool_calls, {[], [], session}, fn tool_call,
+                                                    {results, events, current_session} ->
+        {result, new_events, updated_session} = execute_single_tool(current_session, tool_call)
+        {results ++ [result], events ++ new_events, updated_session}
+      end)
     end
   end
 
@@ -327,7 +359,8 @@ defmodule AttractorEx.Agent.Session do
 
         {
           %ToolResult{tool_call_id: tool_call.id, content: error_msg, is_error: true},
-          [start_event, end_event]
+          [start_event, end_event],
+          session
         }
 
       tool ->
@@ -338,10 +371,10 @@ defmodule AttractorEx.Agent.Session do
             timeout_ms = resolve_tool_timeout_ms(tool_call.name, args, session.config)
 
             case run_tool_with_timeout(
-                   fn -> tool.execute.(args, session.execution_env) end,
+                   fn -> execute_tool_target(tool, args, session) end,
                    timeout_ms
                  ) do
-              {:ok, raw_output} ->
+              {:ok, {raw_output, updated_session}} ->
                 raw_text = normalize_tool_output(raw_output)
                 truncated_output = truncate_tool_output(raw_text, tool_call.name, session.config)
 
@@ -354,7 +387,8 @@ defmodule AttractorEx.Agent.Session do
                     content: truncated_output,
                     is_error: false
                   },
-                  [start_event, end_event]
+                  [start_event, end_event],
+                  updated_session
                 }
 
               {:error, :timeout} ->
@@ -364,7 +398,7 @@ defmodule AttractorEx.Agent.Session do
                   build_event(:tool_call_end, %{call_id: tool_call.id, error: error_msg})
 
                 {%ToolResult{tool_call_id: tool_call.id, content: error_msg, is_error: true},
-                 [start_event, end_event]}
+                 [start_event, end_event], session}
 
               {:error, reason} ->
                 error_msg = "Tool error (#{tool_call.name}): #{reason}"
@@ -373,7 +407,7 @@ defmodule AttractorEx.Agent.Session do
                   build_event(:tool_call_end, %{call_id: tool_call.id, error: error_msg})
 
                 {%ToolResult{tool_call_id: tool_call.id, content: error_msg, is_error: true},
-                 [start_event, end_event]}
+                 [start_event, end_event], session}
             end
 
           {:error, reason} ->
@@ -381,9 +415,20 @@ defmodule AttractorEx.Agent.Session do
             end_event = build_event(:tool_call_end, %{call_id: tool_call.id, error: error_msg})
 
             {%ToolResult{tool_call_id: tool_call.id, content: error_msg, is_error: true},
-             [start_event, end_event]}
+             [start_event, end_event], session}
         end
     end
+  end
+
+  defp execute_tool_target(%Tool{target: :session} = tool, args, %__MODULE__{} = session) do
+    case tool.execute.(args, session) do
+      {output, %__MODULE__{} = updated_session} -> {output, updated_session}
+      output -> {output, session}
+    end
+  end
+
+  defp execute_tool_target(%Tool{} = tool, args, %__MODULE__{} = session) do
+    {tool.execute.(args, session.execution_env), session}
   end
 
   defp normalize_arguments(arguments) when is_map(arguments), do: arguments
@@ -858,6 +903,174 @@ defmodule AttractorEx.Agent.Session do
   defp valid_argument_type?(value, "object"), do: is_map(value)
   defp valid_argument_type?(value, "array"), do: is_list(value)
   defp valid_argument_type?(_value, _type), do: true
+
+  defp spawn_subagent(%__MODULE__{} = session, %{"task" => task} = args) do
+    ensure_subagent_depth!(session)
+
+    child_profile = build_subagent_profile(session.provider_profile, Map.get(args, "model"))
+    child_env = build_subagent_environment(session.execution_env, Map.get(args, "working_dir"))
+    child_config = build_subagent_config(session.config, Map.get(args, "max_turns"))
+
+    child_session =
+      new(session.llm_client, child_profile,
+        execution_env: child_env,
+        config: Map.from_struct(child_config) |> Enum.to_list()
+      )
+      |> Map.put(:depth, session.depth + 1)
+      |> submit(task)
+
+    status = classify_subagent_status(child_session)
+    handle = %{id: child_session.id, session: child_session, status: status}
+
+    updated_session =
+      session
+      |> put_in([Access.key(:subagents), child_session.id], handle)
+      |> emit(:subagent_spawned, %{agent_id: child_session.id, status: status, task: task})
+
+    {Jason.encode!(%{agent_id: child_session.id, status: status}), updated_session}
+  end
+
+  defp send_subagent_input(%__MODULE__{} = session, %{
+         "agent_id" => agent_id,
+         "message" => message
+       }) do
+    handle = fetch_subagent!(session, agent_id)
+    ensure_subagent_open!(handle, agent_id)
+
+    child_session = submit(handle.session, message)
+    status = classify_subagent_status(child_session)
+    updated_handle = %{handle | session: child_session, status: status}
+
+    updated_session =
+      session
+      |> put_in([Access.key(:subagents), agent_id], updated_handle)
+      |> emit(:subagent_input_sent, %{agent_id: agent_id, status: status})
+
+    {Jason.encode!(%{agent_id: agent_id, status: status, accepted: true}), updated_session}
+  end
+
+  defp wait_on_subagent(%__MODULE__{} = session, %{"agent_id" => agent_id}) do
+    handle = fetch_subagent!(session, agent_id)
+    result = subagent_result(handle)
+
+    updated_session =
+      emit(session, :subagent_wait_completed, %{
+        agent_id: agent_id,
+        status: handle.status,
+        success: result.success
+      })
+
+    {Jason.encode!(result), updated_session}
+  end
+
+  defp close_subagent(%__MODULE__{} = session, %{"agent_id" => agent_id}) do
+    handle = fetch_subagent!(session, agent_id)
+    final_session = close(handle.session)
+    final_status = classify_subagent_status(final_session, handle.status)
+
+    updated_session =
+      session
+      |> emit(:subagent_closed, %{agent_id: agent_id, status: final_status})
+      |> update_in([Access.key(:subagents)], &Map.delete(&1, agent_id))
+
+    {Jason.encode!(%{agent_id: agent_id, status: final_status, closed: true}), updated_session}
+  end
+
+  defp ensure_subagent_depth!(%__MODULE__{} = session) do
+    if session.depth >= session.config.max_subagent_depth do
+      raise "subagent depth limit exceeded (max_subagent_depth=#{session.config.max_subagent_depth})"
+    end
+  end
+
+  defp build_subagent_profile(%ProviderProfile{} = profile, nil), do: profile
+  defp build_subagent_profile(%ProviderProfile{} = profile, model), do: %{profile | model: model}
+
+  defp build_subagent_environment(%LocalExecutionEnvironment{} = env, nil), do: env
+
+  defp build_subagent_environment(%LocalExecutionEnvironment{} = env, working_dir)
+       when is_binary(working_dir) do
+    root = LocalExecutionEnvironment.working_directory(env)
+
+    resolved =
+      if Path.type(working_dir) == :absolute do
+        Path.expand(working_dir)
+      else
+        Path.expand(working_dir, root)
+      end
+
+    unless String.starts_with?(resolved, root) do
+      raise "subagent working_dir must stay within the parent working directory"
+    end
+
+    %{env | working_dir: resolved}
+  end
+
+  defp build_subagent_environment(env, nil), do: env
+
+  defp build_subagent_environment(_env, _working_dir) do
+    raise "subagent working_dir override requires LocalExecutionEnvironment"
+  end
+
+  defp build_subagent_config(%SessionConfig{} = config, nil), do: config
+
+  defp build_subagent_config(%SessionConfig{} = config, max_turns),
+    do: %{config | max_turns: max_turns}
+
+  defp classify_subagent_status(%__MODULE__{} = child_session, fallback \\ nil) do
+    cond do
+      has_llm_error?(child_session) -> "failed"
+      has_tool_error?(child_session) -> "failed"
+      child_session.state == :closed and fallback == "completed" -> "completed"
+      child_session.state == :closed -> "failed"
+      true -> "completed"
+    end
+  end
+
+  defp subagent_result(%{id: agent_id, session: %__MODULE__{} = child_session, status: status}) do
+    %{
+      agent_id: agent_id,
+      status: status,
+      output: last_assistant_output(child_session),
+      success: status == "completed",
+      turns_used: count_turns(child_session)
+    }
+  end
+
+  defp fetch_subagent!(%__MODULE__{} = session, agent_id) do
+    case Map.get(session.subagents, agent_id) do
+      nil -> raise "unknown subagent: #{agent_id}"
+      handle -> handle
+    end
+  end
+
+  defp ensure_subagent_open!(%{session: %__MODULE__{state: :closed}}, agent_id) do
+    raise "subagent is closed: #{agent_id}"
+  end
+
+  defp ensure_subagent_open!(_handle, _agent_id), do: :ok
+
+  defp has_llm_error?(%__MODULE__{} = session) do
+    Enum.any?(session.history, fn
+      %{type: :system, content: content} -> String.starts_with?(content, "LLM error:")
+      _ -> false
+    end)
+  end
+
+  defp has_tool_error?(%__MODULE__{} = session) do
+    Enum.any?(session.history, fn
+      %{type: :tool_results, results: results} -> Enum.any?(results, & &1.is_error)
+      _ -> false
+    end)
+  end
+
+  defp last_assistant_output(%__MODULE__{} = session) do
+    session.history
+    |> Enum.reverse()
+    |> Enum.find_value("", fn
+      %{type: :assistant, content: content} -> content || ""
+      _ -> nil
+    end)
+  end
 
   defp maybe_set_idle(%__MODULE__{state: :closed} = session), do: session
   defp maybe_set_idle(%__MODULE__{} = session), do: set_state(session, :idle)

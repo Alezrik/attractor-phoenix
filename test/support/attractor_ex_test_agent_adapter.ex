@@ -161,6 +161,88 @@ defmodule AttractorExTest.AgentAdapter do
     response(system_prompt)
   end
 
+  defp do_complete("subagent_roundtrip", messages, request) do
+    case get_in(request.metadata || %{}, ["session_depth"]) do
+      1 ->
+        response("child:" <> last_user_text(messages))
+
+      _ ->
+        agent_id = extract_agent_id(messages)
+        tool_messages = tool_messages(messages)
+
+        cond do
+          tool_messages == [] ->
+            response("", [
+              %ToolCall{id: "sub-1", name: "spawn_agent", arguments: %{"task" => "inspect child"}}
+            ])
+
+          length(tool_messages) == 1 ->
+            response("", [
+              %ToolCall{
+                id: "sub-2",
+                name: "send_input",
+                arguments: %{"agent_id" => agent_id, "message" => "follow-up"}
+              }
+            ])
+
+          length(tool_messages) == 2 ->
+            response("", [
+              %ToolCall{id: "sub-3", name: "wait", arguments: %{"agent_id" => agent_id}}
+            ])
+
+          length(tool_messages) == 3 ->
+            response("", [
+              %ToolCall{id: "sub-4", name: "close_agent", arguments: %{"agent_id" => agent_id}}
+            ])
+
+          true ->
+            response("parent-subagent-complete")
+        end
+    end
+  end
+
+  defp do_complete("subagent_depth_limit", messages, request) do
+    case get_in(request.metadata || %{}, ["session_depth"]) do
+      1 ->
+        if has_tool_message?(messages) do
+          response("child-depth-limit-observed")
+        else
+          response("", [
+            %ToolCall{id: "nested-1", name: "spawn_agent", arguments: %{"task" => "too deep"}}
+          ])
+        end
+
+      _ ->
+        agent_id = extract_agent_id(messages)
+        tool_messages = tool_messages(messages)
+
+        cond do
+          tool_messages == [] ->
+            response("", [
+              %ToolCall{id: "parent-1", name: "spawn_agent", arguments: %{"task" => "nested"}}
+            ])
+
+          length(tool_messages) == 1 ->
+            response("", [
+              %ToolCall{id: "parent-2", name: "wait", arguments: %{"agent_id" => agent_id}}
+            ])
+
+          true ->
+            response("parent-depth-limit-complete")
+        end
+    end
+  end
+
+  defp do_complete("subagent_unknown_wait", messages, _request) do
+    if has_tool_message?(messages) do
+      response("recovered-after-missing-subagent")
+    else
+      response("", [
+        %ToolCall{id: "missing-1", name: "wait", arguments: %{"agent_id" => "missing"}}
+      ])
+    end
+  end
+
   defp do_complete("invalid_tool_calls_shape", _messages, _request) do
     response("shape-done", %{})
   end
@@ -173,6 +255,22 @@ defmodule AttractorExTest.AgentAdapter do
 
   defp has_tool_message?(messages) do
     Enum.any?(messages, fn msg -> msg.role == :tool end)
+  end
+
+  defp tool_messages(messages) do
+    Enum.filter(messages, fn msg -> msg.role == :tool end)
+  end
+
+  defp extract_agent_id(messages) do
+    messages
+    |> tool_messages()
+    |> Enum.reverse()
+    |> Enum.find_value("", fn msg ->
+      case Regex.run(~r/"agent_id":"([^"]+)"/, msg.content || "", capture: :all_but_first) do
+        [agent_id] -> agent_id
+        _ -> nil
+      end
+    end)
   end
 
   defp last_user_text(messages) do

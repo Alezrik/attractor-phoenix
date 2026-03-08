@@ -111,6 +111,7 @@ defmodule AttractorPhoenix.MixProject do
 
   defp docs do
     [
+      output: "docs",
       main: "overview",
       source_ref: "main",
       source_url: "https://github.com/Alezrik/attractor-phoenix",

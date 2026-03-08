@@ -90,6 +90,15 @@ defmodule AttractorEx.Agent.BuiltinToolsTest do
     assert Enum.map(BuiltinTools.for_provider(:gemini), & &1.name) != []
   end
 
+  test "built-in bundle includes session-managed subagent tools" do
+    tools = tools_by_name(BuiltinTools.for_provider(:default))
+
+    assert tools["spawn_agent"].target == :session
+    assert tools["send_input"].target == :session
+    assert tools["wait"].target == :session
+    assert tools["close_agent"].target == :session
+  end
+
   test "built-in tools surface non-timeout environment failures" do
     tools = tools_by_name(BuiltinTools.for_provider(:default))
 

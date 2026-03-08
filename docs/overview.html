@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.40.1">
+    <meta name="project" content="attractor_phoenix v0.1.0">
+
+
+    <title>AttractorEx Overview — attractor_phoenix v0.1.0</title>
+
+    <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
+
+    <script defer src="dist/sidebar_items-ED94E38E.js"></script>
+    <script defer src="docs_config.js"></script>
+    <script defer src="dist/html-YU4BZFVS.js"></script>
+
+  </head>
+  <body>
+    <script>(()=>{var t="ex_doc:settings",e="dark";var o="dark",s="light";var E="sidebar_state",n="closed";var r="sidebar_width";var a="sidebar-open";var i=new URLSearchParams(window.location.search),S=i.get("theme")||JSON.parse(localStorage.getItem(t)||"{}").theme;(S===o||S!==s&&window.matchMedia("(prefers-color-scheme: dark)").matches)&&document.body.classList.add(e);var d=sessionStorage.getItem(E),A=d!==n&&!window.matchMedia(`screen and (max-width: ${768}px)`).matches;document.body.classList.toggle(a,A);var c=sessionStorage.getItem(r);c&&document.body.style.setProperty("--sidebarWidth",`${c}px`);var p=/(Macintosh|iPhone|iPad|iPod)/.test(window.navigator.userAgent);document.documentElement.classList.toggle("apple-os",p);})();
+</script>
+
+<div class="body-wrapper">
+
+<button id="sidebar-menu" class="sidebar-button sidebar-toggle" aria-label="toggle sidebar" aria-controls="sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<nav id="sidebar" class="sidebar">
+
+  <div class="sidebar-header">
+    <div class="sidebar-projectInfo">
+
+        <a href="https://github.com/Alezrik/attractor-phoenix" class="sidebar-projectImage">
+          <img src="assets/logo.svg" alt="attractor_phoenix" />
+        </a>
+
+      <div>
+        <a href="https://github.com/Alezrik/attractor-phoenix" class="sidebar-projectName" translate="no">
+attractor_phoenix
+        </a>
+        <div class="sidebar-projectVersion" translate="no">
+          v0.1.0
+        </div>
+      </div>
+    </div>
+    <ul id="sidebar-list-nav" class="sidebar-list-nav" role="tablist" data-extras="Pages"></ul>
+  </div>
+</nav>
+
+<output role="status" id="toast"></output>
+
+<main class="content page-extra" id="main" data-type="extras">
+  <div id="content" class="content-inner">
+    <div class="top-search">
+      <div class="search-settings">
+        <form class="search-bar" action="search.html">
+          <label class="search-label">
+            <span class="sr-only">Search documentation of attractor_phoenix</span>
+            <div class="search-input-wrapper">
+              <input name="q" type="text" class="search-input" placeholder="Press / to search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <button type="button" tabindex="-1" class="search-close-button" aria-hidden="true">
+                <i class="ri-close-line ri-lg" title="Cancel search"></i>
+              </button>
+            </div>
+          </label>
+        </form>
+        <div class="autocomplete">
+        </div>
+        <div class="engine-selector" data-multiple="false">
+          <button type="button" class="engine-button" aria-label="Select search engine" aria-haspopup="true" aria-expanded="false">
+            <i class="ri-search-2-line" aria-hidden="true"></i>
+            <span class="engine-name">Default</span>
+            <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+          </button>
+          <div class="engine-dropdown" hidden role="menu">
+
+              <button type="button"
+                      class="engine-option"
+                      data-engine-url="search.html?q="
+                      role="menuitemradio"
+                      aria-checked="true">
+                <span class="name">Default</span>
+                <span class="help">In-browser search</span>
+              </button>
+
+          </div>
+        </div>
+        <button class="icon-settings display-settings">
+          <i class="ri-settings-3-line"></i>
+          <span class="sr-only">Settings</span>
+        </button>
+      </div>
+    </div>
+
+<div id="top-content">
+  <div class="heading-with-actions top-heading">
+    <h1>AttractorEx Overview</h1>
+
+<a href="overview.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+  <i class="ri-markdown-line" aria-hidden="true"></i>
+  <span class="sr-only">Copy Markdown</span>
+</a>
+
+
+      <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/docs/overview.md#L1" title="View Source" class="icon-action" rel="help">
+        <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        <span class="sr-only">View Source</span>
+      </a>
+
+  </div>
+
+
+<p><a href="AttractorEx.html"><code class="inline">AttractorEx</code></a> is the standalone pipeline engine embedded in this Phoenix project. It implements a practical, execution-oriented subset of the <a href="https://github.com/strongdm/attractor/blob/main/attractor-spec.md">strongDM Attractor specification</a> and extends it with an HTTP control plane, human-in-the-loop adapters, a unified LLM client layer, and a coding-agent session model.</p><h2 id="what-it-does" class="section-heading"><a href="#what-it-does" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">What It Does</span></h2><p>At a high level, <a href="AttractorEx.html"><code class="inline">AttractorEx</code></a> turns DOT graphs into executable workflows:</p><ol><li>Parse a DOT graph into a normalized runtime model.</li><li>Validate structural, routing, and handler-specific constraints.</li><li>Execute nodes from <code class="inline">start</code> to <code class="inline">exit</code>.</li><li>Route across edges by condition, status, preferred labels, or suggested next IDs.</li><li>Persist status artifacts, checkpoints, and per-stage outputs.</li></ol><h2 id="architecture" class="section-heading"><a href="#architecture" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Architecture</span></h2><p>The library is organized into a small set of focused layers:</p><table><thead><tr><th style="text-align: left;">Layer</th><th style="text-align: left;">Main modules</th><th style="text-align: left;">Responsibility</th></tr></thead><tbody><tr><td style="text-align: left;">Entry points</td><td style="text-align: left;"><a href="AttractorEx.html"><code class="inline">AttractorEx</code></a>, <a href="AttractorEx.Engine.html"><code class="inline">AttractorEx.Engine</code></a></td><td style="text-align: left;">Public API and execution orchestration</td></tr><tr><td style="text-align: left;">DOT model</td><td style="text-align: left;"><a href="AttractorEx.Parser.html"><code class="inline">AttractorEx.Parser</code></a>, <a href="AttractorEx.Graph.html"><code class="inline">AttractorEx.Graph</code></a>, <a href="AttractorEx.Node.html"><code class="inline">AttractorEx.Node</code></a>, <a href="AttractorEx.Edge.html"><code class="inline">AttractorEx.Edge</code></a></td><td style="text-align: left;">Parse and normalize the graph</td></tr><tr><td style="text-align: left;">Validation</td><td style="text-align: left;"><a href="AttractorEx.Validator.html"><code class="inline">AttractorEx.Validator</code></a>, <a href="AttractorEx.Condition.html"><code class="inline">AttractorEx.Condition</code></a>, <a href="AttractorEx.ModelStylesheet.html"><code class="inline">AttractorEx.ModelStylesheet</code></a></td><td style="text-align: left;">Linting, schema checks, and selector-based styling</td></tr><tr><td style="text-align: left;">Runtime handlers</td><td style="text-align: left;"><a href="AttractorEx.HandlerRegistry.html"><code class="inline">AttractorEx.HandlerRegistry</code></a>, <code class="inline">AttractorEx.Handlers.*</code></td><td style="text-align: left;">Node execution semantics</td></tr><tr><td style="text-align: left;">Human gates</td><td style="text-align: left;"><a href="AttractorEx.HumanGate.html"><code class="inline">AttractorEx.HumanGate</code></a>, <a href="AttractorEx.Interviewer.html"><code class="inline">AttractorEx.Interviewer</code></a>, <code class="inline">AttractorEx.Interviewers.*</code></td><td style="text-align: left;"><code class="inline">wait.human</code> workflows and answer normalization</td></tr><tr><td style="text-align: left;">HTTP service</td><td style="text-align: left;"><a href="AttractorEx.HTTP.html"><code class="inline">AttractorEx.HTTP</code></a>, <a href="AttractorEx.HTTP.Manager.html"><code class="inline">AttractorEx.HTTP.Manager</code></a>, <a href="AttractorEx.HTTP.Router.html"><code class="inline">AttractorEx.HTTP.Router</code></a></td><td style="text-align: left;">Remote pipeline execution and SSE updates</td></tr><tr><td style="text-align: left;">Unified LLM</td><td style="text-align: left;"><code class="inline">AttractorEx.LLM.*</code></td><td style="text-align: left;">Provider-agnostic completion and streaming</td></tr><tr><td style="text-align: left;">Agent loop</td><td style="text-align: left;"><code class="inline">AttractorEx.Agent.*</code></td><td style="text-align: left;">Spec-inspired coding-agent session primitives</td></tr></tbody></table><h2 id="core-execution-flow" class="section-heading"><a href="#core-execution-flow" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Core Execution Flow</span></h2><p><a href="AttractorEx.html#run/3"><code class="inline">AttractorEx.run/3</code></a> follows the same broad lifecycle documented in the upstream spec:</p><ol><li>Parse DOT input.</li><li>Apply built-in and custom graph transforms.</li><li>Validate the transformed graph.</li><li>Create a run directory and manifest.</li><li>Execute node handlers one step at a time.</li><li>Write <code class="inline">status.json</code> and <code class="inline">checkpoint.json</code> artifacts.</li><li>Emit structured events for observers and the HTTP service.</li></ol><h2 id="output-artifacts" class="section-heading"><a href="#output-artifacts" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Output Artifacts</span></h2><p>Each run writes runtime artifacts under the configured logs root:</p><ul><li><code class="inline">manifest.json</code> for run metadata.</li><li><code class="inline">checkpoint.json</code> for resumable state.</li><li><code class="inline">status.json</code> for per-stage and final outcome serialization.</li><li>Handler-specific files such as <code class="inline">prompt.md</code>, <code class="inline">response.md</code>, and tool hook logs.</li></ul><h2 id="reading-the-docs" class="section-heading"><a href="#reading-the-docs" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Reading The Docs</span></h2><p>The rest of this documentation is structured to match how the code is used:</p><ul><li><a href="pipeline-engine.html">Pipeline Engine</a> for graph execution semantics.</li><li><a href="human-in-the-loop.html">Human-in-the-Loop</a> for <code class="inline">wait.human</code> flows.</li><li><a href="http-api.html">HTTP API</a> for service mode and transport contracts.</li><li><a href="agent-loop.html">Agent Loop</a> for coding-agent session primitives.</li><li><a href="spec-alignment.html">Spec Alignment</a> for implementation status against the upstream documents.</li></ul><p>For source-level details, browse the grouped module documentation in the sidebar.</p>
+
+</div>
+
+<div class="bottom-actions" id="bottom-actions">
+  <div class="bottom-actions-item">
+
+  </div>
+  <div class="bottom-actions-item">
+
+      <a href="pipeline-engine.html" class="bottom-actions-button" rel="next">
+        <span class="subheader">
+          Next Page →
+        </span>
+        <span class="title">
+Pipeline Engine
+        </span>
+      </a>
+
+  </div>
+</div>
+    <footer class="footer">
+
+        <p>
+
+          <span class="line">
+            <button class="a-main footer-button display-quick-switch" title="Go to package docs">
+              Go to package docs
+            </button>
+
+              <a href="llms.txt" target="_blank">
+                View llms.txt
+              </a>
+
+
+              <a href="attractor_phoenix.epub">
+                Download ePub version
+              </a>
+
+          </span>
+        </p>
+
+        <p class="built-using">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.40.1) for the
+
+            <a href="https://elixir-lang.org" title="Elixir" target="_blank" translate="no">Elixir programming language</a>
+
+        </p>
+
+
+    </footer>
+  </div>
+</main>
+</div>
+
+  </body>
+</html>

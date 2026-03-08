@@ -2,6 +2,7 @@ defmodule AttractorEx.Agent.SessionTest do
   use ExUnit.Case, async: true
 
   alias AttractorEx.Agent.{
+    BuiltinTools,
     LocalExecutionEnvironment,
     ProviderProfile,
     Session,
@@ -243,6 +244,53 @@ defmodule AttractorEx.Agent.SessionTest do
 
     assert elapsed_us < 520_000
     assert last_assistant_text(completed) == "parallel-done"
+  end
+
+  test "subagent tools spawn, continue, wait, and close child sessions" do
+    session = build_session("subagent_roundtrip", BuiltinTools.for_provider(:default))
+    completed = Session.submit(session, "delegate")
+
+    assert last_assistant_text(completed) == "parent-subagent-complete"
+    assert completed.subagents == %{}
+    assert Enum.any?(completed.events, &(&1.kind == :subagent_spawned))
+    assert Enum.any?(completed.events, &(&1.kind == :subagent_input_sent))
+    assert Enum.any?(completed.events, &(&1.kind == :subagent_wait_completed))
+    assert Enum.any?(completed.events, &(&1.kind == :subagent_closed))
+
+    tool_turns = Enum.filter(completed.history, &(&1.type == :tool_results))
+    wait_result = tool_turns |> Enum.at(2) |> Map.fetch!(:results) |> hd()
+    decoded = Jason.decode!(wait_result.content)
+
+    assert decoded["success"]
+    assert decoded["output"] == "child:follow-up"
+    assert decoded["turns_used"] > 0
+  end
+
+  test "subagents enforce configured maximum depth" do
+    session = build_session("subagent_depth_limit", BuiltinTools.for_provider(:default))
+    completed = Session.submit(session, "delegate")
+
+    assert last_assistant_text(completed) == "parent-depth-limit-complete"
+
+    tool_turns = Enum.filter(completed.history, &(&1.type == :tool_results))
+    wait_result = tool_turns |> Enum.at(1) |> Map.fetch!(:results) |> hd() |> Map.fetch!(:content)
+    decoded = Jason.decode!(wait_result)
+
+    refute decoded["success"]
+    assert decoded["output"] == "child-depth-limit-observed"
+  end
+
+  test "missing subagent errors are returned as tool failures and model can recover" do
+    session = build_session("subagent_unknown_wait", BuiltinTools.for_provider(:default))
+    completed = Session.submit(session, "missing")
+
+    assert last_assistant_text(completed) == "recovered-after-missing-subagent"
+
+    tool_turn = Enum.find(completed.history, &(&1.type == :tool_results))
+    [result] = tool_turn.results
+
+    assert result.is_error
+    assert result.content =~ "unknown subagent"
   end
 
   test "tool output truncation applies character and line limits" do

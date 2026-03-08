@@ -3,7 +3,9 @@ defmodule AttractorEx.Agent.BuiltinTools do
   Built-in coding-agent tools backed by an `ExecutionEnvironment`.
 
   These tools provide a provider-neutral baseline toolset that can be attached
-  to provider profiles such as OpenAI, Anthropic, and Gemini.
+  to provider profiles such as OpenAI, Anthropic, and Gemini. Filesystem and
+  shell tools run against the execution environment, while subagent tools are
+  session-managed and operate on child `AttractorEx.Agent.Session` instances.
   """
 
   alias AttractorEx.Agent.{ExecutionEnvironment, Tool}
@@ -18,7 +20,11 @@ defmodule AttractorEx.Agent.BuiltinTools do
       list_directory_tool(),
       glob_tool(),
       grep_tool(),
-      shell_command_tool()
+      shell_command_tool(),
+      spawn_agent_tool(),
+      send_input_tool(),
+      wait_tool(),
+      close_agent_tool()
     ]
 
     case provider do
@@ -177,6 +183,82 @@ defmodule AttractorEx.Agent.BuiltinTools do
           {:error, reason} ->
             raise "shell_command failed: #{inspect(reason)}"
         end
+      end
+    }
+  end
+
+  defp spawn_agent_tool do
+    %Tool{
+      name: "spawn_agent",
+      description: "Spawn a subagent to handle a scoped task autonomously.",
+      parameters: %{
+        "type" => "object",
+        "properties" => %{
+          "task" => %{"type" => "string"},
+          "working_dir" => %{"type" => "string"},
+          "model" => %{"type" => "string"},
+          "max_turns" => %{"type" => "integer"}
+        },
+        "required" => ["task"]
+      },
+      target: :session,
+      execute: fn args, session ->
+        AttractorEx.Agent.Session.run_subagent_tool(session, "spawn_agent", args)
+      end
+    }
+  end
+
+  defp send_input_tool do
+    %Tool{
+      name: "send_input",
+      description: "Send a message to a running subagent.",
+      parameters: %{
+        "type" => "object",
+        "properties" => %{
+          "agent_id" => %{"type" => "string"},
+          "message" => %{"type" => "string"}
+        },
+        "required" => ["agent_id", "message"]
+      },
+      target: :session,
+      execute: fn args, session ->
+        AttractorEx.Agent.Session.run_subagent_tool(session, "send_input", args)
+      end
+    }
+  end
+
+  defp wait_tool do
+    %Tool{
+      name: "wait",
+      description: "Wait for a subagent to complete and return its result.",
+      parameters: %{
+        "type" => "object",
+        "properties" => %{
+          "agent_id" => %{"type" => "string"}
+        },
+        "required" => ["agent_id"]
+      },
+      target: :session,
+      execute: fn args, session ->
+        AttractorEx.Agent.Session.run_subagent_tool(session, "wait", args)
+      end
+    }
+  end
+
+  defp close_agent_tool do
+    %Tool{
+      name: "close_agent",
+      description: "Terminate a subagent.",
+      parameters: %{
+        "type" => "object",
+        "properties" => %{
+          "agent_id" => %{"type" => "string"}
+        },
+        "required" => ["agent_id"]
+      },
+      target: :session,
+      execute: fn args, session ->
+        AttractorEx.Agent.Session.run_subagent_tool(session, "close_agent", args)
       end
     }
   end
