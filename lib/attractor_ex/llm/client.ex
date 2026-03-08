@@ -461,7 +461,7 @@ defmodule AttractorEx.LLM.Client do
     %{usage | total_tokens: total}
   end
 
-  defp decode_json_response(%Response{text: text}) when is_binary(text) do
+  defp decode_json_response(%Response{text: text}) do
     case Jason.decode(text) do
       {:ok, value} when is_map(value) or is_list(value) ->
         {:ok, value}
@@ -473,8 +473,6 @@ defmodule AttractorEx.LLM.Client do
         {:error, {:invalid_json_response, Exception.message(reason)}}
     end
   end
-
-  defp decode_json_response(_response), do: {:error, :empty_json_response}
 
   defp config_to_map(config) when is_list(config), do: Enum.into(config, %{})
   defp config_to_map(config) when is_map(config), do: config
