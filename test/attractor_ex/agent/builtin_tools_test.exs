@@ -32,7 +32,7 @@ defmodule AttractorEx.Agent.BuiltinToolsTest do
     shell_output =
       run_tool(
         tools["shell_command"],
-        %{"command" => "Write-Output 'hello shell'", "timeout_ms" => 1_000},
+        %{"command" => shell_echo_command("hello shell"), "timeout_ms" => 1_000},
         env
       )
 
@@ -163,5 +163,12 @@ defmodule AttractorEx.Agent.BuiltinToolsTest do
     File.mkdir_p!(root)
     File.write!(Path.join(root, "seed.txt"), "seed")
     root
+  end
+
+  defp shell_echo_command(text) do
+    case :os.type() do
+      {:win32, _} -> "Write-Output '#{text}'"
+      _ -> "printf '%s\\n' '#{text}'"
+    end
   end
 end

@@ -42,7 +42,9 @@ defmodule AttractorEx.Agent.PrimitivesTest do
     assert Enum.any?(matches, &(&1.path == "nested/example.txt"))
 
     assert {:ok, %{exit_code: 0, output: output}} =
-             ExecutionEnvironment.shell_command(env, "Write-Output 'hi from shell'",
+             ExecutionEnvironment.shell_command(
+               env,
+               shell_echo_command("hi from shell"),
                timeout_ms: 1_000
              )
 
@@ -62,7 +64,7 @@ defmodule AttractorEx.Agent.PrimitivesTest do
     assert {:ok, %{truncated?: true, output: output}} =
              ExecutionEnvironment.shell_command(
                env,
-               "Write-Output ('x' * 200)",
+               shell_repeat_command(200),
                timeout_ms: 1_000,
                max_output_bytes: 20
              )
@@ -80,7 +82,7 @@ defmodule AttractorEx.Agent.PrimitivesTest do
     assert {:error, :timeout} =
              ExecutionEnvironment.shell_command(
                env,
-               "Start-Sleep -Milliseconds 200",
+               shell_sleep_command(200),
                timeout_ms: 1
              )
 
@@ -181,5 +183,26 @@ defmodule AttractorEx.Agent.PrimitivesTest do
     assert prompt =~ "AvailableTools=read_file, shell_command"
     assert prompt =~ "FILE /tmp/project/AGENTS.md"
     assert prompt =~ "Follow repo rules"
+  end
+
+  defp shell_echo_command(text) do
+    case :os.type() do
+      {:win32, _} -> "Write-Output '#{text}'"
+      _ -> "printf '%s\\n' '#{text}'"
+    end
+  end
+
+  defp shell_repeat_command(count) do
+    case :os.type() do
+      {:win32, _} -> "Write-Output ('x' * #{count})"
+      _ -> "printf 'x%.0s' $(seq 1 #{count})"
+    end
+  end
+
+  defp shell_sleep_command(milliseconds) do
+    case :os.type() do
+      {:win32, _} -> "Start-Sleep -Milliseconds #{milliseconds}"
+      _ -> "sleep #{milliseconds / 1000}"
+    end
   end
 end
