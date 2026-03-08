@@ -140,6 +140,173 @@ defmodule AttractorEx.HandlersTest do
       assert get_in(outcome.context_updates, ["llm", "provider"]) == "openai"
     end
 
+    test "codergen supports label fallback opts model/provider and numeric attrs" do
+      node =
+        Node.new("plan", %{
+          "shape" => "box",
+          "label" => "Plan for $goal",
+          "llm_model" => "   ",
+          "llm_provider" => "   ",
+          "max_tokens" => 128,
+          "temperature" => 1
+        })
+
+      graph = %{attrs: %{"goal" => "release"}}
+      stage_dir = unique_stage_dir("codergen_opts_fallback")
+
+      llm_client = %Client{
+        providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
+        default_provider: "openai"
+      }
+
+      outcome =
+        AttractorEx.Handlers.Codergen.execute(node, %{}, graph, stage_dir,
+          llm_client: llm_client,
+          llm_model: "gpt-5.2",
+          llm_provider: "openai"
+        )
+
+      assert outcome.status == :success
+      assert File.read!(Path.join(stage_dir, "prompt.md")) == "Plan for release"
+      assert get_in(outcome.context_updates, ["llm", "provider"]) == "openai"
+      assert get_in(outcome.context_updates, ["llm", "model"]) == "gpt-5.2"
+    end
+
+    test "codergen fails when llm adapter returns an unexpected response shape" do
+      node = Node.new("plan", %{"shape" => "box", "prompt" => "Plan", "llm_model" => "gpt-5.2"})
+      graph = %{attrs: %{}}
+
+      llm_client = %Client{
+        providers: %{"openai" => AttractorExTest.BadLLMAdapter},
+        default_provider: "openai"
+      }
+
+      outcome =
+        AttractorEx.Handlers.Codergen.execute(
+          node,
+          %{},
+          graph,
+          unique_stage_dir("codergen_bad_response"),
+          llm_client: llm_client
+        )
+
+      assert outcome.status == :fail
+      assert outcome.failure_reason =~ "Unexpected LLM client response"
+    end
+
+    test "codergen surfaces llm client errors" do
+      node =
+        Node.new("plan", %{
+          "shape" => "box",
+          "prompt" => "Plan",
+          "llm_model" => "gpt-5.2",
+          "llm_provider" => "openai"
+        })
+
+      llm_client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMErrorAdapter},
+        default_provider: "openai"
+      }
+
+      outcome =
+        AttractorEx.Handlers.Codergen.execute(
+          node,
+          %{},
+          %{attrs: %{}},
+          unique_stage_dir("codergen_llm_error"),
+          llm_client: llm_client
+        )
+
+      assert outcome.status == :fail
+      assert outcome.failure_reason =~ ":upstream_error"
+    end
+
+    test "codergen normalizes invalid numeric attrs to nil for llm requests" do
+      node =
+        Node.new("plan", %{
+          "shape" => "box",
+          "prompt" => "Plan",
+          "llm_model" => "gpt-5.2",
+          "llm_provider" => "  openai  ",
+          "max_tokens" => "bogus",
+          "temperature" => "oops",
+          "provider_options" => nil
+        })
+
+      graph = %{attrs: %{}}
+      stage_dir = unique_stage_dir("codergen_llm_numeric_fallbacks")
+
+      llm_client = %Client{
+        providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
+        default_provider: "openai"
+      }
+
+      outcome =
+        AttractorEx.Handlers.Codergen.execute(node, %{}, graph, stage_dir, llm_client: llm_client)
+
+      assert outcome.status == :success
+      assert get_in(outcome.context_updates, ["llm", "provider"]) == "openai"
+      assert get_in(outcome.context_updates, ["llm", "model"]) == "gpt-5.2"
+      assert get_in(outcome.context_updates, ["llm", "usage", "total_tokens"]) == 150
+    end
+
+    test "codergen accepts float temperature and ignores non-numeric attr values" do
+      node =
+        Node.new("plan", %{
+          "shape" => "box",
+          "prompt" => "Plan",
+          "llm_model" => "gpt-5.2",
+          "llm_provider" => "openai",
+          "max_tokens" => %{"bad" => true},
+          "temperature" => 0.25
+        })
+
+      llm_client = %Client{
+        providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
+        default_provider: "openai"
+      }
+
+      outcome =
+        AttractorEx.Handlers.Codergen.execute(
+          node,
+          %{},
+          %{attrs: %{}},
+          unique_stage_dir("codergen_float_temperature"),
+          llm_client: llm_client
+        )
+
+      assert outcome.status == :success
+      assert get_in(outcome.context_updates, ["llm", "provider"]) == "openai"
+    end
+
+    test "codergen ignores unsupported temperature value types" do
+      node =
+        Node.new("plan", %{
+          "shape" => "box",
+          "prompt" => "Plan",
+          "llm_model" => "gpt-5.2",
+          "llm_provider" => "openai",
+          "temperature" => [:oops]
+        })
+
+      llm_client = %Client{
+        providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
+        default_provider: "openai"
+      }
+
+      outcome =
+        AttractorEx.Handlers.Codergen.execute(
+          node,
+          %{},
+          %{attrs: %{}},
+          unique_stage_dir("codergen_bad_temperature_type"),
+          llm_client: llm_client
+        )
+
+      assert outcome.status == :success
+      assert get_in(outcome.context_updates, ["llm", "model"]) == "gpt-5.2"
+    end
+
     test "wait_for_human returns retry when no answer is provided" do
       node = Node.new("gate", %{"type" => "wait.human"})
       graph = %Graph{edges: [Edge.new("gate", "done", %{"label" => "[Y] Continue"})]}
@@ -154,6 +321,39 @@ defmodule AttractorEx.HandlersTest do
         )
 
       assert outcome.status == :retry
+    end
+
+    test "wait_for_human retries when blank or timeout answers have invalid defaults" do
+      node =
+        Node.new("gate", %{
+          "type" => "wait.human",
+          "human.default_choice" => "missing"
+        })
+
+      graph = %Graph{edges: [Edge.new("gate", "done", %{"label" => "[Y] Continue"})]}
+
+      blank_outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{"human" => %{"answers" => %{"gate" => ""}}},
+          graph,
+          unique_stage_dir("human_blank_invalid_default_explicit"),
+          []
+        )
+
+      timeout_outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{"human" => %{"answers" => %{"gate" => "timeout"}}},
+          graph,
+          unique_stage_dir("human_timeout_invalid_default_explicit"),
+          []
+        )
+
+      assert blank_outcome.status == :retry
+      assert blank_outcome.failure_reason =~ "no valid default"
+      assert timeout_outcome.status == :retry
+      assert timeout_outcome.failure_reason =~ "no valid default"
     end
 
     test "wait_for_human picks answer and sets suggested_next_ids/context updates" do
@@ -249,6 +449,23 @@ defmodule AttractorEx.HandlersTest do
           %{"human" => %{"gate" => %{"answer" => "S"}}},
           graph,
           unique_stage_dir("human_legacy_answer"),
+          []
+        )
+
+      assert outcome.status == :success
+      assert outcome.suggested_next_ids == ["ship_it"]
+    end
+
+    test "wait_for_human accepts structured answers with explicit destination payloads" do
+      node = Node.new("gate", %{"type" => "wait.human"})
+      graph = %Graph{edges: [Edge.new("gate", "ship_it", %{"label" => "[S] Ship"})]}
+
+      outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{"human" => %{"answers" => %{"gate" => %{"to" => "ship_it", "key" => "S"}}}},
+          graph,
+          unique_stage_dir("human_structured_to"),
           []
         )
 
@@ -436,6 +653,40 @@ defmodule AttractorEx.HandlersTest do
              ]
     end
 
+    test "wait_for_human multi-select ignores nil answers and falls back to first match when none resolve" do
+      node = Node.new("gate", %{"type" => "wait.human", "human.multiple" => true})
+
+      graph = %Graph{
+        edges: [
+          Edge.new("gate", "ship_it", %{"label" => "[S] Ship"}),
+          Edge.new("gate", "fixes", %{"label" => "[F] Fix"})
+        ]
+      }
+
+      partial_outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{"human" => %{"answers" => %{"gate" => [nil, "S"]}}},
+          graph,
+          unique_stage_dir("human_multiple_nil"),
+          []
+        )
+
+      fallback_outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{"human" => %{"answers" => %{"gate" => [%{"answer" => "unknown"}]}}},
+          graph,
+          unique_stage_dir("human_multiple_first_choice"),
+          []
+        )
+
+      assert partial_outcome.status == :success
+      assert partial_outcome.suggested_next_ids == ["ship_it"]
+      assert fallback_outcome.status == :success
+      assert fallback_outcome.suggested_next_ids == ["ship_it"]
+    end
+
     test "wait_for_human uses ask_multiple when human.multiple is enabled" do
       node = Node.new("gate", %{"type" => "wait.human", "human.multiple" => "yes"})
 
@@ -512,6 +763,41 @@ defmodule AttractorEx.HandlersTest do
 
       assert outcome.status == :success
       assert outcome.suggested_next_ids == ["ship_it"]
+    end
+
+    test "wait_for_human multi-select wraps list answers and preserves timeout passthrough from ask-only interviewers" do
+      node = Node.new("gate", %{"type" => "wait.human", "human.multiple" => true})
+
+      graph = %Graph{
+        edges: [
+          Edge.new("gate", "ship_it", %{"label" => "[S] Ship"}),
+          Edge.new("gate", "fixes", %{"label" => "[F] Fix"})
+        ]
+      }
+
+      list_outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{},
+          graph,
+          unique_stage_dir("human_multiple_ask_list"),
+          interviewer: AttractorExTest.AskOnlyInterviewer,
+          answer: ["S", "F"]
+        )
+
+      timeout_outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{},
+          graph,
+          unique_stage_dir("human_multiple_ask_timeout"),
+          interviewer: AttractorExTest.AskOnlyTimeoutInterviewer
+        )
+
+      assert list_outcome.status == :success
+      assert list_outcome.suggested_next_ids == ["ship_it", "fixes"]
+      assert timeout_outcome.status == :retry
+      assert timeout_outcome.failure_reason =~ "timeout"
     end
 
     test "wait_for_human multi-select uses default choice for empty or timeout lists" do
@@ -615,6 +901,40 @@ defmodule AttractorEx.HandlersTest do
 
       assert outcome.status == :retry
       assert outcome.failure_reason =~ "timeout"
+    end
+
+    test "wait_for_human supports console interviewer and raw interviewer return values" do
+      node = Node.new("gate", %{"type" => "wait.human"})
+      graph = %Graph{edges: [Edge.new("gate", "ship_it", %{"label" => "[S] Ship"})]}
+
+      console_outcome =
+        ExUnit.CaptureIO.capture_io("S\n", fn ->
+          AttractorEx.Handlers.WaitForHuman.execute(
+            node,
+            %{},
+            graph,
+            unique_stage_dir("human_console_interviewer"),
+            interviewer: :console
+          )
+        end)
+
+      assert console_outcome =~ "Select a choice for human gate"
+
+      callback = fn _node, _choices, _ctx -> "S" end
+
+      callback_outcome =
+        AttractorEx.Handlers.WaitForHuman.execute(
+          node,
+          %{},
+          graph,
+          unique_stage_dir("human_callback_raw_value"),
+          interviewer: :callback,
+          callback: callback,
+          callback_inform: fn _node, _payload, _ctx -> :ok end
+        )
+
+      assert callback_outcome.status == :success
+      assert callback_outcome.suggested_next_ids == ["ship_it"]
     end
 
     test "wait_for_human maps interviewer skip to failure" do
@@ -754,6 +1074,138 @@ defmodule AttractorEx.HandlersTest do
 
       assert outcome.status == :fail
       assert outcome.failure_reason =~ "Tool command failed"
+    end
+
+    test "tool handler accepts command attr alias and records hook failures in notes" do
+      stage_dir = unique_stage_dir("tool_command_alias")
+
+      failing_hook =
+        case :os.type() do
+          {:win32, _} -> "exit /b 9"
+          _ -> "exit 9"
+        end
+
+      node = Node.new("tool_alias", %{"shape" => "parallelogram", "command" => "echo alias-ok"})
+
+      graph = %Graph{
+        attrs: %{
+          "tool_hooks.pre" => failing_hook,
+          "tool_hooks.post" => failing_hook
+        }
+      }
+
+      outcome = AttractorEx.Handlers.Tool.execute(node, %{}, graph, stage_dir, [])
+
+      assert outcome.status == :success
+      assert outcome.notes =~ "pre hook hook failed (9)"
+      assert outcome.notes =~ "post hook hook failed (9)"
+      assert get_in(outcome.context_updates, ["tools", "tool_alias"]) =~ "alias-ok"
+    end
+
+    test "tool handler passes failure details into post-hook environment" do
+      stage_dir = unique_stage_dir("tool_hook_failure_env")
+
+      hook =
+        case :os.type() do
+          {:win32, _} ->
+            "echo %ATTRACTOR_TOOL_STATUS%^|%ATTRACTOR_TOOL_ERROR%"
+
+          _ ->
+            "printf '%s|%s\\n' \"$ATTRACTOR_TOOL_STATUS\" \"$ATTRACTOR_TOOL_ERROR\""
+        end
+
+      cmd =
+        case :os.type() do
+          {:win32, _} -> "cmd /c exit /b 3"
+          _ -> "sh -lc 'exit 3'"
+        end
+
+      node = Node.new("tool_fail_env", %{"shape" => "parallelogram", "tool_command" => cmd})
+      graph = %Graph{attrs: %{"tool_hooks.post" => hook}}
+
+      outcome = AttractorEx.Handlers.Tool.execute(node, %{}, graph, stage_dir, [])
+
+      assert outcome.status == :fail
+      assert File.read!(Path.join(stage_dir, "tool_hook_post.log")) =~ "fail|Tool command failed"
+    end
+
+    test "tool handler records hook exceptions" do
+      stage_dir = unique_stage_dir("tool_hook_exception")
+
+      graph = %Graph{
+        attrs: %{
+          "tool_hooks.pre" => %{},
+          "tool_hooks.post" => %{}
+        }
+      }
+
+      node =
+        Node.new("tool_exception", %{"shape" => "parallelogram", "tool_command" => "echo ok"})
+
+      outcome = AttractorEx.Handlers.Tool.execute(node, %{}, graph, stage_dir, [])
+
+      assert outcome.status == :success
+      assert outcome.notes =~ "pre hook hook exception"
+      assert outcome.notes =~ "post hook hook exception"
+      assert File.read!(Path.join(stage_dir, "tool_hook_pre.log")) != ""
+      assert File.read!(Path.join(stage_dir, "tool_hook_post.log")) != ""
+    end
+
+    test "tool handler tolerates nil and blank hooks without creating logs" do
+      stage_dir = unique_stage_dir("tool_blank_hooks")
+
+      node =
+        Node.new("tool_blank_hooks", %{"shape" => "parallelogram", "tool_command" => "echo ok"})
+
+      graph = %Graph{attrs: %{"tool_hooks.pre" => nil, "tool_hooks.post" => ""}}
+
+      outcome = AttractorEx.Handlers.Tool.execute(node, %{}, graph, stage_dir, [])
+
+      assert outcome.status == :success
+      refute File.exists?(Path.join(stage_dir, "tool_hook_pre.log"))
+      refute File.exists?(Path.join(stage_dir, "tool_hook_post.log"))
+    end
+
+    test "tool handler can run a silent successful hook without writing logs" do
+      stage_dir = unique_stage_dir("tool_silent_hook")
+
+      hook =
+        case :os.type() do
+          {:win32, _} -> "@rem silent hook"
+          _ -> ":"
+        end
+
+      node = Node.new("tool_silent", %{"shape" => "parallelogram", "tool_command" => "echo ok"})
+      graph = %Graph{attrs: %{"tool_hooks.post" => hook}}
+
+      outcome = AttractorEx.Handlers.Tool.execute(node, %{}, graph, stage_dir, [])
+
+      assert outcome.status == :success
+      refute File.exists?(Path.join(stage_dir, "tool_hook_post.log"))
+    end
+
+    test "tool handler appends failing hook notes onto failed tool outcomes" do
+      stage_dir = unique_stage_dir("tool_fail_hook_note")
+
+      failing_hook =
+        case :os.type() do
+          {:win32, _} -> "exit /b 4"
+          _ -> "exit 4"
+        end
+
+      cmd =
+        case :os.type() do
+          {:win32, _} -> "cmd /c exit /b 2"
+          _ -> "sh -lc 'exit 2'"
+        end
+
+      node = Node.new("tool_fail_note", %{"shape" => "parallelogram", "tool_command" => cmd})
+      graph = %Graph{attrs: %{"tool_hooks.post" => failing_hook}}
+
+      outcome = AttractorEx.Handlers.Tool.execute(node, %{}, graph, stage_dir, [])
+
+      assert outcome.status == :fail
+      assert outcome.notes =~ "post hook hook failed (4)"
     end
 
     test "parallel handler executes branch runner and records parallel.results" do
