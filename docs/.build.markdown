@@ -57,6 +57,9 @@ AttractorEx.StatusContract.md
 AttractorEx.Transforms.VariableExpansion.md
 AttractorEx.Validator.md
 AttractorEx.md
+AttractorExPhx.Client.md
+AttractorExPhx.HTTPServer.md
+AttractorExPhx.md
 AttractorPhoenix.Mailer.md
 AttractorPhoenix.md
 AttractorPhoenixWeb.CoreComponents.md
@@ -81,6 +84,7 @@ http-api.md
 human-in-the-loop.md
 llms.txt
 overview.md
+phoenix-adapter.md
 pipeline-engine.md
 readme.md
 spec-alignment.md

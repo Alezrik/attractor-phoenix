@@ -24,6 +24,7 @@ The library is organized into a small set of focused layers:
 | Runtime handlers | `AttractorEx.HandlerRegistry`, `AttractorEx.Handlers.*` | Node execution semantics |
 | Human gates | `AttractorEx.HumanGate`, `AttractorEx.Interviewer`, `AttractorEx.Interviewers.*` | `wait.human` workflows and answer normalization |
 | HTTP service | `AttractorEx.HTTP`, `AttractorEx.HTTP.Manager`, `AttractorEx.HTTP.Router` | Remote pipeline execution and SSE updates |
+| Phoenix adapter | `AttractorExPhx`, `AttractorExPhx.Client`, `AttractorExPhx.HTTPServer` | Phoenix-facing integration seam over the standalone engine |
 | Unified LLM | `AttractorEx.LLM.*` | Provider-agnostic completion and streaming |
 | Agent loop | `AttractorEx.Agent.*` | Spec-inspired coding-agent session primitives |
 

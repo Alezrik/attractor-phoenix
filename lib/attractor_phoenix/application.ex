@@ -13,7 +13,7 @@ defmodule AttractorPhoenix.Application do
       AttractorPhoenixWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:attractor_phoenix, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: AttractorPhoenix.PubSub},
-      {AttractorPhoenix.AttractorHTTPServer,
+      {AttractorExPhx.HTTPServer,
        port: Keyword.fetch!(attractor_http_opts, :port),
        ip: Keyword.fetch!(attractor_http_opts, :ip),
        manager: AttractorPhoenix.AttractorHTTP.Manager,

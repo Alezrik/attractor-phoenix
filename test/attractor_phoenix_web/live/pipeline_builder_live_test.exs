@@ -1,7 +1,7 @@
 defmodule AttractorPhoenixWeb.PipelineBuilderLiveTest do
   use AttractorPhoenixWeb.ConnCase
 
-  alias AttractorPhoenix.AttractorAPI
+  alias AttractorExPhx.Client, as: AttractorAPI
 
   import Phoenix.LiveViewTest
 

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.40.1">
+    <meta name="project" content="attractor_phoenix v0.1.0">
+
+
+    <title>Phoenix Adapter — attractor_phoenix v0.1.0</title>
+
+    <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
+
+    <script defer src="dist/sidebar_items-CDB009B2.js"></script>
+    <script defer src="docs_config.js"></script>
+    <script defer src="dist/html-YU4BZFVS.js"></script>
+
+  </head>
+  <body>
+    <script>(()=>{var t="ex_doc:settings",e="dark";var o="dark",s="light";var E="sidebar_state",n="closed";var r="sidebar_width";var a="sidebar-open";var i=new URLSearchParams(window.location.search),S=i.get("theme")||JSON.parse(localStorage.getItem(t)||"{}").theme;(S===o||S!==s&&window.matchMedia("(prefers-color-scheme: dark)").matches)&&document.body.classList.add(e);var d=sessionStorage.getItem(E),A=d!==n&&!window.matchMedia(`screen and (max-width: ${768}px)`).matches;document.body.classList.toggle(a,A);var c=sessionStorage.getItem(r);c&&document.body.style.setProperty("--sidebarWidth",`${c}px`);var p=/(Macintosh|iPhone|iPad|iPod)/.test(window.navigator.userAgent);document.documentElement.classList.toggle("apple-os",p);})();
+</script>
+
+<div class="body-wrapper">
+
+<button id="sidebar-menu" class="sidebar-button sidebar-toggle" aria-label="toggle sidebar" aria-controls="sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<nav id="sidebar" class="sidebar">
+
+  <div class="sidebar-header">
+    <div class="sidebar-projectInfo">
+
+        <a href="https://github.com/Alezrik/attractor-phoenix" class="sidebar-projectImage">
+          <img src="assets/logo.svg" alt="attractor_phoenix" />
+        </a>
+
+      <div>
+        <a href="https://github.com/Alezrik/attractor-phoenix" class="sidebar-projectName" translate="no">
+attractor_phoenix
+        </a>
+        <div class="sidebar-projectVersion" translate="no">
+          v0.1.0
+        </div>
+      </div>
+    </div>
+    <ul id="sidebar-list-nav" class="sidebar-list-nav" role="tablist" data-extras="Pages"></ul>
+  </div>
+</nav>
+
+<output role="status" id="toast"></output>
+
+<main class="content page-extra" id="main" data-type="extras">
+  <div id="content" class="content-inner">
+    <div class="top-search">
+      <div class="search-settings">
+        <form class="search-bar" action="search.html">
+          <label class="search-label">
+            <span class="sr-only">Search documentation of attractor_phoenix</span>
+            <div class="search-input-wrapper">
+              <input name="q" type="text" class="search-input" placeholder="Press / to search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <button type="button" tabindex="-1" class="search-close-button" aria-hidden="true">
+                <i class="ri-close-line ri-lg" title="Cancel search"></i>
+              </button>
+            </div>
+          </label>
+        </form>
+        <div class="autocomplete">
+        </div>
+        <div class="engine-selector" data-multiple="false">
+          <button type="button" class="engine-button" aria-label="Select search engine" aria-haspopup="true" aria-expanded="false">
+            <i class="ri-search-2-line" aria-hidden="true"></i>
+            <span class="engine-name">Default</span>
+            <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+          </button>
+          <div class="engine-dropdown" hidden role="menu">
+
+              <button type="button"
+                      class="engine-option"
+                      data-engine-url="search.html?q="
+                      role="menuitemradio"
+                      aria-checked="true">
+                <span class="name">Default</span>
+                <span class="help">In-browser search</span>
+              </button>
+
+          </div>
+        </div>
+        <button class="icon-settings display-settings">
+          <i class="ri-settings-3-line"></i>
+          <span class="sr-only">Settings</span>
+        </button>
+      </div>
+    </div>
+
+<div id="top-content">
+  <div class="heading-with-actions top-heading">
+    <h1>Phoenix Adapter</h1>
+
+<a href="phoenix-adapter.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+  <i class="ri-markdown-line" aria-hidden="true"></i>
+  <span class="sr-only">Copy Markdown</span>
+</a>
+
+
+      <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/docs/phoenix-adapter.md#L1" title="View Source" class="icon-action" rel="help">
+        <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        <span class="sr-only">View Source</span>
+      </a>
+
+  </div>
+
+
+<p><a href="AttractorEx.html"><code class="inline">AttractorEx</code></a> stays framework-agnostic. <a href="AttractorExPhx.html"><code class="inline">AttractorExPhx</code></a> is the explicit adapter layer that plugs Phoenix into the engine.</p><h2 id="why-this-layer-exists" class="section-heading"><a href="#why-this-layer-exists" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Why This Layer Exists</span></h2><p>The repository now has three clearer boundaries:</p><ol><li><a href="AttractorEx.html"><code class="inline">AttractorEx</code></a> for the standalone engine, HTTP service, and spec-facing runtime behavior.</li><li><a href="AttractorExPhx.html"><code class="inline">AttractorExPhx</code></a> for Phoenix-oriented integration code such as supervision-friendly server startup and Req-based HTTP access.</li><li><a href="AttractorPhoenixWeb.html"><code class="inline">AttractorPhoenixWeb</code></a> for the UI and controller/liveview experience.</li></ol><p>That split keeps <code class="inline">lib/attractor_ex/</code> independent while making the integration path easy to find and test on its own.</p><h2 id="main-modules" class="section-heading"><a href="#main-modules" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Main Modules</span></h2><ul><li><a href="AttractorExPhx.html"><code class="inline">AttractorExPhx</code></a></li><li><a href="AttractorExPhx.Client.html"><code class="inline">AttractorExPhx.Client</code></a></li><li><a href="AttractorExPhx.HTTPServer.html"><code class="inline">AttractorExPhx.HTTPServer</code></a></li></ul><h2 id="typical-usage" class="section-heading"><a href="#typical-usage" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Typical Usage</span></h2><p>Start the engine HTTP API under a Phoenix supervision tree:</p><pre><code class="makeup elixir" translate="no"><span class="n">children</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p" data-group-id="2127854649-1">[</span><span class="w">
+  </span><span class="p" data-group-id="2127854649-2">{</span><span class="nc">AttractorExPhx.HTTPServer</span><span class="p">,</span><span class="w">
+   </span><span class="ss">port</span><span class="p">:</span><span class="w"> </span><span class="mi">4101</span><span class="p">,</span><span class="w">
+   </span><span class="ss">ip</span><span class="p">:</span><span class="w"> </span><span class="p" data-group-id="2127854649-3">{</span><span class="mi">127</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p" data-group-id="2127854649-3">}</span><span class="p">,</span><span class="w">
+   </span><span class="ss">manager</span><span class="p">:</span><span class="w"> </span><span class="nc">MyApp.AttractorHTTP.Manager</span><span class="p">,</span><span class="w">
+   </span><span class="ss">registry</span><span class="p">:</span><span class="w"> </span><span class="nc">MyApp.AttractorHTTP.Registry</span><span class="p">,</span><span class="w">
+   </span><span class="ss">name</span><span class="p">:</span><span class="w"> </span><span class="nc">MyApp.AttractorHTTPServer</span><span class="p" data-group-id="2127854649-2">}</span><span class="w">
+</span><span class="p" data-group-id="2127854649-1">]</span></code></pre><p>Run a pipeline directly from a Phoenix controller or other process:</p><pre><code class="makeup elixir" translate="no"><span class="p" data-group-id="1261390151-1">{</span><span class="ss">:ok</span><span class="p">,</span><span class="w"> </span><span class="n">result</span><span class="p" data-group-id="1261390151-1">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">AttractorExPhx</span><span class="o">.</span><span class="n">run</span><span class="p" data-group-id="1261390151-2">(</span><span class="n">dot_source</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="1261390151-3">%{</span><span class="p" data-group-id="1261390151-3">}</span><span class="p">,</span><span class="w"> </span><span class="ss">logs_root</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;tmp/runs&quot;</span><span class="p" data-group-id="1261390151-2">)</span></code></pre><p>Call the HTTP control plane from LiveView:</p><pre><code class="makeup elixir" translate="no"><span class="p" data-group-id="9867734994-1">{</span><span class="ss">:ok</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="9867734994-2">%{</span><span class="s">&quot;pipelines&quot;</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="n">pipelines</span><span class="p" data-group-id="9867734994-2">}</span><span class="p" data-group-id="9867734994-1">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">AttractorExPhx</span><span class="o">.</span><span class="n">list_pipelines</span><span class="p" data-group-id="9867734994-3">(</span><span class="p" data-group-id="9867734994-3">)</span><span class="w">
+</span><span class="p" data-group-id="9867734994-4">{</span><span class="ss">:ok</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="9867734994-5">%{</span><span class="s">&quot;pipeline_id&quot;</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="n">id</span><span class="p" data-group-id="9867734994-5">}</span><span class="p" data-group-id="9867734994-4">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">AttractorExPhx</span><span class="o">.</span><span class="n">create_pipeline</span><span class="p" data-group-id="9867734994-6">(</span><span class="n">dot_source</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="9867734994-7">%{</span><span class="p" data-group-id="9867734994-7">}</span><span class="p" data-group-id="9867734994-6">)</span><span class="w">
+</span><span class="p" data-group-id="9867734994-8">{</span><span class="ss">:ok</span><span class="p">,</span><span class="w"> </span><span class="n">graph</span><span class="p" data-group-id="9867734994-8">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">AttractorExPhx</span><span class="o">.</span><span class="n">get_pipeline_graph_json</span><span class="p" data-group-id="9867734994-9">(</span><span class="n">id</span><span class="p" data-group-id="9867734994-9">)</span></code></pre><h2 id="test-strategy" class="section-heading"><a href="#test-strategy" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Test Strategy</span></h2><p>The adapter has its own test scope under <code class="inline">test/attractor_ex_phx/</code> so the integration contract can be validated without depending on the LiveView UI tests to cover it indirectly.</p>
+
+</div>
+
+<div class="bottom-actions" id="bottom-actions">
+  <div class="bottom-actions-item">
+
+      <a href="pipeline-engine.html" class="bottom-actions-button" rel="prev">
+        <span class="subheader">
+          ← Previous Page
+        </span>
+        <span class="title">
+Pipeline Engine
+        </span>
+      </a>
+
+  </div>
+  <div class="bottom-actions-item">
+
+      <a href="human-in-the-loop.html" class="bottom-actions-button" rel="next">
+        <span class="subheader">
+          Next Page →
+        </span>
+        <span class="title">
+Human-in-the-Loop
+        </span>
+      </a>
+
+  </div>
+</div>
+    <footer class="footer">
+
+        <p>
+
+          <span class="line">
+            <button class="a-main footer-button display-quick-switch" title="Go to package docs">
+              Go to package docs
+            </button>
+
+              <a href="llms.txt" target="_blank">
+                View llms.txt
+              </a>
+
+
+              <a href="attractor_phoenix.epub">
+                Download ePub version
+              </a>
+
+          </span>
+        </p>
+
+        <p class="built-using">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.40.1) for the
+
+            <a href="https://elixir-lang.org" title="Elixir" target="_blank" translate="no">Elixir programming language</a>
+
+        </p>
+
+
+    </footer>
+  </div>
+</main>
+</div>
+
+  </body>
+</html>

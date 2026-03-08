@@ -1,8 +1,6 @@
 defmodule AttractorPhoenixWeb.PageController do
   use AttractorPhoenixWeb, :controller
 
-  alias AttractorEx
-
   def home(conn, _params) do
     render(conn, :home,
       dot: sample_dot(),
@@ -14,7 +12,7 @@ defmodule AttractorPhoenixWeb.PageController do
 
   def run(conn, %{"pipeline" => %{"dot" => dot, "context_json" => context_json}}) do
     with {:ok, context} <- decode_context(context_json),
-         {:ok, result} <- AttractorEx.run(dot, context, logs_root: "tmp/runs") do
+         {:ok, result} <- AttractorExPhx.run(dot, context, logs_root: "tmp/runs") do
       render(conn, :home, dot: dot, context_json: context_json, result: result, error: nil)
     else
       {:error, %{diagnostics: diagnostics}} ->
