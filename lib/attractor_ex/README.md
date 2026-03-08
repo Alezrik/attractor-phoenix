@@ -111,10 +111,23 @@ Unified client contract:
 
 1. Build client with providers map and optional default:
    - `%AttractorEx.LLM.Client{providers: %{"openai" => MyAdapter}, default_provider: "openai"}`
+   - or `AttractorEx.LLM.Client.from_env/1` with:
+
+     ```elixir
+     config :attractor_phoenix, :attractor_ex_llm,
+       providers: %{"openai" => MyAdapter},
+       default_provider: "openai"
+     ```
 2. Adapter module contract:
    - `complete(%AttractorEx.LLM.Request{}) :: %AttractorEx.LLM.Response{} | {:error, term()}`
 3. Node attrs used for unified request:
    - `llm_model`, `llm_provider`, `reasoning_effort`, `max_tokens`, `temperature`
+4. Higher-level client helpers:
+   - `generate/2` and `generate_with_request/2`
+   - `accumulate_stream/2` to turn raw streaming events into a final `%AttractorEx.LLM.Response{}`
+   - `generate_object/2` and `stream_object/2` for JSON object decoding
+5. Message content:
+   - `AttractorEx.LLM.Message.content` accepts either plain text or a list of `AttractorEx.LLM.MessagePart` structs for richer multimodal/tool/thinking payloads
 
 Example backend module:
 
@@ -145,6 +158,20 @@ llm_client = %AttractorEx.LLM.Client{
 }
 
 AttractorEx.run(dot_source, %{}, llm_client: llm_client)
+```
+
+Default-client helpers are also available for applications that want a process-wide
+singleton:
+
+```elixir
+client = AttractorEx.LLM.Client.from_env()
+AttractorEx.LLM.Client.put_default(client)
+
+response =
+  AttractorEx.LLM.Client.generate(%AttractorEx.LLM.Request{
+    model: "gpt-5.2",
+    messages: [%AttractorEx.LLM.Message{role: :user, content: "Plan the change"}]
+  })
 ```
 
 Artifacts written by codergen stage:

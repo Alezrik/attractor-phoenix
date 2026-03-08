@@ -952,7 +952,8 @@ defmodule AttractorEx.Agent.Session do
     if is_integer(context_window) and context_window > 0 do
       estimated_chars =
         request.messages
-        |> Enum.map(&String.length(&1.content || ""))
+        |> Enum.map(&Message.content_text(&1.content))
+        |> Enum.map(&String.length/1)
         |> Enum.sum()
 
       if estimated_chars >= trunc(context_window * 0.75) do

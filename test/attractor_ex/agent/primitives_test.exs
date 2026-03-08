@@ -74,6 +74,28 @@ defmodule AttractorEx.Agent.PrimitivesTest do
     assert output =~ "truncated"
   end
 
+  test "local execution env glob includes dotfiles and shell_command passes env vars through" do
+    tmp_dir =
+      Path.join(System.tmp_dir!(), "attractor-agent-env-#{System.unique_integer([:positive])}")
+
+    File.rm_rf!(tmp_dir)
+    File.mkdir_p!(tmp_dir)
+    File.write!(Path.join(tmp_dir, ".env.local"), "SECRET=1")
+
+    env = LocalExecutionEnvironment.new(working_dir: tmp_dir, env: %{"SPECIAL_TOKEN" => "xyz"})
+
+    assert {:ok, [".env.local"]} = ExecutionEnvironment.glob(env, ".*")
+
+    assert {:ok, %{exit_code: 0, output: output, truncated?: false}} =
+             ExecutionEnvironment.shell_command(
+               env,
+               shell_env_echo_command("SPECIAL_TOKEN"),
+               timeout_ms: 1_000
+             )
+
+    assert String.trim(output) == "xyz"
+  end
+
   test "local execution env returns shell timeout and missing directory errors" do
     tmp_dir =
       Path.join(System.tmp_dir!(), "attractor-agent-env-#{System.unique_integer([:positive])}")
@@ -91,10 +113,28 @@ defmodule AttractorEx.Agent.PrimitivesTest do
     assert {:error, _reason} = ExecutionEnvironment.list_directory(env, "missing")
   end
 
+  test "local execution env grep returns an error for a missing path when rg is available" do
+    tmp_dir =
+      Path.join(System.tmp_dir!(), "attractor-agent-env-#{System.unique_integer([:positive])}")
+
+    File.rm_rf!(tmp_dir)
+    File.mkdir_p!(tmp_dir)
+    env = LocalExecutionEnvironment.new(working_dir: tmp_dir)
+
+    result = ExecutionEnvironment.grep(env, "missing", path: "does-not-exist", max_results: 5)
+
+    if System.find_executable("rg") do
+      assert {:error, {:rg_failed, _exit_code}} = result
+    else
+      assert {:ok, []} = result
+    end
+  end
+
   test "local execution env handles missing files, direct file grep, and absolute paths" do
     tmp_dir =
       Path.join(System.tmp_dir!(), "attractor-agent-env-#{System.unique_integer([:positive])}")
 
+    File.rm_rf!(tmp_dir)
     File.mkdir_p!(tmp_dir)
     env = LocalExecutionEnvironment.new(working_dir: tmp_dir)
     absolute_path = Path.join(tmp_dir, "absolute.txt")
@@ -365,6 +405,13 @@ defmodule AttractorEx.Agent.PrimitivesTest do
     case :os.type() do
       {:win32, _} -> "Start-Sleep -Milliseconds #{milliseconds}"
       _ -> "sleep #{milliseconds / 1000}"
+    end
+  end
+
+  defp shell_env_echo_command(var_name) do
+    case :os.type() do
+      {:win32, _} -> "Write-Output $env:#{var_name}"
+      _ -> "printf '%s\\n' \"$#{var_name}\""
     end
   end
 end

@@ -1,7 +1,7 @@
 defmodule AttractorEx.LLMClientTest do
   use ExUnit.Case, async: true
 
-  alias AttractorEx.LLM.{Client, Message, Request, Response, StreamEvent, Usage}
+  alias AttractorEx.LLM.{Client, Message, MessagePart, Request, Response, StreamEvent, Usage}
 
   test "routes request by explicit provider" do
     client = %Client{
@@ -108,6 +108,21 @@ defmodule AttractorEx.LLMClientTest do
     assert text =~ "provider=anthropic"
   end
 
+  test "middleware can short-circuit complete with a direct response" do
+    middleware = fn _request, _next ->
+      %Response{text: "short-circuited", usage: %Usage{}, finish_reason: "stop"}
+    end
+
+    client = %Client{
+      providers: %{"openai" => AttractorExTest.LLMAdapter},
+      default_provider: "openai",
+      middleware: [middleware]
+    }
+
+    assert %Response{text: "short-circuited"} =
+             Client.complete(client, %Request{model: "gpt-5.2", messages: []})
+  end
+
   test "stream routes to adapter and returns stream events" do
     client = %Client{
       providers: %{"openai" => AttractorExTest.LLMAdapter},
@@ -159,6 +174,187 @@ defmodule AttractorEx.LLMClientTest do
            end)
   end
 
+  describe "default client and runtime construction" do
+    test "arity-1 helpers return an error when no default client is configured" do
+      Client.clear_default()
+
+      assert is_nil(Client.default())
+
+      assert {:error, :default_client_not_configured} =
+               Client.complete(%Request{model: "gpt-5.2", messages: []})
+
+      assert {:error, :default_client_not_configured} =
+               Client.stream(%Request{model: "gpt-5.2", messages: []})
+
+      assert {:error, :default_client_not_configured} =
+               Client.generate_object(%Request{model: "gpt-5.2", messages: []})
+    end
+
+    test "new normalizes blank provider names and ignores invalid adapters" do
+      client =
+        Client.new(
+          providers: %{" openai " => AttractorExTest.LLMAdapter, "" => "ignored"},
+          default_provider: "  "
+        )
+
+      assert client.providers == %{"openai" => AttractorExTest.LLMAdapter}
+      assert is_nil(client.default_provider)
+    end
+
+    test "put_default and clear_default manage the module-level client" do
+      client = %Client{providers: %{"openai" => AttractorExTest.LLMAdapter}}
+
+      assert ^client = Client.put_default(client)
+      assert Client.default() == client
+      assert :ok = Client.clear_default()
+      assert is_nil(Client.default())
+    end
+
+    test "from_env builds a client from application config" do
+      Application.put_env(:attractor_phoenix, :attractor_ex_llm,
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai"
+      )
+
+      on_exit(fn -> Application.delete_env(:attractor_phoenix, :attractor_ex_llm) end)
+
+      client = Client.from_env()
+
+      assert %Client{default_provider: "openai"} = client
+      assert client.providers["openai"] == AttractorExTest.LLMAdapter
+    end
+
+    test "from_env supports map config and env var override for default provider" do
+      Application.put_env(:attractor_phoenix, :attractor_ex_llm, %{
+        "providers" => %{"openai" => AttractorExTest.LLMAdapter},
+        "default_provider" => "anthropic"
+      })
+
+      System.put_env("ATTRACTOR_EX_LLM_DEFAULT_PROVIDER", "openai")
+
+      on_exit(fn ->
+        Application.delete_env(:attractor_phoenix, :attractor_ex_llm)
+        System.delete_env("ATTRACTOR_EX_LLM_DEFAULT_PROVIDER")
+      end)
+
+      client = Client.from_env()
+
+      assert client.default_provider == "openai"
+      assert client.providers["openai"] == AttractorExTest.LLMAdapter
+    end
+
+    test "from_env falls back to config-map values and empty defaults" do
+      Application.put_env(:attractor_phoenix, :attractor_ex_llm, %{
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai",
+        streaming_middleware: [:ignored]
+      })
+
+      on_exit(fn -> Application.delete_env(:attractor_phoenix, :attractor_ex_llm) end)
+
+      client = Client.from_env()
+
+      assert client.providers["openai"] == AttractorExTest.LLMAdapter
+      assert client.default_provider == "openai"
+      assert client.streaming_middleware == [:ignored]
+    end
+
+    test "from_env handles missing config and invalid provider containers" do
+      Application.delete_env(:attractor_phoenix, :attractor_ex_llm)
+
+      client = Client.from_env(otp_app: :attractor_phoenix, config_key: :missing_key)
+      assert client.providers == %{}
+      assert client.middleware == []
+      assert client.streaming_middleware == []
+      assert is_nil(client.default_provider)
+
+      invalid = Client.new(providers: [:bad])
+      assert invalid.providers == %{}
+    end
+
+    test "from_env opts override configured middleware values" do
+      configured = fn request, next -> next.(%{request | provider: "anthropic"}) end
+      override = fn request, next -> next.(%{request | provider: "openai"}) end
+
+      Application.put_env(:attractor_phoenix, :attractor_ex_llm,
+        providers: %{
+          "openai" => AttractorExTest.LLMAdapter,
+          "anthropic" => AttractorExTest.LLMAdapter
+        },
+        default_provider: "anthropic",
+        middleware: [configured]
+      )
+
+      on_exit(fn -> Application.delete_env(:attractor_phoenix, :attractor_ex_llm) end)
+
+      client = Client.from_env(middleware: [override])
+
+      assert %Response{text: text} =
+               Client.complete(client, %Request{model: "gpt-5.2", messages: []})
+
+      assert text =~ "provider=openai"
+    end
+
+    test "from_env opts override providers default provider and streaming middleware" do
+      streaming_override = fn request, _next ->
+        {:ok, [%StreamEvent{type: :stream_start}], %{request | provider: "openai"}}
+      end
+
+      Application.put_env(:attractor_phoenix, :attractor_ex_llm, 123)
+
+      on_exit(fn -> Application.delete_env(:attractor_phoenix, :attractor_ex_llm) end)
+
+      client =
+        Client.from_env(
+          providers: %{"openai" => AttractorExTest.LLMAdapter},
+          default_provider: "openai",
+          streaming_middleware: [streaming_override]
+        )
+
+      assert client.providers["openai"] == AttractorExTest.LLMAdapter
+      assert client.default_provider == "openai"
+
+      assert {:ok, [%StreamEvent{type: :stream_start}], %Request{provider: "openai"}} =
+               Client.stream_with_request(client, %Request{model: "gpt-5.2", messages: []})
+    end
+
+    test "arity-1 helpers use the configured default client" do
+      _client =
+        %Client{
+          providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
+          default_provider: "openai"
+        }
+        |> Client.put_default()
+
+      on_exit(fn -> Client.clear_default() end)
+
+      assert %Response{text: text} =
+               Client.generate(%Request{
+                 model: "gpt-5.2",
+                 messages: [%Message{role: :user, content: "hi"}]
+               })
+
+      assert text == "ok"
+
+      assert %Response{text: "final"} =
+               Client.accumulate_stream(%Request{model: "gpt-5.2", messages: []})
+
+      assert {:ok, %{"provider" => "openai", "model" => "gpt-5.2"}} =
+               Client.generate_object(%Request{
+                 model: "gpt-5.2",
+                 messages: [%Message{role: :user, content: "hi"}],
+                 metadata: %{"json_mode" => true}
+               })
+
+      assert {:ok, %{"provider" => "openai", "streamed" => true}} =
+               Client.stream_object(%Request{
+                 model: "gpt-5.2",
+                 messages: [%Message{role: :user, content: "hi"}],
+                 metadata: %{"json_mode" => true}
+               })
+    end
+  end
+
   describe "unified LLM spec coverage" do
     test "request fields are preserved and usage includes reasoning/cache counters" do
       client = %Client{
@@ -189,6 +385,11 @@ defmodule AttractorEx.LLMClientTest do
       assert snapshot["top_p"] == 0.9
       assert snapshot["stop_sequences"] == ["END", "DONE"]
       assert snapshot["reasoning_effort"] == "medium"
+
+      assert snapshot["messages"] == [
+               %{"role" => :user, "content" => "hi", "tool_call_id" => nil, "name" => nil}
+             ]
+
       assert snapshot["response_format"] == %{type: :json_schema, schema: %{"type" => "object"}}
       assert snapshot["provider_options"] == %{"region" => "us"}
       assert snapshot["metadata"] == %{"trace_id" => "abc-123"}
@@ -211,6 +412,49 @@ defmodule AttractorEx.LLMClientTest do
 
       assert resolved_request.provider == "openai"
       assert resolved_request.model == "gpt-5.2"
+    end
+
+    test "generate_with_request is an alias for the high-level API" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
+        default_provider: "openai"
+      }
+
+      request = %Request{model: "gpt-5.2", messages: [%Message{role: :user, content: "hi"}]}
+
+      assert {:ok, %Response{text: "ok"}, %Request{provider: "openai"}} =
+               Client.generate_with_request(client, request)
+    end
+
+    test "generate with explicit client delegates to complete" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai"
+      }
+
+      assert %Response{text: text} =
+               Client.generate(client, %Request{model: "gpt-5.2", messages: []})
+
+      assert text =~ "provider=openai"
+    end
+
+    test "complete_with_request preserves middleware-short-circuited requests" do
+      middleware = fn request, _next ->
+        %Response{text: "middleware", raw: %{"request_snapshot" => %{"model" => request.model}}}
+      end
+
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai",
+        middleware: [middleware]
+      }
+
+      request = %Request{model: "gpt-5.2", messages: [%Message{role: :user, content: "hi"}]}
+
+      assert {:ok, %Response{text: "middleware"}, %Request{model: "gpt-5.2"} = resolved_request} =
+               Client.complete_with_request(client, request)
+
+      assert is_nil(resolved_request.provider)
     end
 
     test "stream_with_request returns stream events and resolved provider" do
@@ -252,6 +496,453 @@ defmodule AttractorEx.LLMClientTest do
                  raw: %{"request_snapshot" => %{"provider" => "openai"}}
                }
              ] = Enum.to_list(events)
+    end
+
+    test "stream_with_request returns adapter errors" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.StreamErrorAdapter},
+        default_provider: "openai"
+      }
+
+      assert {:error, :stream_boom} =
+               Client.stream_with_request(client, %Request{model: "gpt-5.2", messages: []})
+    end
+
+    test "stream_with_request preserves middleware-short-circuited event streams" do
+      middleware = fn request, _next ->
+        {:ok, [%StreamEvent{type: :stream_start}], %{request | metadata: %{"short" => true}}}
+      end
+
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai",
+        streaming_middleware: [middleware]
+      }
+
+      request = %Request{model: "gpt-5.2", messages: [%Message{role: :user, content: "hi"}]}
+
+      assert {:ok, [%StreamEvent{type: :stream_start}], %Request{metadata: %{"short" => true}}} =
+               Client.stream_with_request(client, request)
+    end
+
+    test "message content parts preserve a text projection for adapters" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
+        default_provider: "openai"
+      }
+
+      request = %Request{
+        model: "gpt-5.2",
+        messages: [
+          %Message{
+            role: :user,
+            content: [
+              %MessagePart{type: :text, text: "Describe this asset "},
+              %MessagePart{type: :image, data: %{"url" => "https://example.test/cat.png"}},
+              %MessagePart{type: :thinking, text: "carefully"}
+            ]
+          }
+        ]
+      }
+
+      assert %Response{raw: %{"request_snapshot" => snapshot}} = Client.complete(client, request)
+
+      assert snapshot["messages"] == [
+               %{
+                 "role" => :user,
+                 "content" => "Describe this asset [image]carefully",
+                 "tool_call_id" => nil,
+                 "name" => nil
+               }
+             ]
+    end
+
+    test "message text projection handles map parts and unknown payloads" do
+      assert Message.content_text([
+               %{"type" => "tool_result", "text" => "done"},
+               %{"type" => "json"},
+               :ignored
+             ]) == "[tool result: done][json]"
+
+      assert Message.content_text(nil) == ""
+    end
+
+    test "message part projection handles struct and map variants" do
+      assert MessagePart.text_projection(%MessagePart{type: :audio, text: "clip"}) ==
+               "[audio: clip]"
+
+      assert MessagePart.text_projection(%{"type" => "thinking", "text" => "reason"}) ==
+               "reason"
+
+      assert MessagePart.text_projection(%{"type" => "unknown"}) == "[text]"
+      assert MessagePart.text_projection(%MessagePart{type: :tool_call}) == "[tool call]"
+
+      assert MessagePart.text_projection(%{"type" => :document, "text" => "spec.pdf"}) ==
+               "[document: spec.pdf]"
+    end
+
+    test "accumulate_stream returns a normalized response from stream events" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
+        default_provider: "openai"
+      }
+
+      assert %Response{} =
+               response =
+               Client.accumulate_stream(client, %Request{
+                 model: "gpt-5.2",
+                 messages: [%Message{role: :user, content: "hi"}]
+               })
+
+      assert response.text == "final"
+      assert response.reasoning == "thinking"
+      assert response.tool_calls == [%{"id" => "call-1", "name" => "echo"}]
+      assert response.usage.total_tokens == 1
+      assert response.raw["stream_errors"] == [{:simulated_error, "openai"}]
+    end
+
+    test "accumulate_stream returns errors from stream_with_request" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMErrorAdapter},
+        default_provider: "openai"
+      }
+
+      assert {:error, {:stream_not_supported, "openai"}} =
+               Client.accumulate_stream(client, %Request{model: "gpt-5.2", messages: []})
+    end
+
+    test "accumulate_stream falls back to usage totals from input/output counters" do
+      base_client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai"
+      }
+
+      middleware = fn request, _next ->
+        {:ok,
+         [
+           %StreamEvent{type: :stream_start},
+           %StreamEvent{
+             type: :response,
+             response: %Response{text: "done", usage: %Usage{input_tokens: 2, output_tokens: 3}}
+           }
+         ], %{request | provider: "openai"}}
+      end
+
+      client = %{base_client | streaming_middleware: [middleware]}
+
+      assert %Response{usage: %Usage{total_tokens: 5}} =
+               Client.accumulate_stream(client, %Request{model: "gpt-5.2", messages: []})
+    end
+
+    test "accumulate_stream keeps final response text when reasoning is blank and raw errors are absent" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai",
+        streaming_middleware: [
+          fn request, _next ->
+            {:ok,
+             [
+               %StreamEvent{type: :text_delta, text: "draft"},
+               %StreamEvent{
+                 type: :response,
+                 response: %Response{
+                   text: "final",
+                   reasoning: "",
+                   tool_calls: [],
+                   usage: %Usage{input_tokens: 1, output_tokens: 1},
+                   raw: %{"source" => "middleware"}
+                 }
+               }
+             ], %{request | provider: "openai"}}
+          end
+        ]
+      }
+
+      assert %Response{} =
+               response =
+               Client.accumulate_stream(client, %Request{model: "gpt-5.2", messages: []})
+
+      assert response.text == "final"
+      assert response.reasoning == nil
+      assert response.usage.total_tokens == 2
+      assert response.raw == %{"source" => "middleware"}
+    end
+
+    test "accumulate_stream preserves accumulated reasoning and tool calls when final response omits them" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai",
+        streaming_middleware: [
+          :ignored,
+          fn request, _next ->
+            {:ok,
+             [
+               %StreamEvent{type: :reasoning_delta, reasoning: "step-1"},
+               %StreamEvent{type: :reasoning_delta, reasoning: "step-2"},
+               %StreamEvent{type: :tool_call, tool_call: %{"id" => "call-1"}},
+               %StreamEvent{
+                 type: :response,
+                 response: %Response{
+                   text: "final",
+                   reasoning: "explicit",
+                   tool_calls: [%{"id" => "call-2"}],
+                   usage: %Usage{}
+                 }
+               }
+             ], %{request | provider: "openai"}}
+          end
+        ]
+      }
+
+      assert %Response{} =
+               response =
+               Client.accumulate_stream(client, %Request{model: "gpt-5.2", messages: []})
+
+      assert response.reasoning == "explicit"
+      assert response.tool_calls == [%{"id" => "call-2"}]
+    end
+
+    test "accumulate_stream merges usage for partial structs and non-usage inputs" do
+      base_client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai"
+      }
+
+      client_with_overlay =
+        %{
+          base_client
+          | streaming_middleware: [
+              fn request, _next ->
+                {:ok,
+                 [
+                   %StreamEvent{
+                     type: :response,
+                     response: %Response{text: "done", usage: %Usage{input_tokens: 4}}
+                   },
+                   %StreamEvent{type: :stream_end, usage: %Usage{output_tokens: 6}}
+                 ], %{request | provider: "openai"}}
+              end
+            ]
+        }
+
+      assert %Response{usage: %Usage{input_tokens: 4, output_tokens: 6, total_tokens: 10}} =
+               Client.accumulate_stream(client_with_overlay, %Request{
+                 model: "gpt-5.2",
+                 messages: []
+               })
+
+      client_with_empty_usage =
+        %{
+          base_client
+          | streaming_middleware: [
+              fn request, _next ->
+                {:ok,
+                 [
+                   %StreamEvent{
+                     type: :response,
+                     response: %Response{text: "done", usage: %Usage{}, raw: %{}}
+                   }
+                 ], %{request | provider: "openai"}}
+              end
+            ]
+        }
+
+      assert %Response{usage: %Usage{total_tokens: 0}} =
+               Client.accumulate_stream(client_with_empty_usage, %Request{
+                 model: "gpt-5.2",
+                 messages: []
+               })
+    end
+
+    test "accumulate_stream normalizes non-usage payloads and zero token values" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai",
+        streaming_middleware: [
+          fn request, _next ->
+            {:ok,
+             [
+               %StreamEvent{
+                 type: :response,
+                 response: %Response{
+                   text: 123,
+                   reasoning: 456,
+                   usage: %Usage{input_tokens: 7, output_tokens: 0, total_tokens: 0}
+                 }
+               },
+               %StreamEvent{type: :stream_end, usage: :ignored}
+             ], %{request | provider: "openai"}}
+          end
+        ]
+      }
+
+      assert %Response{} =
+               response =
+               Client.accumulate_stream(client, %Request{model: "gpt-5.2", messages: []})
+
+      assert response.text == 123
+      assert response.reasoning == 456
+      assert response.usage.total_tokens == 7
+    end
+
+    test "accumulate_stream preserves zero overlay usage over existing totals" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai",
+        streaming_middleware: [
+          fn request, _next ->
+            {:ok,
+             [
+               %StreamEvent{
+                 type: :response,
+                 response: %Response{text: "done", usage: %Usage{input_tokens: 5}}
+               },
+               %StreamEvent{type: :stream_end, usage: %Usage{input_tokens: 0, output_tokens: 0}}
+             ], %{request | provider: "openai"}}
+          end
+        ]
+      }
+
+      assert %Response{usage: %Usage{input_tokens: 5, output_tokens: 0, total_tokens: 5}} =
+               Client.accumulate_stream(client, %Request{model: "gpt-5.2", messages: []})
+    end
+
+    test "accumulate_stream handles malformed usage structs with nil counters" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai",
+        streaming_middleware: [
+          fn request, _next ->
+            {:ok,
+             [
+               %StreamEvent{
+                 type: :response,
+                 response: %Response{
+                   text: "done",
+                   usage: %Usage{input_tokens: nil, output_tokens: nil, total_tokens: nil}
+                 }
+               },
+               %StreamEvent{
+                 type: :stream_end,
+                 usage: %Usage{input_tokens: 0, output_tokens: nil, total_tokens: nil}
+               }
+             ], %{request | provider: "openai"}}
+          end
+        ]
+      }
+
+      assert %Response{usage: %Usage{input_tokens: 0, output_tokens: 0, total_tokens: 0}} =
+               Client.accumulate_stream(client, %Request{model: "gpt-5.2", messages: []})
+    end
+
+    test "generate_object decodes JSON responses" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
+        default_provider: "openai"
+      }
+
+      assert {:ok, %{"provider" => "openai", "model" => "gpt-5.2"}} =
+               Client.generate_object(client, %Request{
+                 model: "gpt-5.2",
+                 messages: [%Message{role: :user, content: "hi"}],
+                 metadata: %{"json_mode" => true}
+               })
+    end
+
+    test "generate_object returns a decoding error for non-json output" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
+        default_provider: "openai"
+      }
+
+      assert {:error, {:invalid_json_response, _message}} =
+               Client.generate_object(client, %Request{
+                 model: "gpt-5.2",
+                 messages: [%Message{role: :user, content: "hi"}]
+               })
+    end
+
+    test "generate_object_with_request rejects scalar json responses" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai",
+        middleware: [
+          fn request, _next ->
+            {:ok, %Response{text: "123", usage: %Usage{}, finish_reason: "stop"},
+             %{request | provider: "openai"}}
+          end
+        ]
+      }
+
+      assert {:error, :json_response_must_be_object_or_array} =
+               Client.generate_object(client, %Request{model: "gpt-5.2", messages: []})
+    end
+
+    test "generate_object_with_request returns decoded objects and transport data" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
+        default_provider: "openai"
+      }
+
+      assert {:ok, %{"provider" => "openai", "model" => "gpt-5.2"}, %Response{},
+              %Request{provider: "openai"}} =
+               Client.generate_object_with_request(client, %Request{
+                 model: "gpt-5.2",
+                 messages: [%Message{role: :user, content: "hi"}],
+                 metadata: %{"json_mode" => true}
+               })
+    end
+
+    test "stream_object rejects scalar JSON values" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai",
+        streaming_middleware: [
+          fn request, _next ->
+            {:ok,
+             [
+               %StreamEvent{
+                 type: :response,
+                 response: %Response{text: "123", usage: %Usage{}, finish_reason: "stop"}
+               }
+             ], %{request | provider: "openai"}}
+          end
+        ]
+      }
+
+      assert {:error, :json_response_must_be_object_or_array} =
+               Client.stream_object(client, %Request{model: "gpt-5.2", messages: []})
+    end
+
+    test "stream_object decodes JSON after accumulating stream output" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
+        default_provider: "openai"
+      }
+
+      assert {:ok, %{"provider" => "openai", "streamed" => true}} =
+               Client.stream_object(client, %Request{
+                 model: "gpt-5.2",
+                 messages: [%Message{role: :user, content: "hi"}],
+                 metadata: %{"json_mode" => true}
+               })
+    end
+
+    test "stream_object_with_request returns decoded objects and accumulated response data" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
+        default_provider: "openai"
+      }
+
+      assert {:ok, %{"provider" => "openai", "streamed" => true}, %Response{text: text},
+              %Request{provider: "openai"}} =
+               Client.stream_object_with_request(client, %Request{
+                 model: "gpt-5.2",
+                 messages: [%Message{role: :user, content: "hi"}],
+                 metadata: %{"json_mode" => true}
+               })
+
+      assert text == Jason.encode!(%{"provider" => "openai", "streamed" => true})
     end
   end
 end

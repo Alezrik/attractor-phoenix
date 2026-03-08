@@ -12,7 +12,7 @@
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
-    <script defer src="dist/sidebar_items-EB6A89A8.js"></script>
+    <script defer src="dist/sidebar_items-777913DE.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-YU4BZFVS.js"></script>
 
@@ -119,7 +119,7 @@ attractor_phoenix
 
     <section id="moduledoc">
 <p>Provider-agnostic LLM client used by codergen nodes and agent sessions.</p><p>The client resolves providers, applies middleware, delegates to adapter modules, and
-supports both request/response and streaming flows.</p>
+supports both request/response and streaming flows.</p><p>Beyond the low-level <a href="#complete/2"><code class="inline">complete/2</code></a> and <a href="#stream/2"><code class="inline">stream/2</code></a> APIs, the module also exposes:</p><ol><li><a href="#from_env/1"><code class="inline">from_env/1</code></a> for runtime construction from application config</li><li>module-level default-client helpers</li><li>spec-aligned convenience wrappers such as <a href="#generate/2"><code class="inline">generate/2</code></a></li><li>stream accumulation helpers for callers that want a final normalized response</li><li>JSON object generation helpers layered on top of the normalized response surface</li></ol>
     </section>
 
 </div>
@@ -160,6 +160,56 @@ supports both request/response and streaming flows.</p>
 
     <div class="summary-row">
       <div class="summary-signature">
+        <a href="#accumulate_stream/1" data-no-tooltip="" translate="no">accumulate_stream(request)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Consumes a raw event stream and returns a normalized final response.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#accumulate_stream/2" data-no-tooltip="" translate="no">accumulate_stream(client, request)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Consumes a raw event stream and returns a normalized final response.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#accumulate_stream_with_request/2" data-no-tooltip="" translate="no">accumulate_stream_with_request(client, request)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Consumes a raw event stream and returns the accumulated response plus resolved request.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#clear_default/0" data-no-tooltip="" translate="no">clear_default()</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Clears the module-level default client.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#complete/1" data-no-tooltip="" translate="no">complete(request)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Executes a completion request via the configured module-level default client.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
         <a href="#complete/2" data-no-tooltip="" translate="no">complete(client, request)</a>
 
       </div>
@@ -180,11 +230,152 @@ supports both request/response and streaming flows.</p>
 
     <div class="summary-row">
       <div class="summary-signature">
+        <a href="#default/0" data-no-tooltip="" translate="no">default()</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Returns the configured module-level default client, or <code class="inline">nil</code>.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#from_env/1" data-no-tooltip="" translate="no">from_env(opts \\ [])</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Builds a client from application config, with direct opts taking precedence.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#generate/1" data-no-tooltip="" translate="no">generate(request)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Spec-style completion alias for <a href="#complete/2"><code class="inline">complete/2</code></a>.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#generate/2" data-no-tooltip="" translate="no">generate(client, request)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Spec-style completion alias for <a href="#complete/2"><code class="inline">complete/2</code></a>.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#generate_object/1" data-no-tooltip="" translate="no">generate_object(request)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Generates a JSON object via the configured module-level default client.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#generate_object/2" data-no-tooltip="" translate="no">generate_object(client, request)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Generates a JSON object from a non-streaming response.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#generate_object_with_request/2" data-no-tooltip="" translate="no">generate_object_with_request(client, request)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Generates a JSON object from a non-streaming response and also returns transport data.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#generate_with_request/2" data-no-tooltip="" translate="no">generate_with_request(client, request)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Spec-style completion alias for <a href="#complete_with_request/2"><code class="inline">complete_with_request/2</code></a>.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#new/1" data-no-tooltip="" translate="no">new(opts \\ [])</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Builds a client from keyword options.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#put_default/1" data-no-tooltip="" translate="no">put_default(client)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Stores a module-level default client used by the arity-1 helpers.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#stream/1" data-no-tooltip="" translate="no">stream(request)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Executes a streaming request via the configured module-level default client.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
         <a href="#stream/2" data-no-tooltip="" translate="no">stream(client, request)</a>
 
       </div>
 
         <div class="summary-synopsis"><p>Executes a streaming request and returns the event stream or an error tuple.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#stream_object/1" data-no-tooltip="" translate="no">stream_object(request)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Generates a JSON object from a streamed response via the default client.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#stream_object/2" data-no-tooltip="" translate="no">stream_object(client, request)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Generates a JSON object by first accumulating a streamed response.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#stream_object_with_request/2" data-no-tooltip="" translate="no">stream_object_with_request(client, request)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Generates a JSON object by first accumulating a streamed response and also returns
+the normalized response plus resolved request.</p></div>
 
     </div>
 
@@ -222,7 +413,7 @@ supports both request/response and streaming flows.</p>
       <h1 class="signature" translate="no">middleware()</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L13" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L25" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -251,7 +442,7 @@ supports both request/response and streaming flows.</p>
       <h1 class="signature" translate="no">t()</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L15" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L27" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -287,6 +478,152 @@ supports both request/response and streaming flows.</p>
     </h2>
 
     <div class="functions-list">
+<section class="detail" id="accumulate_stream/1">
+
+  <div class="detail-header">
+    <a href="#accumulate_stream/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">accumulate_stream(request)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L181" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> accumulate_stream(<a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()) ::
+  <a href="AttractorEx.LLM.Response.html#t:t/0">AttractorEx.LLM.Response.t</a>() | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+<p>Consumes a raw event stream and returns a normalized final response.</p><p>This is useful for callers that want provider streaming for latency but still need a
+single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">AttractorEx.LLM.Response</code></a>.</p>
+  </section>
+</section>
+<section class="detail" id="accumulate_stream/2">
+
+  <div class="detail-header">
+    <a href="#accumulate_stream/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">accumulate_stream(client, request)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L189" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> accumulate_stream(<a href="#t:t/0">t</a>(), <a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()) ::
+  <a href="AttractorEx.LLM.Response.html#t:t/0">AttractorEx.LLM.Response.t</a>() | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+<p>Consumes a raw event stream and returns a normalized final response.</p>
+  </section>
+</section>
+<section class="detail" id="accumulate_stream_with_request/2">
+
+  <div class="detail-header">
+    <a href="#accumulate_stream_with_request/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">accumulate_stream_with_request(client, request)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L201" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> accumulate_stream_with_request(<a href="#t:t/0">t</a>(), <a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()) ::
+  {:ok, <a href="AttractorEx.LLM.Response.html#t:t/0">AttractorEx.LLM.Response.t</a>(), <a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()}
+  | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+<p>Consumes a raw event stream and returns the accumulated response plus resolved request.</p>
+  </section>
+</section>
+<section class="detail" id="clear_default/0">
+
+  <div class="detail-header">
+    <a href="#clear_default/0" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">clear_default()</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L111" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> clear_default() :: :ok</pre>
+
+      </div>
+
+<p>Clears the module-level default client.</p>
+  </section>
+</section>
+<section class="detail" id="complete/1">
+
+  <div class="detail-header">
+    <a href="#complete/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">complete(request)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L118" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> complete(<a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()) ::
+  <a href="AttractorEx.LLM.Response.html#t:t/0">AttractorEx.LLM.Response.t</a>() | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+<p>Executes a completion request via the configured module-level default client.</p>
+  </section>
+</section>
 <section class="detail" id="complete/2">
 
   <div class="detail-header">
@@ -297,7 +634,7 @@ supports both request/response and streaming flows.</p>
       <h1 class="signature" translate="no">complete(client, request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L23" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L123" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -319,7 +656,7 @@ supports both request/response and streaming flows.</p>
       <h1 class="signature" translate="no">complete_with_request(client, request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L31" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L145" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -329,6 +666,329 @@ supports both request/response and streaming flows.</p>
   <section class="docstring">
 
 <p>Executes a completion request and also returns the resolved request.</p>
+  </section>
+</section>
+<section class="detail" id="default/0">
+
+  <div class="detail-header">
+    <a href="#default/0" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">default()</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L102" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> default() :: <a href="#t:t/0">t</a>() | nil</pre>
+
+      </div>
+
+<p>Returns the configured module-level default client, or <code class="inline">nil</code>.</p>
+  </section>
+</section>
+<section class="detail" id="from_env/1">
+
+    <span id="from_env/0"></span>
+
+  <div class="detail-header">
+    <a href="#from_env/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">from_env(opts \\ [])</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L55" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> from_env(<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">keyword</a>()) :: <a href="#t:t/0">t</a>()</pre>
+
+      </div>
+
+<p>Builds a client from application config, with direct opts taking precedence.</p><p>Supported config shape:</p><pre><code class="makeup elixir" translate="no"><span class="n">config</span><span class="w"> </span><span class="ss">:attractor_phoenix</span><span class="p">,</span><span class="w"> </span><span class="ss">:attractor_ex_llm</span><span class="p">,</span><span class="w">
+  </span><span class="ss">providers</span><span class="p">:</span><span class="w"> </span><span class="p" data-group-id="6740434691-1">%{</span><span class="s">&quot;openai&quot;</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nc">MyApp.OpenAIAdapter</span><span class="p" data-group-id="6740434691-1">}</span><span class="p">,</span><span class="w">
+  </span><span class="ss">default_provider</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;openai&quot;</span></code></pre>
+  </section>
+</section>
+<section class="detail" id="generate/1">
+
+  <div class="detail-header">
+    <a href="#generate/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">generate(request)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L132" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> generate(<a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()) ::
+  <a href="AttractorEx.LLM.Response.html#t:t/0">AttractorEx.LLM.Response.t</a>() | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+<p>Spec-style completion alias for <a href="#complete/2"><code class="inline">complete/2</code></a>.</p>
+  </section>
+</section>
+<section class="detail" id="generate/2">
+
+  <div class="detail-header">
+    <a href="#generate/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">generate(client, request)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L136" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> generate(<a href="#t:t/0">t</a>(), <a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()) ::
+  <a href="AttractorEx.LLM.Response.html#t:t/0">AttractorEx.LLM.Response.t</a>() | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+<p>Spec-style completion alias for <a href="#complete/2"><code class="inline">complete/2</code></a>.</p>
+  </section>
+</section>
+<section class="detail" id="generate_object/1">
+
+  <div class="detail-header">
+    <a href="#generate_object/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">generate_object(request)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L214" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> generate_object(<a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()) ::
+  {:ok, <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>() | <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">list</a>()} | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+<p>Generates a JSON object via the configured module-level default client.</p>
+  </section>
+</section>
+<section class="detail" id="generate_object/2">
+
+  <div class="detail-header">
+    <a href="#generate_object/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">generate_object(client, request)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L224" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> generate_object(<a href="#t:t/0">t</a>(), <a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()) ::
+  {:ok, <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>() | <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">list</a>()} | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+<p>Generates a JSON object from a non-streaming response.</p><p>The response body is decoded from <code class="inline">response.text</code>.</p>
+  </section>
+</section>
+<section class="detail" id="generate_object_with_request/2">
+
+  <div class="detail-header">
+    <a href="#generate_object_with_request/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">generate_object_with_request(client, request)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L236" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> generate_object_with_request(<a href="#t:t/0">t</a>(), <a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()) ::
+  {:ok, <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>() | <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">list</a>(), <a href="AttractorEx.LLM.Response.html#t:t/0">AttractorEx.LLM.Response.t</a>(),
+   <a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()}
+  | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+<p>Generates a JSON object from a non-streaming response and also returns transport data.</p>
+  </section>
+</section>
+<section class="detail" id="generate_with_request/2">
+
+  <div class="detail-header">
+    <a href="#generate_with_request/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">generate_with_request(client, request)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L141" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> generate_with_request(<a href="#t:t/0">t</a>(), <a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()) ::
+  {:ok, <a href="AttractorEx.LLM.Response.html#t:t/0">AttractorEx.LLM.Response.t</a>(), <a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()}
+  | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+<p>Spec-style completion alias for <a href="#complete_with_request/2"><code class="inline">complete_with_request/2</code></a>.</p>
+  </section>
+</section>
+<section class="detail" id="new/1">
+
+    <span id="new/0"></span>
+
+  <div class="detail-header">
+    <a href="#new/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">new(opts \\ [])</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L36" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> new(<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">keyword</a>()) :: <a href="#t:t/0">t</a>()</pre>
+
+      </div>
+
+<p>Builds a client from keyword options.</p>
+  </section>
+</section>
+<section class="detail" id="put_default/1">
+
+  <div class="detail-header">
+    <a href="#put_default/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">put_default(client)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L95" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> put_default(<a href="#t:t/0">t</a>()) :: <a href="#t:t/0">t</a>()</pre>
+
+      </div>
+
+<p>Stores a module-level default client used by the arity-1 helpers.</p>
+  </section>
+</section>
+<section class="detail" id="stream/1">
+
+  <div class="detail-header">
+    <a href="#stream/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">stream(request)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L162" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> stream(<a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()) :: <a href="https://hexdocs.pm/elixir/Enumerable.html#t:t/0">Enumerable.t</a>() | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+<p>Executes a streaming request via the configured module-level default client.</p>
   </section>
 </section>
 <section class="detail" id="stream/2">
@@ -341,7 +1001,7 @@ supports both request/response and streaming flows.</p>
       <h1 class="signature" translate="no">stream(client, request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L47" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L167" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -351,6 +1011,96 @@ supports both request/response and streaming flows.</p>
   <section class="docstring">
 
 <p>Executes a streaming request and returns the event stream or an error tuple.</p>
+  </section>
+</section>
+<section class="detail" id="stream_object/1">
+
+  <div class="detail-header">
+    <a href="#stream_object/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">stream_object(request)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L245" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> stream_object(<a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()) ::
+  {:ok, <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>() | <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">list</a>()} | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+<p>Generates a JSON object from a streamed response via the default client.</p>
+  </section>
+</section>
+<section class="detail" id="stream_object/2">
+
+  <div class="detail-header">
+    <a href="#stream_object/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">stream_object(client, request)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L253" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> stream_object(<a href="#t:t/0">t</a>(), <a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()) ::
+  {:ok, <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>() | <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">list</a>()} | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+<p>Generates a JSON object by first accumulating a streamed response.</p>
+  </section>
+</section>
+<section class="detail" id="stream_object_with_request/2">
+
+  <div class="detail-header">
+    <a href="#stream_object_with_request/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">stream_object_with_request(client, request)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L266" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> stream_object_with_request(<a href="#t:t/0">t</a>(), <a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()) ::
+  {:ok, <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>() | <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">list</a>(), <a href="AttractorEx.LLM.Response.html#t:t/0">AttractorEx.LLM.Response.t</a>(),
+   <a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()}
+  | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+<p>Generates a JSON object by first accumulating a streamed response and also returns
+the normalized response plus resolved request.</p>
   </section>
 </section>
 <section class="detail" id="stream_with_request/2">
@@ -363,7 +1113,7 @@ supports both request/response and streaming flows.</p>
       <h1 class="signature" translate="no">stream_with_request(client, request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L55" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L274" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
