@@ -20,6 +20,7 @@ This repository combines the core engine with a polished visual experience for d
 3. The public API is `AttractorEx.run/3`.
 
 See dedicated library docs: [lib/attractor_ex/README.md](lib/attractor_ex/README.md)
+Published overview: https://alezrik.github.io/attractor-phoenix/overview.html
 
 ## Documentation
 
@@ -27,13 +28,20 @@ This repository now ships a proper ExDoc site for `AttractorEx` and keeps the sp
 
 Primary documentation locations:
 
-1. Generated ExDoc site: `doc/index.html` after running `mix docs`
-2. ExDoc guides: `docs/`
-3. Library overview: `lib/attractor_ex/README.md`
-4. Spec compliance references:
+1. Published docs site: https://alezrik.github.io/attractor-phoenix/overview.html
+2. Local ExDoc site: `docs/index.html` after running `mix docs`
+3. ExDoc guides and generated site output: `docs/`
+4. Library overview source: `lib/attractor_ex/README.md`
+5. Spec compliance references:
    - `lib/attractor_ex/ATTRACTOR_SPEC_COMPLIANCE.md`
    - `lib/attractor_ex/CODING_AGENT_LOOP_COMPLIANCE.md`
    - `lib/attractor_ex/UNIFIED_LLM_SPEC_COMPLIANCE.md`
+
+Recommended entry points:
+
+1. Start with the published overview page.
+2. Use the API reference and module sidebar from the published site for source-level navigation.
+3. Use the `lib/attractor_ex/*.md` files in this repo when editing or reviewing spec-compliance changes.
 
 Documentation commands:
 
@@ -148,7 +156,7 @@ Upstream baseline currently tracked by this repo:
 5. Unified request model fields including `top_p`, `stop_sequences`, and `response_format`.
 6. Unified stream event envelope via `AttractorEx.LLM.StreamEvent`.
 
-Current scope is intentionally low-level and adapter-agnostic. See the detailed matrix in `lib/attractor_ex/UNIFIED_LLM_SPEC_COMPLIANCE.md`.
+Current scope is intentionally low-level and adapter-agnostic. See the detailed matrix in `lib/attractor_ex/UNIFIED_LLM_SPEC_COMPLIANCE.md` or the published page at https://alezrik.github.io/attractor-phoenix/unified_llm_spec_compliance.html.
 
 ## LLM Node Configuration (`codergen`)
 
