@@ -58,6 +58,9 @@ AttractorEx.StatusContract.html
 AttractorEx.Transforms.VariableExpansion.html
 AttractorEx.Validator.html
 AttractorEx.html
+AttractorExPhx.Client.html
+AttractorExPhx.HTTPServer.html
+AttractorExPhx.html
 AttractorPhoenix.Mailer.html
 AttractorPhoenix.html
 AttractorPhoenixWeb.CoreComponents.html
@@ -86,12 +89,13 @@ dist/lato-latin-700-normal-2XVSBPG4.woff2
 dist/lato-latin-ext-400-normal-N27NCBWW.woff2
 dist/lato-latin-ext-700-normal-Q2L5DVMW.woff2
 dist/remixicon-ZWU5GQ4X.woff2
-dist/search_data-C820C983.js
-dist/sidebar_items-777913DE.js
+dist/search_data-21574E59.js
+dist/sidebar_items-CDB009B2.js
 http-api.html
 human-in-the-loop.html
 index.html
 overview.html
+phoenix-adapter.html
 pipeline-engine.html
 readme.html
 search.html

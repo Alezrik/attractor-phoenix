@@ -121,6 +121,7 @@ defmodule AttractorPhoenix.MixProject do
       extras: [
         "docs/overview.md",
         "docs/pipeline-engine.md",
+        "docs/phoenix-adapter.md",
         "docs/human-in-the-loop.md",
         "docs/http-api.md",
         "docs/agent-loop.md",
@@ -134,6 +135,7 @@ defmodule AttractorPhoenix.MixProject do
         Guides: [
           "docs/overview.md",
           "docs/pipeline-engine.md",
+          "docs/phoenix-adapter.md",
           "docs/human-in-the-loop.md",
           "docs/http-api.md",
           "docs/agent-loop.md",
@@ -189,11 +191,18 @@ defmodule AttractorPhoenix.MixProject do
           AttractorEx.Interviewers.Server
         ],
         HTTPService: ~r/^AttractorEx\.HTTP(\.|$)/,
+        PhoenixAdapter: ~r/^AttractorExPhx(\.|$)/,
         UnifiedLLM: ~r/^AttractorEx\.LLM\./,
         AgentLoop: ~r/^AttractorEx\.Agent\./,
         Transforms: ~r/^AttractorEx\.Transforms\./
       ],
-      nest_modules_by_prefix: [AttractorEx, AttractorEx.Agent, AttractorEx.HTTP, AttractorEx.LLM]
+      nest_modules_by_prefix: [
+        AttractorEx,
+        AttractorEx.Agent,
+        AttractorEx.HTTP,
+        AttractorEx.LLM,
+        AttractorExPhx
+      ]
     ]
   end
 end

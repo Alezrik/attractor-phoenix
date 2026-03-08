@@ -18,7 +18,8 @@ Dependency boundary:
 
 1. Internal references are only `AttractorEx.*`.
 2. Runtime deps used here are standard library + `Jason`.
-3. Phoenix is used by the demo UI app, not by this library code.
+3. Phoenix-specific integration now lives in the separate `AttractorExPhx` adapter layer.
+4. Phoenix is used by the demo UI app, not by this library code.
 
 ## Public API
 

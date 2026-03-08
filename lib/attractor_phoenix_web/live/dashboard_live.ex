@@ -1,7 +1,7 @@
 defmodule AttractorPhoenixWeb.DashboardLive do
   use AttractorPhoenixWeb, :live_view
 
-  alias AttractorPhoenix.AttractorAPI
+  alias AttractorExPhx.Client, as: AttractorAPI
   alias Phoenix.HTML
 
   @refresh_interval_ms 3_000

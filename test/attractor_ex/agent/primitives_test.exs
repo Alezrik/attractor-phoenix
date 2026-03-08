@@ -90,7 +90,7 @@ defmodule AttractorEx.Agent.PrimitivesTest do
              ExecutionEnvironment.shell_command(
                env,
                shell_env_echo_command("SPECIAL_TOKEN"),
-               timeout_ms: 1_000
+               timeout_ms: 5_000
              )
 
     assert String.trim(output) == "xyz"

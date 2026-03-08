@@ -8,8 +8,9 @@ This repository combines the core engine with a polished visual experience for d
 ## Project Structure
 
 1. `lib/attractor_ex/` - standalone Attractor-style DOT pipeline engine (the main artifact).
-2. `lib/attractor_phoenix_web/live/` - Phoenix LiveView UI demonstrating the library.
-3. `assets/js/pipeline_builder.js` - graph-builder interactions for the demo UI.
+2. `lib/attractor_ex_phx/` - Phoenix adapter layer that plugs the web app into `AttractorEx`.
+3. `lib/attractor_phoenix_web/live/` - Phoenix LiveView UI demonstrating the library.
+4. `assets/js/pipeline_builder.js` - graph-builder interactions for the demo UI.
 
 ## AttractorEx First
 
@@ -17,7 +18,8 @@ This repository combines the core engine with a polished visual experience for d
 
 1. No `AttractorPhoenix*` references inside `lib/attractor_ex`.
 2. No `AttractorPhoenixWeb*` references inside `lib/attractor_ex`.
-3. The public API is `AttractorEx.run/3`.
+3. Phoenix integration code now lives under `lib/attractor_ex_phx/`.
+4. The public API is `AttractorEx.run/3`.
 
 See dedicated library docs: [lib/attractor_ex/README.md](lib/attractor_ex/README.md)
 Published overview: https://alezrik.github.io/attractor-phoenix/overview.html

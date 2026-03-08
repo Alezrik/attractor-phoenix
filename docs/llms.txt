@@ -5,6 +5,7 @@
 - Guides
   - [AttractorEx Overview](overview.md)
   - [Pipeline Engine](pipeline-engine.md)
+  - [Phoenix Adapter](phoenix-adapter.md)
   - [Human-in-the-Loop](human-in-the-loop.md)
   - [HTTP API](http-api.md)
   - [Agent Loop](agent-loop.md)
@@ -91,6 +92,11 @@ used by your application.
   - [AttractorEx.HTTP.GraphRenderer](AttractorEx.HTTP.GraphRenderer.md): Renders parsed graphs into presentation-friendly HTTP formats.
   - [AttractorEx.HTTP.Manager](AttractorEx.HTTP.Manager.md): GenServer that owns the in-memory state for HTTP-managed pipeline runs.
   - [AttractorEx.HTTP.Router](AttractorEx.HTTP.Router.md): Plug router exposing the AttractorEx HTTP API.
+
+- PhoenixAdapter
+  - [AttractorExPhx](AttractorExPhx.md): Phoenix-facing adapter layer for `AttractorEx`.
+  - [AttractorExPhx.Client](AttractorExPhx.Client.md): Req-based client for the `AttractorEx` HTTP control plane.
+  - [AttractorExPhx.HTTPServer](AttractorExPhx.HTTPServer.md): Supervision-friendly HTTP server wrapper for `AttractorEx`.
 
 - UnifiedLLM
   - [AttractorEx.LLM.Client](AttractorEx.LLM.Client.md): Provider-agnostic LLM client used by codergen nodes and agent sessions.

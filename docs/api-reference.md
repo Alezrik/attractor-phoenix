@@ -76,6 +76,11 @@ used by your application.
   - [AttractorEx.HTTP.Manager](AttractorEx.HTTP.Manager.md): GenServer that owns the in-memory state for HTTP-managed pipeline runs.
   - [AttractorEx.HTTP.Router](AttractorEx.HTTP.Router.md): Plug router exposing the AttractorEx HTTP API.
 
+- PhoenixAdapter
+  - [AttractorExPhx](AttractorExPhx.md): Phoenix-facing adapter layer for `AttractorEx`.
+  - [AttractorExPhx.Client](AttractorExPhx.Client.md): Req-based client for the `AttractorEx` HTTP control plane.
+  - [AttractorExPhx.HTTPServer](AttractorExPhx.HTTPServer.md): Supervision-friendly HTTP server wrapper for `AttractorEx`.
+
 - UnifiedLLM
   - [AttractorEx.LLM.Client](AttractorEx.LLM.Client.md): Provider-agnostic LLM client used by codergen nodes and agent sessions.
   - [AttractorEx.LLM.Message](AttractorEx.LLM.Message.md): Unified chat message struct used in LLM requests.
