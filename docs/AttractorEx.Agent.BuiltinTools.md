@@ -6,7 +6,8 @@ Built-in coding-agent tools backed by an `ExecutionEnvironment`.
 The `:default` preset exposes a provider-neutral baseline toolset. Provider
 presets then layer provider-native tool names and argument shapes on top of
 the same execution environment so OpenAI, Anthropic, and Gemini sessions can
-stay closer to their upstream agent harnesses.
+stay closer to their upstream agent harnesses. Gemini's optional web tools can
+also be enabled for the `:gemini` preset.
 
 # `preset`
 
@@ -17,7 +18,10 @@ stay closer to their upstream agent harnesses.
 # `for_provider`
 
 ```elixir
-@spec for_provider(preset()) :: [AttractorEx.Agent.Tool.t()]
+@spec for_provider(
+  preset(),
+  keyword()
+) :: [AttractorEx.Agent.Tool.t()]
 ```
 
 ---

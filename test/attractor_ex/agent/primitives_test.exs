@@ -121,6 +121,7 @@ defmodule AttractorEx.Agent.PrimitivesTest do
     tmp_dir =
       Path.join(System.tmp_dir!(), "attractor-agent-env-#{System.unique_integer([:positive])}")
 
+    File.rm_rf!(tmp_dir)
     File.mkdir_p!(Path.join(tmp_dir, "b-dir"))
     File.write!(Path.join(tmp_dir, "a-file.txt"), "alpha")
 
@@ -186,6 +187,7 @@ defmodule AttractorEx.Agent.PrimitivesTest do
   test "anthropic and gemini presets preserve provider-specific metadata" do
     anthropic = ProviderProfile.anthropic(model: "claude-sonnet")
     gemini = ProviderProfile.gemini(model: "gemini-2.5-pro")
+    gemini_with_web = ProviderProfile.gemini(model: "gemini-2.5-pro", web_tools: true)
 
     assert anthropic.id == "anthropic"
     assert anthropic.provider_family == :anthropic
@@ -193,6 +195,8 @@ defmodule AttractorEx.Agent.PrimitivesTest do
     assert gemini.id == "gemini"
     assert gemini.provider_family == :gemini
     assert gemini.preset == :gemini
+    assert "web_search" in Enum.map(gemini_with_web.tools, & &1.name)
+    assert "web_fetch" in Enum.map(gemini_with_web.tools, & &1.name)
   end
 
   test "provider profile helper metadata covers provider-specific and generic fallbacks" do

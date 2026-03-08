@@ -6,7 +6,8 @@ defmodule AttractorEx.Agent.ProviderProfile do
   builder so agent sessions can stay portable across providers.
 
   The module also exposes a maintained cross-provider integration matrix for the
-  built-in OpenAI, Anthropic, and Gemini presets.
+  built-in OpenAI, Anthropic, and Gemini presets. Gemini can optionally include
+  web-search tools via `gemini(web_tools: true)`.
   """
 
   alias AttractorEx.Agent.{BuiltinTools, Event, Tool, ToolRegistry}
@@ -113,7 +114,8 @@ defmodule AttractorEx.Agent.ProviderProfile do
 
   @spec gemini(keyword()) :: t()
   def gemini(opts \\ []) do
-    default_tools = BuiltinTools.for_provider(:gemini)
+    default_tools =
+      BuiltinTools.for_provider(:gemini, web_tools: Keyword.get(opts, :web_tools, false))
 
     new(
       [

@@ -35,13 +35,13 @@ Legend: `implemented`, `partial`, `not implemented`.
 | Upstream section | Status | Notes |
 |---|---|---|
 | `2. Agentic Loop` | `implemented` | Session lifecycle, loop rounds, natural completion, limits, steering/follow-up, loop detection, spec-style session event emission, full-output tool-call host events, and model-recoverable tool validation failures are covered. |
-| `3. Provider-Aligned Toolsets` | `partial` | OpenAI/Anthropic/Gemini presets now expose provider-specific tool bundles and capability flags, including OpenAI `apply_patch`, Anthropic/Gemini `edit_file`, Gemini `read_many_files`/`list_dir`, and provider-native `shell` naming. Byte-for-byte upstream prompt/tool parity and optional Gemini web tools remain open. |
+| `3. Provider-Aligned Toolsets` | `implemented` | OpenAI/Anthropic/Gemini presets now expose provider-specific tool bundles and capability flags, including OpenAI `apply_patch`, Anthropic/Gemini `edit_file`, Gemini `read_many_files`/`list_dir`, provider-native `shell` naming, and opt-in Gemini `web_search`/`web_fetch` support via `ProviderProfile.gemini(web_tools: true)`. Byte-for-byte upstream harness/prompt parity is still not claimed. |
 | `4. Tool Execution Environment` | `implemented` | `ExecutionEnvironment` now covers working directory, platform, file reads/writes, directory listing, globbing, grep, shell execution, and environment context, with `LocalExecutionEnvironment` implementing the contract. |
 | `5. Tool Output and Context Management` | `implemented` | Character-first then line truncation, per-tool limits, timeout controls, and bounded event payload behavior are implemented/tested. |
 | `6. System Prompts and Environment Context` | `implemented` | Layered prompt construction now includes provider/model metadata, platform, tool inventory, serialized environment context, and ancestor-discovered instruction docs (`AGENTS.md`, provider files, `.codex/instructions.md`) with custom builder hooks preserved. |
 | `7. Subagents` | `implemented` | Session-managed `spawn_agent`, `send_input`, `wait`, and `close_agent` tools now create child sessions with independent history, shared execution environment, model/turn overrides, and enforced `max_subagent_depth`. |
 | `8. Out of Scope` | `n/a` | Informational section. |
-| `9. Definition of Done` | `partial` | Core loop behavior, provider-specific tool bundles, prompt context, local environment contract, and subagent lifecycle are covered. Exact provider-native prompt parity and the remaining optional provider tools remain open. |
+| `9. Definition of Done` | `partial` | Core loop behavior, provider-specific tool bundles, prompt context, local environment contract, and subagent lifecycle are covered. Exact provider-native prompt/tool-harness parity remains open. |
 | `Appendix A (apply_patch v4a)` | `partial` | A built-in `apply_patch` tool now parses and applies add/delete/update/move operations in the appendix-style envelope for local sessions. Full appendix-edge-case coverage and exhaustive parity validation remain open. |
 | `Appendix B (error handling)` | `partial` | Tool/session error propagation and recovery behaviors are implemented, but full cross-provider SDK retry hierarchy is delegated to Unified LLM layer. |
 
@@ -63,12 +63,12 @@ Legend: `implemented`, `partial`, `not implemented`.
 14. Tool-argument schema validation and session/context warning events.
 15. Ancestor-based project instruction discovery for prompt context.
 16. Subagent lifecycle including spawn/input/wait/close flows, depth enforcement, and recoverable missing-agent errors.
-17. OpenAI-style `apply_patch` execution for local sessions plus Anthropic/Gemini-native edit/read-many/list-dir tool variants.
+17. OpenAI-style `apply_patch` execution for local sessions plus Anthropic/Gemini-native edit/read-many/list-dir tool variants and opt-in Gemini `web_search`/`web_fetch`.
 
 ## Known Gaps vs Spec
 
 1. Provider-packaged toolsets are closer to codex-rs, Claude Code, and gemini-cli, but are not yet byte-for-byte harness copies.
-2. Gemini's optional `web_search` and `web_fetch` tools are still not built in.
+2. Built-in Gemini web tools are opt-in rather than enabled in the default preset to preserve a conservative local/network posture.
 3. `apply_patch` coverage is intentionally conservative and not yet validated against every appendix edge case.
 
 ## Verification Commands
