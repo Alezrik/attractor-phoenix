@@ -127,6 +127,92 @@ defmodule AttractorEx.Agent.ApplyPatchTest do
     assert message =~ "failed to delete missing.txt"
   end
 
+  test "apply_patch reports structural operation errors" do
+    root = tmp_dir()
+    env = LocalExecutionEnvironment.new(working_dir: root)
+    File.write!(Path.join(root, "sample.txt"), "alpha\nbeta")
+
+    empty_add = """
+    *** Begin Patch
+    *** Add File: sample.txt
+    *** End Patch
+    """
+
+    assert {:error, message} = ApplyPatch.apply(env, empty_add)
+    assert message =~ "add file operation requires at least one + line"
+
+    missing_hunks = """
+    *** Begin Patch
+    *** Update File: sample.txt
+    *** End Patch
+    """
+
+    assert {:error, message} = ApplyPatch.apply(env, missing_hunks)
+    assert message =~ "update file operation requires hunks"
+
+    unrecognized = """
+    *** Begin Patch
+    ????
+    *** End Patch
+    """
+
+    assert {:error, message} = ApplyPatch.apply(env, unrecognized)
+    assert message =~ "unrecognized patch line"
+  end
+
+  test "apply_patch reports read and hunk-consumption failures" do
+    root = tmp_dir()
+    env = LocalExecutionEnvironment.new(working_dir: root)
+    File.write!(Path.join(root, "sample.txt"), "alpha\nbeta")
+
+    missing_file = """
+    *** Begin Patch
+    *** Update File: missing.txt
+    @@
+    -alpha
+    +gamma
+    *** End Patch
+    """
+
+    assert {:error, message} = ApplyPatch.apply(env, missing_file)
+    assert message =~ "failed to read missing.txt"
+
+    context_mismatch = """
+    *** Begin Patch
+    *** Update File: sample.txt
+    @@
+     alpha
+     gamma
+    *** End Patch
+    """
+
+    assert {:error, message} = ApplyPatch.apply(env, context_mismatch)
+    assert message =~ "context mismatch"
+
+    delete_mismatch = """
+    *** Begin Patch
+    *** Update File: sample.txt
+    @@
+     alpha
+    -gamma
+    *** End Patch
+    """
+
+    assert {:error, message} = ApplyPatch.apply(env, delete_mismatch)
+    assert message =~ "delete mismatch"
+
+    invalid_hunk_line = """
+    *** Begin Patch
+    *** Update File: sample.txt
+    @@
+    !oops
+    *** End Patch
+    """
+
+    assert {:error, message} = ApplyPatch.apply(env, invalid_hunk_line)
+    assert message =~ "invalid patch operation line"
+  end
+
   defp tmp_dir do
     root =
       Path.join(System.tmp_dir!(), "attractor-apply-patch-#{System.unique_integer([:positive])}")
