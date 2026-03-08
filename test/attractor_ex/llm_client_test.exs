@@ -201,6 +201,15 @@ defmodule AttractorEx.LLMClientTest do
       assert is_nil(client.default_provider)
     end
 
+    test "put_default and clear_default manage the module-level client" do
+      client = %Client{providers: %{"openai" => AttractorExTest.LLMAdapter}}
+
+      assert ^client = Client.put_default(client)
+      assert Client.default() == client
+      assert :ok = Client.clear_default()
+      assert is_nil(Client.default())
+    end
+
     test "from_env builds a client from application config" do
       Application.put_env(:attractor_phoenix, :attractor_ex_llm,
         providers: %{"openai" => AttractorExTest.LLMAdapter},
@@ -425,6 +434,23 @@ defmodule AttractorEx.LLMClientTest do
              ] = Enum.to_list(events)
     end
 
+    test "stream_with_request preserves middleware-short-circuited event streams" do
+      middleware = fn request, _next ->
+        {:ok, [%StreamEvent{type: :stream_start}], %{request | metadata: %{"short" => true}}}
+      end
+
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai",
+        streaming_middleware: [middleware]
+      }
+
+      request = %Request{model: "gpt-5.2", messages: [%Message{role: :user, content: "hi"}]}
+
+      assert {:ok, [%StreamEvent{type: :stream_start}], %Request{metadata: %{"short" => true}}} =
+               Client.stream_with_request(client, request)
+    end
+
     test "message content parts preserve a text projection for adapters" do
       client = %Client{
         providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
@@ -475,6 +501,10 @@ defmodule AttractorEx.LLMClientTest do
                "reason"
 
       assert MessagePart.text_projection(%{"type" => "unknown"}) == "[text]"
+      assert MessagePart.text_projection(%MessagePart{type: :tool_call}) == "[tool call]"
+
+      assert MessagePart.text_projection(%{"type" => :document, "text" => "spec.pdf"}) ==
+               "[document: spec.pdf]"
     end
 
     test "accumulate_stream returns a normalized response from stream events" do
@@ -579,6 +609,22 @@ defmodule AttractorEx.LLMClientTest do
                  model: "gpt-5.2",
                  messages: [%Message{role: :user, content: "hi"}]
                })
+    end
+
+    test "generate_object_with_request rejects scalar json responses" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.LLMAdapter},
+        default_provider: "openai",
+        middleware: [
+          fn request, _next ->
+            {:ok, %Response{text: "123", usage: %Usage{}, finish_reason: "stop"},
+             %{request | provider: "openai"}}
+          end
+        ]
+      }
+
+      assert {:error, :json_response_must_be_object_or_array} =
+               Client.generate_object(client, %Request{model: "gpt-5.2", messages: []})
     end
 
     test "generate_object_with_request returns decoded objects and transport data" do
