@@ -55,7 +55,7 @@ For non-streaming `Client.complete/2` responses and synchronous tool execution, 
 
 - a provider ID
 - a model name
-- provider capability metadata such as parallel tool-call support and context-window size
+- provider capability metadata such as reasoning support, streaming support, parallel tool-call support, and context-window size
 - tool definitions
 - provider options
 - a system prompt builder
@@ -68,12 +68,13 @@ Convenience presets are available for the common coding-agent providers:
 - `ProviderProfile.anthropic/1`
 - `ProviderProfile.gemini/1`
 
-Those presets attach the built-in agent tool bundle and default capability metadata so applications do not need to rebuild the baseline profile shape manually.
+Those presets attach provider-aligned built-in tool bundles and default capability metadata so applications do not need to rebuild the baseline profile shape manually.
 
 `ProviderProfile.integration_matrix/0` exposes the maintained cross-provider compatibility matrix for:
 
 - implemented tool names
 - upstream reference tool names
+- capability flags
 - provider-specific instruction files
 - reasoning/thinking option paths
 - shared session event kinds
@@ -96,7 +97,7 @@ The environment contract now includes the local tool surface used by the coding-
 
 ## Built-In Tools
 
-`AttractorEx.Agent.BuiltinTools` exposes a provider-neutral baseline toolset:
+`AttractorEx.Agent.BuiltinTools` exposes a provider-neutral baseline toolset under the `:default` preset:
 
 - `read_file`
 - `write_file`
@@ -109,7 +110,13 @@ The environment contract now includes the local tool surface used by the coding-
 - `wait`
 - `close_agent`
 
-Filesystem and shell tools are backed by the execution-environment behaviour, so alternative environments can swap in sandboxed or remote implementations without changing the session loop. Subagent tools are session-managed and create child `AttractorEx.Agent.Session` instances that keep independent history while sharing the parent's execution environment.
+Provider presets now swap in provider-native tool names where the upstream agent harness differs:
+
+- OpenAI: `apply_patch`, `shell`
+- Anthropic: `edit_file`, `shell`
+- Gemini: `read_many_files`, `edit_file`, `shell`, `list_dir`
+
+Filesystem and shell tools are backed by the execution-environment behaviour, so alternative environments can swap in sandboxed or remote implementations without changing the session loop. The OpenAI-facing `apply_patch` tool is available for local sessions through `AttractorEx.Agent.ApplyPatch`. Subagent tools are session-managed and create child `AttractorEx.Agent.Session` instances that keep independent history while sharing the parent's execution environment.
 
 ## Subagents
 

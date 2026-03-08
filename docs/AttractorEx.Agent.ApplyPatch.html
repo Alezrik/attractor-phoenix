@@ -8,7 +8,7 @@
     <meta name="project" content="attractor_phoenix v0.1.0">
 
 
-    <title>AttractorPhoenix.Mailer — attractor_phoenix v0.1.0</title>
+    <title>AttractorEx.Agent.ApplyPatch — attractor_phoenix v0.1.0</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
@@ -97,25 +97,31 @@ attractor_phoenix
 <div id="top-content">
   <div class="heading-with-actions top-heading">
     <h1>
-      <span translate="no">AttractorPhoenix.<wbr>Mailer</span> 
+      <span translate="no">AttractorEx.<wbr>Agent.<wbr>ApplyPatch</span> 
       <small class="app-vsn" translate="no">(attractor_phoenix v0.1.0)</small>
 
     </h1>
 
-<a href="AttractorPhoenix.Mailer.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+<a href="AttractorEx.Agent.ApplyPatch.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
   <i class="ri-markdown-line" aria-hidden="true"></i>
   <span class="sr-only">Copy Markdown</span>
 </a>
 
 
 
-      <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/mailer.ex#L1" title="View Source" class="icon-action" rel="help">
+      <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/apply_patch.ex#L1" title="View Source" class="icon-action" rel="help">
         <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         <span class="sr-only">View Source</span>
       </a>
 
   </div>
 
+
+    <section id="moduledoc">
+<p>Applies <code class="inline">apply_patch</code> v4a-style filesystem updates against a local execution environment.</p><p>The implementation is intentionally conservative. It supports add, delete, update,
+and move operations using the appendix-style patch envelope and verifies update hunks
+against current file contents before writing changes.</p>
+    </section>
 
 </div>
 
@@ -126,6 +132,20 @@ attractor_phoenix
       </a>
       <span class="text">Summary</span>
     </h2>
+<div class="summary-types summary">
+  <h3>
+    <a href="#types">Types</a>
+  </h3>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:operation_result/0" data-no-tooltip="" translate="no">operation_result()</a>
+
+      </div>
+
+    </div>
+
+</div>
 <div class="summary-functions summary">
   <h3>
     <a href="#functions">Functions</a>
@@ -133,31 +153,9 @@ attractor_phoenix
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#deliver/2" data-no-tooltip="" translate="no">deliver(email, config \\ [])</a>
+        <a href="#apply/2" data-no-tooltip="" translate="no">apply(env, patch)</a>
 
       </div>
-
-        <div class="summary-synopsis"><p>Delivers an email.</p></div>
-
-    </div>
-
-    <div class="summary-row">
-      <div class="summary-signature">
-        <a href="#deliver!/2" data-no-tooltip="" translate="no">deliver!(email, config \\ [])</a>
-
-      </div>
-
-        <div class="summary-synopsis"><p>Delivers an email, raises on error.</p></div>
-
-    </div>
-
-    <div class="summary-row">
-      <div class="summary-signature">
-        <a href="#deliver_many/2" data-no-tooltip="" translate="no">deliver_many(emails, config \\ [])</a>
-
-      </div>
-
-        <div class="summary-synopsis"><p>Delivers a list of emails.</p></div>
 
     </div>
 
@@ -165,6 +163,47 @@ attractor_phoenix
 
   </section>
 
+
+  <section id="types" class="details-list">
+    <h2 class="section-heading">
+      <a class="hover-link" href="#types">
+        <i class="ri-link-m" aria-hidden="true"></i>
+      </a>
+      <span class="text">Types</span>
+    </h2>
+
+    <div class="types-list">
+<section class="detail" id="t:operation_result/0">
+
+  <div class="detail-header">
+    <a href="#t:operation_result/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">operation_result()</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/apply_patch.ex#L12" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> operation_result() :: %{operation: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), path: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+
+    </div>
+  </section>
 
   <section id="functions" class="details-list">
     <h2 class="section-heading">
@@ -175,19 +214,17 @@ attractor_phoenix
     </h2>
 
     <div class="functions-list">
-<section class="detail" id="deliver/2">
-
-    <span id="deliver/1"></span>
+<section class="detail" id="apply/2">
 
   <div class="detail-header">
-    <a href="#deliver/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#apply/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">deliver(email, config \\ [])</h1>
+      <h1 class="signature" translate="no">apply(env, patch)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/mailer.ex#L2" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/apply_patch.ex#L15" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -198,92 +235,11 @@ attractor_phoenix
 
       <div class="specs">
 
-          <pre translate="no"><span class="attribute">@spec</span> deliver(<a href="https://hexdocs.pm/swoosh/1.23.0/Swoosh.Email.html#t:t/0">Swoosh.Email.t</a>(), <a href="https://hexdocs.pm/elixir/Keyword.html#t:t/0">Keyword.t</a>()) :: {:ok, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()} | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+          <pre translate="no"><span class="attribute">@spec</span> apply(<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: {:ok, [<a href="#t:operation_result/0">operation_result</a>()]} | {:error, <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()}</pre>
 
       </div>
 
-<p>Delivers an email.</p><p>If the email is delivered it returns an <code class="inline">{:ok, result}</code> tuple. If it fails,
-returns an <code class="inline">{:error, error}</code> tuple.</p>
-  </section>
-</section>
-<section class="detail" id="deliver!/2">
 
-    <span id="deliver!/1"></span>
-
-  <div class="detail-header">
-    <a href="#deliver!/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
-      <i class="ri-link-m" aria-hidden="true"></i>
-    </a>
-    <div class="heading-with-actions">
-      <h1 class="signature" translate="no">deliver!(email, config \\ [])</h1>
-
-
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/mailer.ex#L2" class="icon-action" rel="help" aria-label="View Source">
-          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
-        </a>
-
-    </div>
-  </div>
-
-  <section class="docstring">
-
-      <div class="specs">
-
-          <pre translate="no"><span class="attribute">@spec</span> deliver!(<a href="https://hexdocs.pm/swoosh/1.23.0/Swoosh.Email.html#t:t/0">Swoosh.Email.t</a>(), <a href="https://hexdocs.pm/elixir/Keyword.html#t:t/0">Keyword.t</a>()) :: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>() | <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">no_return</a>()</pre>
-
-      </div>
-
-<p>Delivers an email, raises on error.</p><p>If the email is delivered, it returns the result. If it fails, it raises
-a <code class="inline">DeliveryError</code>.</p>
-  </section>
-</section>
-<section class="detail" id="deliver_many/2">
-
-    <span id="deliver_many/1"></span>
-
-  <div class="detail-header">
-    <a href="#deliver_many/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
-      <i class="ri-link-m" aria-hidden="true"></i>
-    </a>
-    <div class="heading-with-actions">
-      <h1 class="signature" translate="no">deliver_many(emails, config \\ [])</h1>
-
-
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/mailer.ex#L2" class="icon-action" rel="help" aria-label="View Source">
-          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
-        </a>
-
-    </div>
-  </div>
-
-  <section class="docstring">
-
-      <div class="specs">
-
-          <pre translate="no"><span class="attribute">@spec</span> deliver_many(
-  [
-    %Swoosh.Email{
-      assigns: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
-      attachments: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
-      bcc: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
-      cc: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
-      from: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
-      headers: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
-      html_body: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
-      private: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
-      provider_options: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
-      reply_to: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
-      subject: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
-      text_body: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>(),
-      to: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()
-    }
-  ],
-  <a href="https://hexdocs.pm/elixir/Keyword.html#t:t/0">Keyword.t</a>()
-) :: {:ok, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()} | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
-
-      </div>
-
-<p>Delivers a list of emails.</p><p>It accepts a list of <code class="inline">%Swoosh.Email{}</code> as its first parameter.</p>
   </section>
 </section>
 

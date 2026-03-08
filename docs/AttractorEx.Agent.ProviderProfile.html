@@ -12,7 +12,7 @@
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
-    <script defer src="dist/sidebar_items-23FF99D4.js"></script>
+    <script defer src="dist/sidebar_items-863A0271.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-YU4BZFVS.js"></script>
 
@@ -287,7 +287,7 @@ built-in OpenAI, Anthropic, and Gemini presets.</p>
       <h1 class="signature" translate="no">integration_entry()</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L38" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L42" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -302,6 +302,8 @@ built-in OpenAI, Anthropic, and Gemini presets.</p>
   id: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(),
   provider_family: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>(),
   preset: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>(),
+  supports_reasoning: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">boolean</a>(),
+  supports_streaming: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">boolean</a>(),
   implemented_tool_names: [<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()],
   reference_tool_names: [<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()],
   instruction_files: [<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()],
@@ -325,7 +327,7 @@ built-in OpenAI, Anthropic, and Gemini presets.</p>
       <h1 class="signature" translate="no">t()</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L25" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L27" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -344,6 +346,8 @@ built-in OpenAI, Anthropic, and Gemini presets.</p>
   provider_family: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">atom</a>(),
   provider_options: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>(),
   supports_parallel_tool_calls: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">boolean</a>(),
+  supports_reasoning: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">boolean</a>(),
+  supports_streaming: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">boolean</a>(),
   system_prompt_builder: (<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">keyword</a>() -&gt; <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) | nil,
   tool_registry: <a href="AttractorEx.Agent.ToolRegistry.html#t:t/0">AttractorEx.Agent.ToolRegistry.t</a>(),
   tools: [<a href="AttractorEx.Agent.Tool.html#t:t/0">AttractorEx.Agent.Tool.t</a>()]
@@ -379,7 +383,7 @@ built-in OpenAI, Anthropic, and Gemini presets.</p>
       <h1 class="signature" translate="no">anthropic(opts \\ [])</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L87" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L97" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -407,7 +411,7 @@ built-in OpenAI, Anthropic, and Gemini presets.</p>
       <h1 class="signature" translate="no">build_system_prompt(profile, context)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L224" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L243" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -440,7 +444,7 @@ built-in OpenAI, Anthropic, and Gemini presets.</p>
       <h1 class="signature" translate="no">gemini(opts \\ [])</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L103" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L115" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -468,7 +472,7 @@ built-in OpenAI, Anthropic, and Gemini presets.</p>
       <h1 class="signature" translate="no">instruction_files(provider_profile)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L138" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L154" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -496,7 +500,7 @@ built-in OpenAI, Anthropic, and Gemini presets.</p>
       <h1 class="signature" translate="no">integration_matrix()</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L120" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L134" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -524,7 +528,7 @@ built-in OpenAI, Anthropic, and Gemini presets.</p>
       <h1 class="signature" translate="no">new(opts)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L52" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L58" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -554,7 +558,7 @@ built-in OpenAI, Anthropic, and Gemini presets.</p>
       <h1 class="signature" translate="no">openai(opts \\ [])</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L71" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L79" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -582,7 +586,7 @@ built-in OpenAI, Anthropic, and Gemini presets.</p>
       <h1 class="signature" translate="no">reasoning_option_path(provider_profile)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L145" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L164" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -610,7 +614,7 @@ built-in OpenAI, Anthropic, and Gemini presets.</p>
       <h1 class="signature" translate="no">reference_tool_names(profile)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L158" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L177" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -638,7 +642,7 @@ built-in OpenAI, Anthropic, and Gemini presets.</p>
       <h1 class="signature" translate="no">system_prompt_style(provider_profile)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L211" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L230" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -666,7 +670,7 @@ built-in OpenAI, Anthropic, and Gemini presets.</p>
       <h1 class="signature" translate="no">tool_definitions(profile)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L218" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L237" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 

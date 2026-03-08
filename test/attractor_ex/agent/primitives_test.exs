@@ -136,10 +136,13 @@ defmodule AttractorEx.Agent.PrimitivesTest do
 
     assert profile.id == "openai"
     assert profile.provider_family == :openai
+    assert profile.supports_reasoning
+    assert profile.supports_streaming
     assert profile.supports_parallel_tool_calls
     assert is_integer(profile.context_window_size)
     assert "read_file" in tool_names
-    assert "shell_command" in tool_names
+    assert "shell" in tool_names
+    assert "apply_patch" in tool_names
     assert "spawn_agent" in tool_names
   end
 
@@ -187,6 +190,8 @@ defmodule AttractorEx.Agent.PrimitivesTest do
     anthropic = Enum.find(matrix, &(&1.id == "anthropic"))
     gemini = Enum.find(matrix, &(&1.id == "gemini"))
 
+    assert openai.supports_reasoning
+    assert openai.supports_streaming
     assert openai.reasoning_option_path == ["provider_options", "reasoning", "effort"]
     assert openai.system_prompt_style == "codex-rs-aligned"
     assert anthropic.reasoning_option_path == ["provider_options", "anthropic", "thinking"]
@@ -195,24 +200,17 @@ defmodule AttractorEx.Agent.PrimitivesTest do
     assert gemini.system_prompt_style == "gemini-cli-aligned"
   end
 
-  test "built-in tool bundle is available across provider presets" do
-    tool_names =
-      BuiltinTools.for_provider(:anthropic)
-      |> Enum.map(& &1.name)
+  test "provider presets expose provider-aligned tool names" do
+    openai = BuiltinTools.for_provider(:openai) |> Enum.map(& &1.name)
+    anthropic = BuiltinTools.for_provider(:anthropic) |> Enum.map(& &1.name)
+    gemini = BuiltinTools.for_provider(:gemini) |> Enum.map(& &1.name)
 
-    assert Enum.sort(tool_names) ==
-             Enum.sort([
-               "close_agent",
-               "glob",
-               "grep",
-               "list_directory",
-               "read_file",
-               "send_input",
-               "shell_command",
-               "spawn_agent",
-               "wait",
-               "write_file"
-             ])
+    assert "apply_patch" in openai
+    assert "shell" in openai
+    assert "edit_file" in anthropic
+    assert "read_many_files" in gemini
+    assert "list_dir" in gemini
+    refute "list_directory" in anthropic
   end
 
   test "tool registry register and get" do
@@ -252,6 +250,8 @@ defmodule AttractorEx.Agent.PrimitivesTest do
       )
 
     assert prompt =~ "Provider=openai"
+    assert prompt =~ "SupportsReasoning=true"
+    assert prompt =~ "SupportsStreaming=true"
     assert prompt =~ "Platform=unix-linux"
     assert prompt =~ "AvailableTools=read_file, shell_command"
     assert prompt =~ "FILE /tmp/project/AGENTS.md"

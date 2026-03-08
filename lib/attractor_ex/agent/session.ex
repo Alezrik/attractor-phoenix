@@ -695,7 +695,7 @@ defmodule AttractorEx.Agent.Session do
 
   defp resolve_tool_timeout_ms(tool_name, args, config) do
     override =
-      if tool_name == "shell_command" do
+      if tool_name in ["shell", "shell_command"] do
         parse_timeout_ms(Map.get(args, "timeout_ms") || Map.get(args, :timeout_ms))
       else
         nil
