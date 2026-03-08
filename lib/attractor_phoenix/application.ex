@@ -15,6 +15,7 @@ defmodule AttractorPhoenix.Application do
       AttractorPhoenixWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:attractor_phoenix, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: AttractorPhoenix.PubSub},
+      AttractorPhoenix.PipelineLibrary,
       {AttractorExPhx.PubSub,
        name: AttractorPhoenix.AttractorPubSubBridge,
        pubsub_server: AttractorPhoenix.PubSub,

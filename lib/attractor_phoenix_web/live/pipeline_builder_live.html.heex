@@ -495,7 +495,39 @@
           </div>
         </div>
 
-        <.form for={@form} id="pipeline-runner-form" phx-submit="run_pipeline" class="space-y-4">
+        <.form
+          for={@form}
+          id="pipeline-runner-form"
+          phx-submit="pipeline_action"
+          class="space-y-4"
+        >
+          <%= if @loaded_library_entry do %>
+            <div
+              id="builder-library-banner"
+              class="rounded-2xl border border-base-300 bg-base-200/60 px-4 py-3"
+            >
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-[0.24em] text-base-content/55">
+                    Loaded from library
+                  </p>
+                  <p class="text-sm font-semibold">
+                    {@loaded_library_entry.name}
+                    <span class="font-mono text-xs text-base-content/60">
+                      ({@loaded_library_entry.id})
+                    </span>
+                  </p>
+                </div>
+                <.link
+                  navigate={~p"/library/#{@loaded_library_entry.id}/edit"}
+                  class="builder-btn"
+                >
+                  Manage Entry
+                </.link>
+              </div>
+            </div>
+          <% end %>
+
           <div class="space-y-2">
             <label class="text-sm font-semibold" for="pipeline-dot">Pipeline DOT</label>
             <.input
@@ -518,10 +550,39 @@
             />
           </div>
 
+          <div class="space-y-3 rounded-2xl border border-base-300 bg-base-100 p-4">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h3 class="text-sm font-semibold">Library Save</h3>
+                <p class="text-xs text-base-content/65">
+                  Store this builder state for future loading.
+                </p>
+              </div>
+              <.link navigate={~p"/library"} class="builder-btn">
+                Open Library
+              </.link>
+            </div>
+
+            <.input
+              field={@form[:library_name]}
+              id="pipeline-library-name"
+              type="text"
+              label="Library Name"
+            />
+
+            <.input
+              field={@form[:library_description]}
+              id="pipeline-library-description"
+              type="textarea"
+              rows="3"
+              label="Library Description"
+            />
+          </div>
+
           <div class="flex flex-wrap gap-2">
             <button
               id="run-pipeline"
-              name="pipeline[transport]"
+              name="pipeline[action]"
               value="run"
               type="submit"
               class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
@@ -530,12 +591,21 @@
             </button>
             <button
               id="submit-pipeline"
-              name="pipeline[transport]"
+              name="pipeline[action]"
               value="pipelines"
               type="submit"
               class="rounded-lg border border-base-300 bg-base-100 px-4 py-2 text-sm font-semibold transition hover:bg-base-200"
             >
               Submit via /pipelines
+            </button>
+            <button
+              id="save-pipeline-library"
+              name="pipeline[action]"
+              value="save_library"
+              type="submit"
+              class="rounded-lg border border-base-300 bg-base-100 px-4 py-2 text-sm font-semibold transition hover:bg-base-200"
+            >
+              Save to Library
             </button>
           </div>
         </.form>

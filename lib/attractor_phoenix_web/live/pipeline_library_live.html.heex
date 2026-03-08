@@ -1,0 +1,204 @@
+<Layouts.app flash={@flash} current_scope={assigns[:current_scope]} current_path={~p"/library"}>
+  <section
+    class="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.9fr)]"
+    id="library-page"
+  >
+    <div class="space-y-6">
+      <div class="overflow-hidden rounded-[2rem] border border-base-300 bg-gradient-to-br from-base-100 via-base-100 to-base-200 shadow-sm">
+        <div class="flex flex-wrap items-end justify-between gap-4 px-6 py-6 sm:px-8">
+          <div class="space-y-2">
+            <p class="text-xs font-semibold uppercase tracking-[0.28em] text-base-content/55">
+              Pipeline Library
+            </p>
+            <h1 class="text-3xl font-bold tracking-tight sm:text-4xl">
+              Reusable builder presets with one-click loading.
+            </h1>
+            <p class="max-w-3xl text-sm leading-6 text-base-content/70">
+              Save canonical DOT graphs and JSON context once, then route operators back into the
+              builder with the exact pipeline hydrated into the visual editor.
+            </p>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <.link navigate={~p"/builder"} class="builder-btn">
+              Open Builder
+            </.link>
+            <.link navigate={~p"/library/new"} id="new-library-entry" class="builder-btn">
+              New Library Pipeline
+            </.link>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid gap-4 md:grid-cols-3">
+        <article class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
+          <p class="text-xs font-semibold uppercase tracking-[0.24em] text-base-content/55">
+            Saved Pipelines
+          </p>
+          <p class="mt-3 text-4xl font-bold">{length(@entries)}</p>
+          <p class="mt-2 text-sm text-base-content/65">
+            Central library entries available to the builder.
+          </p>
+        </article>
+
+        <article class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
+          <p class="text-xs font-semibold uppercase tracking-[0.24em] text-base-content/55">
+            Live Loading
+          </p>
+          <p class="mt-3 text-lg font-semibold">`/builder?library=:id`</p>
+          <p class="mt-2 text-sm text-base-content/65">
+            Each saved pipeline deep-links directly back into the editor.
+          </p>
+        </article>
+
+        <article class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
+          <p class="text-xs font-semibold uppercase tracking-[0.24em] text-base-content/55">
+            Storage
+          </p>
+          <p class="mt-3 text-lg font-semibold">Local JSON persistence</p>
+          <p class="mt-2 text-sm text-base-content/65">
+            Lightweight file-backed storage without an added database dependency.
+          </p>
+        </article>
+      </div>
+
+      <div class="rounded-[1.75rem] border border-base-300 bg-base-100 p-4 shadow-sm sm:p-6">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h2 class="text-xl font-semibold">Library Admin</h2>
+            <p class="text-sm text-base-content/65">
+              Edit saved pipelines or open them directly in the builder.
+            </p>
+          </div>
+          <span class="rounded-full border border-base-300 bg-base-200 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-base-content/60">
+            {@live_action}
+          </span>
+        </div>
+
+        <div id="library-entries" class="mt-5 space-y-3">
+          <%= if @entries == [] do %>
+            <div class="rounded-2xl border border-dashed border-base-300 bg-base-200/45 px-5 py-10 text-center">
+              <p class="text-lg font-semibold">No library pipelines yet</p>
+              <p class="mt-2 text-sm text-base-content/65">
+                Save one from the builder or create it here.
+              </p>
+            </div>
+          <% end %>
+
+          <%= for entry <- @entries do %>
+            <article
+              id={"library-entry-#{entry.id}"}
+              class="grid gap-4 rounded-2xl border border-base-300 bg-base-100 px-5 py-5 transition hover:border-base-content/30 hover:shadow-sm lg:grid-cols-[minmax(0,1fr)_auto]"
+            >
+              <div class="space-y-3">
+                <div class="flex flex-wrap items-center gap-3">
+                  <h3 class="text-lg font-semibold">{entry.name}</h3>
+                  <span class="rounded-full border border-base-300 bg-base-200 px-2.5 py-1 font-mono text-[11px] text-base-content/65">
+                    {entry.id}
+                  </span>
+                </div>
+
+                <p class="text-sm leading-6 text-base-content/70">
+                  {if entry.description == "",
+                    do: "No description provided.",
+                    else: entry.description}
+                </p>
+
+                <div class="flex flex-wrap gap-4 text-xs text-base-content/55">
+                  <span>Updated {entry.updated_at}</span>
+                  <span>{String.length(entry.dot)} chars of DOT</span>
+                  <span>{String.length(entry.context_json)} chars of JSON</span>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap items-center justify-start gap-2 lg:justify-end">
+                <.link navigate={~p"/builder?library=#{entry.id}"} class="builder-btn">
+                  Load in Builder
+                </.link>
+                <.link navigate={~p"/library/#{entry.id}/edit"} class="builder-btn">
+                  Edit
+                </.link>
+                <button
+                  type="button"
+                  class="builder-btn"
+                  phx-click="delete"
+                  phx-value-id={entry.id}
+                  data-confirm="Delete this library pipeline?"
+                >
+                  Delete
+                </button>
+              </div>
+            </article>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <aside class="rounded-[1.75rem] border border-base-300 bg-base-100 p-5 shadow-sm sm:p-6">
+      <div class="space-y-2">
+        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-base-content/55">
+          {if @live_action == :edit, do: "Edit Pipeline", else: "Create Pipeline"}
+        </p>
+        <h2 class="text-2xl font-bold">
+          {if @live_action == :edit, do: "Update library entry", else: "Add library entry"}
+        </h2>
+        <p class="text-sm leading-6 text-base-content/70">
+          This form stores the same DOT and context payload the builder consumes.
+        </p>
+      </div>
+
+      <%= if @error do %>
+        <div
+          id="library-form-error"
+          class="mt-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
+          {@error}
+        </div>
+      <% end %>
+
+      <.form for={@form} id="library-form" phx-submit="save" class="mt-5 space-y-4">
+        <.input field={@form[:name]} id="library-name" type="text" label="Name" />
+
+        <.input
+          field={@form[:description]}
+          id="library-description"
+          type="textarea"
+          rows="3"
+          label="Description"
+        />
+
+        <.input
+          field={@form[:dot]}
+          id="library-dot"
+          type="textarea"
+          rows="16"
+          label="Pipeline DOT"
+          class="w-full rounded-2xl border border-base-300 bg-base-100 p-3 font-mono text-xs"
+        />
+
+        <.input
+          field={@form[:context_json]}
+          id="library-context-json"
+          type="textarea"
+          rows="8"
+          label="Context JSON"
+          class="w-full rounded-2xl border border-base-300 bg-base-100 p-3 font-mono text-xs"
+        />
+
+        <div class="flex flex-wrap gap-2 pt-2">
+          <button id="save-library-entry" type="submit" class="builder-btn">
+            {if @live_action == :edit, do: "Update Pipeline", else: "Create Pipeline"}
+          </button>
+          <.link navigate={~p"/library"} class="builder-btn">
+            Reset
+          </.link>
+          <%= if @editing_entry do %>
+            <.link navigate={~p"/builder?library=#{@editing_entry.id}"} class="builder-btn">
+              Edit in Builder
+            </.link>
+          <% end %>
+        </div>
+      </.form>
+    </aside>
+  </section>
+</Layouts.app>

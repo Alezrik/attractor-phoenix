@@ -332,14 +332,34 @@ const PipelineBuilder = {
     this.bindGraphInputs()
     this.bindPanelToggles()
 
-    this.dotEl.addEventListener("input", () => {
-      window.clearTimeout(this.dotInputTimer)
-      this.dotInputTimer = window.setTimeout(() => this.syncFromDotInput(), 180)
-    })
+    this.bindDotInput()
 
     this.fitNodesInViewport()
     this.populateGraphFields()
     this.sync(false)
+    this.lastExternalDotValue = this.dotEl.value
+  },
+
+  updated() {
+    this.dotEl = document.getElementById("pipeline-dot")
+    if (!this.dotEl) return
+    this.bindDotInput()
+
+    const nextDot = this.dotEl.value
+    if (nextDot === this.lastExternalDotValue) return
+
+    this.lastExternalDotValue = nextDot
+    this.syncFromDotInput()
+  },
+
+  bindDotInput() {
+    if (!this.dotEl || this.dotEl.dataset.builderBound === "true") return
+
+    this.dotEl.dataset.builderBound = "true"
+    this.dotEl.addEventListener("input", () => {
+      window.clearTimeout(this.dotInputTimer)
+      this.dotInputTimer = window.setTimeout(() => this.syncFromDotInput(), 180)
+    })
   },
 
   parseDot(dotText, options = {}) {
@@ -618,6 +638,7 @@ const PipelineBuilder = {
     this.fitNodesInViewport()
     this.populateGraphFields()
     this.sync(false)
+    this.lastExternalDotValue = dotText
   },
 
   bindPanelToggles() {
@@ -966,6 +987,7 @@ const PipelineBuilder = {
     lines.push("}")
 
     this.dotEl.value = lines.join("\n")
+    this.lastExternalDotValue = this.dotEl.value
   },
 
   buildNodeAttrMap(node) {

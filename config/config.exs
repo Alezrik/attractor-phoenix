@@ -9,6 +9,7 @@ import Config
 
 config :attractor_phoenix,
   generators: [timestamp_type: :utc_datetime],
+  pipeline_library_path: Path.expand("../tmp/pipeline_library.json", __DIR__),
   attractor_pubsub_bridge: AttractorPhoenix.AttractorPubSubBridge,
   attractor_http: [
     port: 4041,

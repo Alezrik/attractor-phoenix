@@ -5,6 +5,12 @@
 
 This repository combines the core engine with a polished visual experience for designing and explaining pipelines. The `AttractorEx` library is the primary product artifact, while the Phoenix UI makes the system easier to understand, demo, and evaluate by turning workflow logic, execution state, and spec-compliance work into something visible and concrete.
 
+The current Phoenix experience centers around three LiveView surfaces:
+
+1. `/` dashboard for run telemetry and inspection.
+2. `/builder` for visual DOT authoring, execution, and now save/load integration with the library.
+3. `/library` for administering reusable pipeline presets that can be pushed back into the builder.
+
 ## Project Structure
 
 1. `lib/attractor_ex/` - standalone Attractor-style DOT pipeline engine (the main artifact).
@@ -66,7 +72,21 @@ The Phoenix app provides:
 1. Live graphical pipeline builder.
 2. DOT text editing and round-trip sync.
 3. Pipeline execution and output display.
-4. Phoenix-native push integration through PubSub topics and WebSocket channels.
+4. A pipeline library admin at `/library` for creating, editing, deleting, and loading saved builder presets.
+5. Builder-side save/load workflow so a pipeline can be stored from `/builder` and reopened via `/builder?library=:id`.
+6. Phoenix-native push integration through PubSub topics and WebSocket channels.
+
+### Library Workflow
+
+Use the library when you want reusable pipeline templates rather than one-off builder drafts.
+
+1. Open `/builder`, author or modify a pipeline, and use the `Save to Library` action.
+2. Provide a library name and description alongside the DOT and JSON context payload.
+3. Open `/library` to manage all saved pipelines.
+4. Use `Load in Builder` from `/library` to reopen a saved entry in the visual editor.
+5. Use `/builder?library=:id` for a direct deep link into a specific saved pipeline.
+
+Library entries are stored in a local JSON-backed file so the feature works without introducing an Ecto/Repo dependency.
 
 ## Phoenix Setup and Run
 
@@ -89,6 +109,12 @@ mix phx.server
 ```
 
 Open: `http://localhost:4000`
+
+Primary UI routes:
+
+1. `http://localhost:4000/` dashboard
+2. `http://localhost:4000/builder` pipeline builder
+3. `http://localhost:4000/library` pipeline library admin
 
 Optional one-shot setup:
 
