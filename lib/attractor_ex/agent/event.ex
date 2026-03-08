@@ -67,6 +67,11 @@ defmodule AttractorEx.Agent.Event do
       :steering_injected,
       :turn_limit,
       :loop_detection,
+      :context_warning,
+      :subagent_spawned,
+      :subagent_input_sent,
+      :subagent_wait_completed,
+      :subagent_closed,
       :error
     ]
   end

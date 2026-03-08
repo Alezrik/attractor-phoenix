@@ -3,7 +3,9 @@ defmodule AttractorEx.Agent.ProviderProfile do
   Provider-aligned configuration for the coding-agent loop.
 
   A profile packages a model, toolset, provider options, and an optional system-prompt
-  builder so agent sessions can stay portable across providers.
+  builder so agent sessions can stay portable across providers. Profiles can also be
+  extended with `register_tool/2` and `register_tools/2`, allowing custom tools to be
+  layered on top of provider presets while overriding name collisions deterministically.
 
   The module also exposes a maintained cross-provider integration matrix for the
   built-in OpenAI, Anthropic, and Gemini presets. Gemini can optionally include
@@ -240,6 +242,25 @@ defmodule AttractorEx.Agent.ProviderProfile do
     Enum.map(profile.tools, &Tool.definition/1)
   end
 
+  @spec register_tool(t(), Tool.t()) :: t()
+  @doc "Registers or replaces a tool on top of an existing profile."
+  def register_tool(%__MODULE__{} = profile, %Tool{} = tool) do
+    register_tools(profile, [tool])
+  end
+
+  @spec register_tools(t(), [Tool.t()]) :: t()
+  @doc "Registers or replaces tools on top of an existing profile, preserving order."
+  def register_tools(%__MODULE__{} = profile, tools) when is_list(tools) do
+    merged_tools =
+      Enum.reduce(tools, profile.tools, fn %Tool{name: name} = tool, acc ->
+        acc
+        |> Enum.reject(&(&1.name == name))
+        |> Kernel.++([tool])
+      end)
+
+    %{profile | tools: merged_tools, tool_registry: ToolRegistry.from_tools(merged_tools)}
+  end
+
   @spec build_system_prompt(t(), keyword()) :: String.t()
   @doc "Builds the system prompt for a session request."
   def build_system_prompt(%__MODULE__{} = profile, context) do
@@ -262,22 +283,54 @@ defmodule AttractorEx.Agent.ProviderProfile do
     doc_section = render_project_docs(project_docs)
 
     lines =
-      [
-        "You are a coding agent.",
-        "Provider=#{profile.id}",
-        "Model=#{profile.model}",
-        "SupportsReasoning=#{profile.supports_reasoning}",
-        "SupportsStreaming=#{profile.supports_streaming}",
-        "WorkingDir=#{working_dir}",
-        "Platform=#{platform}",
-        "Date=#{date}",
-        "ParallelToolCalls=#{profile.supports_parallel_tool_calls}",
-        "AvailableTools=#{Enum.join(tool_names, ", ")}",
-        "EnvironmentContext=#{Jason.encode!(environment_context)}",
-        "SubagentToolsAvailable=#{Enum.any?(tool_names, &(&1 in ["spawn_agent", "send_input", "wait", "close_agent"]))}"
-      ] ++ doc_section
+      provider_base_instructions(profile) ++
+        [
+          "You are a coding agent.",
+          "Provider=#{profile.id}",
+          "Model=#{profile.model}",
+          "SupportsReasoning=#{profile.supports_reasoning}",
+          "SupportsStreaming=#{profile.supports_streaming}",
+          "WorkingDir=#{working_dir}",
+          "Platform=#{platform}",
+          "Date=#{date}",
+          "ParallelToolCalls=#{profile.supports_parallel_tool_calls}",
+          "AvailableTools=#{Enum.join(tool_names, ", ")}",
+          "EnvironmentContext=#{Jason.encode!(environment_context)}",
+          "SubagentToolsAvailable=#{Enum.any?(tool_names, &(&1 in ["spawn_agent", "send_input", "wait", "close_agent"]))}"
+        ] ++ doc_section
 
     Enum.join(lines, "\n")
+  end
+
+  defp provider_base_instructions(%__MODULE__{id: "openai"}) do
+    [
+      "PromptProfile=codex-rs-aligned",
+      "Use apply_patch for targeted edits when modifying existing files.",
+      "Prefer reading before editing and keep changes minimal, verified, and local to the task."
+    ]
+  end
+
+  defp provider_base_instructions(%__MODULE__{id: "anthropic"}) do
+    [
+      "PromptProfile=Claude Code-aligned",
+      "Read before editing when practical and prefer edit_file over full-file rewrites.",
+      "When using edit_file, old_string must identify a unique match before replacement."
+    ]
+  end
+
+  defp provider_base_instructions(%__MODULE__{id: "gemini"}) do
+    [
+      "PromptProfile=gemini-cli-aligned",
+      "Follow GEMINI.md guidance when present and use the provider-aligned tool bundle deliberately.",
+      "Favor precise file operations, concise tool usage, and grounded web access only when enabled."
+    ]
+  end
+
+  defp provider_base_instructions(%__MODULE__{}) do
+    [
+      "PromptProfile=generic",
+      "Use the available tools carefully and keep edits scoped to the requested task."
+    ]
   end
 
   defp render_project_docs([]), do: []

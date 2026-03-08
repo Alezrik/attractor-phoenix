@@ -12,7 +12,7 @@
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
-    <script defer src="dist/sidebar_items-8BEC1D72.js"></script>
+    <script defer src="dist/sidebar_items-EB6A89A8.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-YU4BZFVS.js"></script>
 
@@ -119,7 +119,9 @@ attractor_phoenix
 
     <section id="moduledoc">
 <p>Provider-aligned configuration for the coding-agent loop.</p><p>A profile packages a model, toolset, provider options, and an optional system-prompt
-builder so agent sessions can stay portable across providers.</p><p>The module also exposes a maintained cross-provider integration matrix for the
+builder so agent sessions can stay portable across providers. Profiles can also be
+extended with <a href="#register_tool/2"><code class="inline">register_tool/2</code></a> and <a href="#register_tools/2"><code class="inline">register_tools/2</code></a>, allowing custom tools to be
+layered on top of provider presets while overriding name collisions deterministically.</p><p>The module also exposes a maintained cross-provider integration matrix for the
 built-in OpenAI, Anthropic, and Gemini presets. Gemini can optionally include
 web-search tools via <code class="inline">gemini(web_tools: true)</code>.</p>
     </section>
@@ -246,6 +248,26 @@ web-search tools via <code class="inline">gemini(web_tools: true)</code>.</p>
 
     <div class="summary-row">
       <div class="summary-signature">
+        <a href="#register_tool/2" data-no-tooltip="" translate="no">register_tool(profile, tool)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Registers or replaces a tool on top of an existing profile.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#register_tools/2" data-no-tooltip="" translate="no">register_tools(profile, tools)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Registers or replaces tools on top of an existing profile, preserving order.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
         <a href="#system_prompt_style/1" data-no-tooltip="" translate="no">system_prompt_style(provider_profile)</a>
 
       </div>
@@ -288,7 +310,7 @@ web-search tools via <code class="inline">gemini(web_tools: true)</code>.</p>
       <h1 class="signature" translate="no">integration_entry()</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L43" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L45" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -328,7 +350,7 @@ web-search tools via <code class="inline">gemini(web_tools: true)</code>.</p>
       <h1 class="signature" translate="no">t()</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L28" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L30" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -384,7 +406,7 @@ web-search tools via <code class="inline">gemini(web_tools: true)</code>.</p>
       <h1 class="signature" translate="no">anthropic(opts \\ [])</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L98" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L100" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -412,7 +434,7 @@ web-search tools via <code class="inline">gemini(web_tools: true)</code>.</p>
       <h1 class="signature" translate="no">build_system_prompt(profile, context)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L244" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L266" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -445,7 +467,7 @@ web-search tools via <code class="inline">gemini(web_tools: true)</code>.</p>
       <h1 class="signature" translate="no">gemini(opts \\ [])</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L116" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L118" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -473,7 +495,7 @@ web-search tools via <code class="inline">gemini(web_tools: true)</code>.</p>
       <h1 class="signature" translate="no">instruction_files(provider_profile)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L155" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L158" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -501,7 +523,7 @@ web-search tools via <code class="inline">gemini(web_tools: true)</code>.</p>
       <h1 class="signature" translate="no">integration_matrix()</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L135" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L138" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -529,7 +551,7 @@ web-search tools via <code class="inline">gemini(web_tools: true)</code>.</p>
       <h1 class="signature" translate="no">new(opts)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L59" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L61" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -559,7 +581,7 @@ web-search tools via <code class="inline">gemini(web_tools: true)</code>.</p>
       <h1 class="signature" translate="no">openai(opts \\ [])</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L80" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L82" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -587,7 +609,7 @@ web-search tools via <code class="inline">gemini(web_tools: true)</code>.</p>
       <h1 class="signature" translate="no">reasoning_option_path(provider_profile)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L165" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L168" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -615,7 +637,7 @@ web-search tools via <code class="inline">gemini(web_tools: true)</code>.</p>
       <h1 class="signature" translate="no">reference_tool_names(profile)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L178" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L181" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -633,6 +655,62 @@ web-search tools via <code class="inline">gemini(web_tools: true)</code>.</p>
 <p>Returns the upstream native tool names the preset is intended to align with.</p>
   </section>
 </section>
+<section class="detail" id="register_tool/2">
+
+  <div class="detail-header">
+    <a href="#register_tool/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">register_tool(profile, tool)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L247" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> register_tool(<a href="#t:t/0">t</a>(), <a href="AttractorEx.Agent.Tool.html#t:t/0">AttractorEx.Agent.Tool.t</a>()) :: <a href="#t:t/0">t</a>()</pre>
+
+      </div>
+
+<p>Registers or replaces a tool on top of an existing profile.</p>
+  </section>
+</section>
+<section class="detail" id="register_tools/2">
+
+  <div class="detail-header">
+    <a href="#register_tools/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">register_tools(profile, tools)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L253" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> register_tools(<a href="#t:t/0">t</a>(), [<a href="AttractorEx.Agent.Tool.html#t:t/0">AttractorEx.Agent.Tool.t</a>()]) :: <a href="#t:t/0">t</a>()</pre>
+
+      </div>
+
+<p>Registers or replaces tools on top of an existing profile, preserving order.</p>
+  </section>
+</section>
 <section class="detail" id="system_prompt_style/1">
 
   <div class="detail-header">
@@ -643,7 +721,7 @@ web-search tools via <code class="inline">gemini(web_tools: true)</code>.</p>
       <h1 class="signature" translate="no">system_prompt_style(provider_profile)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L231" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L234" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -671,7 +749,7 @@ web-search tools via <code class="inline">gemini(web_tools: true)</code>.</p>
       <h1 class="signature" translate="no">tool_definitions(profile)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L238" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/agent/provider_profile.ex#L241" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 

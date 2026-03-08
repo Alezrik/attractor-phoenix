@@ -4,7 +4,9 @@
 Provider-aligned configuration for the coding-agent loop.
 
 A profile packages a model, toolset, provider options, and an optional system-prompt
-builder so agent sessions can stay portable across providers.
+builder so agent sessions can stay portable across providers. Profiles can also be
+extended with `register_tool/2` and `register_tools/2`, allowing custom tools to be
+layered on top of provider presets while overriding name collisions deterministically.
 
 The module also exposes a maintained cross-provider integration matrix for the
 built-in OpenAI, Anthropic, and Gemini presets. Gemini can optionally include
@@ -115,6 +117,22 @@ Returns the provider-native request path associated with reasoning/thinking cont
 ```
 
 Returns the upstream native tool names the preset is intended to align with.
+
+# `register_tool`
+
+```elixir
+@spec register_tool(t(), AttractorEx.Agent.Tool.t()) :: t()
+```
+
+Registers or replaces a tool on top of an existing profile.
+
+# `register_tools`
+
+```elixir
+@spec register_tools(t(), [AttractorEx.Agent.Tool.t()]) :: t()
+```
+
+Registers or replaces tools on top of an existing profile, preserving order.
 
 # `system_prompt_style`
 

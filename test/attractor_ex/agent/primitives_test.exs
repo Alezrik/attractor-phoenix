@@ -21,6 +21,8 @@ defmodule AttractorEx.Agent.PrimitivesTest do
     tmp_dir =
       Path.join(System.tmp_dir!(), "attractor-agent-env-#{System.unique_integer([:positive])}")
 
+    File.rm_rf!(tmp_dir)
+    File.mkdir_p!(tmp_dir)
     env = LocalExecutionEnvironment.new(working_dir: tmp_dir)
 
     assert :ok =
@@ -184,6 +186,36 @@ defmodule AttractorEx.Agent.PrimitivesTest do
     assert "spawn_agent" in tool_names
   end
 
+  test "provider profiles can register custom tools and override defaults" do
+    overriding_shell =
+      %Tool{
+        name: "shell",
+        description: "custom shell",
+        parameters: %{},
+        execute: fn _args, _env -> "custom" end
+      }
+
+    audit_tool =
+      %Tool{
+        name: "audit",
+        description: "audit",
+        parameters: %{},
+        execute: fn _args, _env -> "ok" end
+      }
+
+    profile =
+      ProviderProfile.openai(model: "gpt-5-codex")
+      |> ProviderProfile.register_tool(overriding_shell)
+      |> ProviderProfile.register_tool(audit_tool)
+
+    tool_names = Enum.map(profile.tools, & &1.name)
+
+    assert "audit" in tool_names
+    assert Enum.count(tool_names, &(&1 == "shell")) == 1
+    assert ProviderProfile.tool_definitions(profile) |> Enum.any?(&(&1.name == "audit"))
+    assert profile.tool_registry["shell"].description == "custom shell"
+  end
+
   test "anthropic and gemini presets preserve provider-specific metadata" do
     anthropic = ProviderProfile.anthropic(model: "claude-sonnet")
     gemini = ProviderProfile.gemini(model: "gemini-2.5-pro")
@@ -291,6 +323,7 @@ defmodule AttractorEx.Agent.PrimitivesTest do
       )
 
     assert prompt =~ "Provider=openai"
+    assert prompt =~ "PromptProfile=codex-rs-aligned"
     assert prompt =~ "SupportsReasoning=true"
     assert prompt =~ "SupportsStreaming=true"
     assert prompt =~ "Platform=unix-linux"
@@ -298,6 +331,20 @@ defmodule AttractorEx.Agent.PrimitivesTest do
     assert prompt =~ "FILE /tmp/project/AGENTS.md"
     assert prompt =~ "Follow repo rules"
     assert prompt =~ "SubagentToolsAvailable="
+  end
+
+  test "provider prompts include provider-specific guidance" do
+    openai = ProviderProfile.build_system_prompt(ProviderProfile.openai(model: "gpt-5-codex"), [])
+
+    anthropic =
+      ProviderProfile.build_system_prompt(ProviderProfile.anthropic(model: "claude-sonnet"), [])
+
+    gemini =
+      ProviderProfile.build_system_prompt(ProviderProfile.gemini(model: "gemini-2.5-pro"), [])
+
+    assert openai =~ "Use apply_patch"
+    assert anthropic =~ "old_string must identify a unique match"
+    assert gemini =~ "Follow GEMINI.md guidance"
   end
 
   defp shell_echo_command(text) do
