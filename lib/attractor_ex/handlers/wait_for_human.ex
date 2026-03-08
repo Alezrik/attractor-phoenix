@@ -1,9 +1,15 @@
 defmodule AttractorEx.Handlers.WaitForHuman do
-  @moduledoc false
+  @moduledoc """
+  Handler for `wait.human` nodes.
+
+  It collects available choices, resolves an answer from context or an interviewer
+  adapter, normalizes that answer, and returns routing hints for the engine.
+  """
 
   alias AttractorEx.{Graph, HumanGate, Outcome}
   alias AttractorEx.Interviewers.Payload
 
+  @doc "Executes a human-gate node against a graph-aware set of outgoing choices."
   def execute(node, context, %Graph{} = graph, _stage_dir, opts) do
     choices = HumanGate.choices_for(node.id, graph)
     multiple? = multiple_choice?(node)

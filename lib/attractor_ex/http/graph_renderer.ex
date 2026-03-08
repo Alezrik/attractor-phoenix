@@ -1,5 +1,9 @@
 defmodule AttractorEx.HTTP.GraphRenderer do
-  @moduledoc false
+  @moduledoc """
+  Renders parsed graphs into presentation-friendly HTTP formats.
+
+  Supported outputs include SVG, JSON, Mermaid, and plain text summaries.
+  """
 
   alias AttractorEx.Graph
 
@@ -9,6 +13,7 @@ defmodule AttractorEx.HTTP.GraphRenderer do
   @node_width 184
   @node_height 76
 
+  @doc "Renders a graph as an SVG card-style diagram."
   def to_svg(%Graph{} = graph) do
     positions = layout(graph)
     layers = positions |> Map.values() |> Enum.map(& &1.layer)
@@ -57,6 +62,7 @@ defmodule AttractorEx.HTTP.GraphRenderer do
     """
   end
 
+  @doc "Renders a graph as structured JSON."
   def to_json(%Graph{} = graph) do
     %{
       "graph" => %{
@@ -94,6 +100,7 @@ defmodule AttractorEx.HTTP.GraphRenderer do
     }
   end
 
+  @doc "Renders a graph as Mermaid flowchart text."
   def to_mermaid(%Graph{} = graph) do
     lines =
       [
@@ -109,6 +116,7 @@ defmodule AttractorEx.HTTP.GraphRenderer do
     Enum.join(lines, "\n")
   end
 
+  @doc "Renders a graph as a plain-text summary."
   def to_text(%Graph{} = graph) do
     node_lines =
       graph.nodes

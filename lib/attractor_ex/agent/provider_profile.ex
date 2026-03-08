@@ -1,5 +1,10 @@
 defmodule AttractorEx.Agent.ProviderProfile do
-  @moduledoc false
+  @moduledoc """
+  Provider-aligned configuration for the coding-agent loop.
+
+  A profile packages a model, toolset, provider options, and an optional system-prompt
+  builder so agent sessions can stay portable across providers.
+  """
 
   alias AttractorEx.Agent.{Tool, ToolRegistry}
 
@@ -22,6 +27,7 @@ defmodule AttractorEx.Agent.ProviderProfile do
         }
 
   @spec new(keyword()) :: t()
+  @doc "Builds a provider profile from keyword options."
   def new(opts) do
     tools = Keyword.get(opts, :tools, [])
     tool_registry = Keyword.get(opts, :tool_registry, ToolRegistry.from_tools(tools))
@@ -38,11 +44,13 @@ defmodule AttractorEx.Agent.ProviderProfile do
   end
 
   @spec tool_definitions(t()) :: [map()]
+  @doc "Returns the serialized tool definitions exposed to the model."
   def tool_definitions(%__MODULE__{} = profile) do
     Enum.map(profile.tools, &Tool.definition/1)
   end
 
   @spec build_system_prompt(t(), keyword()) :: String.t()
+  @doc "Builds the system prompt for a session request."
   def build_system_prompt(%__MODULE__{} = profile, context) do
     builder = profile.system_prompt_builder
 

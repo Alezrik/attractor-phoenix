@@ -1,5 +1,10 @@
 defmodule AttractorEx.Node do
-  @moduledoc false
+  @moduledoc """
+  Runtime representation of a pipeline node.
+
+  Nodes keep the original attribute map and the normalized fields that drive execution,
+  such as shape, handler type, prompt, goal-gate status, and retry targets.
+  """
 
   @shape_to_type %{
     "Mdiamond" => "start",
@@ -49,6 +54,7 @@ defmodule AttractorEx.Node do
     }
   end
 
+  @doc "Returns the default handler type implied by a Graphviz shape."
   def handler_type_for_shape(shape),
     do: Map.get(@shape_to_type, normalize_shape(shape), "codergen")
 

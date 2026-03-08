@@ -1,5 +1,10 @@
 defmodule AttractorEx.Handlers.Conditional do
-  @moduledoc false
+  @moduledoc """
+  Handler for explicit conditional nodes.
+
+  The node itself succeeds immediately. Branch selection happens later when the engine
+  evaluates outgoing edge conditions.
+  """
 
   alias AttractorEx.Outcome
 

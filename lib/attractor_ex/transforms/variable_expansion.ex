@@ -1,5 +1,7 @@
 defmodule AttractorEx.Transforms.VariableExpansion do
-  @moduledoc false
+  @moduledoc """
+  Built-in graph transform that expands simple runtime variables such as `$goal`.
+  """
 
   alias AttractorEx.{Edge, Graph, Node}
 

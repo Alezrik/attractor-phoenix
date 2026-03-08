@@ -1,5 +1,7 @@
 defmodule AttractorEx.Handlers.Exit do
-  @moduledoc false
+  @moduledoc """
+  Handler for terminal `exit` nodes.
+  """
 
   alias AttractorEx.Outcome
 

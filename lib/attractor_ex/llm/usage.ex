@@ -1,5 +1,7 @@
 defmodule AttractorEx.LLM.Usage do
-  @moduledoc false
+  @moduledoc """
+  Normalized token-usage counters returned by LLM responses and streams.
+  """
 
   defstruct input_tokens: 0,
             output_tokens: 0,

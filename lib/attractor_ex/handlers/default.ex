@@ -1,5 +1,7 @@
 defmodule AttractorEx.Handlers.Default do
-  @moduledoc false
+  @moduledoc """
+  Fallback handler used when a node type does not need special runtime behavior.
+  """
 
   alias AttractorEx.Outcome
 

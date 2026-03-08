@@ -1,5 +1,11 @@
 defmodule AttractorEx.Agent.Session do
-  @moduledoc false
+  @moduledoc """
+  Stateful coding-agent loop built on top of `AttractorEx.LLM.Client`.
+
+  A session owns request construction, conversation history, tool execution, tool
+  result truncation, steering and follow-up queues, loop detection, and lifecycle
+  events.
+  """
 
   alias AttractorEx.Agent.{
     LocalExecutionEnvironment,
@@ -60,6 +66,7 @@ defmodule AttractorEx.Agent.Session do
         }
 
   @spec new(Client.t(), ProviderProfile.t(), keyword()) :: t()
+  @doc "Builds a new coding-agent session."
   def new(%Client{} = llm_client, %ProviderProfile{} = profile, opts \\ []) do
     config_opts = Keyword.get(opts, :config, [])
 
@@ -73,26 +80,31 @@ defmodule AttractorEx.Agent.Session do
   end
 
   @spec steer(t(), String.t()) :: t()
+  @doc "Queues steering text to be injected on the next round."
   def steer(%__MODULE__{} = session, message) when is_binary(message) do
     %{session | steering_queue: :queue.in(message, session.steering_queue)}
   end
 
   @spec follow_up(t(), String.t()) :: t()
+  @doc "Queues a follow-up user input to run after the current submission completes."
   def follow_up(%__MODULE__{} = session, message) when is_binary(message) do
     %{session | followup_queue: :queue.in(message, session.followup_queue)}
   end
 
   @spec abort(t()) :: t()
+  @doc "Marks the session as aborted and closed."
   def abort(%__MODULE__{} = session) do
     %{session | abort_signaled: true, state: :closed}
   end
 
   @spec close(t()) :: t()
+  @doc "Closes the session without aborting an in-flight tool."
   def close(%__MODULE__{} = session) do
     %{session | state: :closed}
   end
 
   @spec submit(t(), String.t()) :: t()
+  @doc "Submits a user message into the agent loop."
   def submit(%__MODULE__{state: :closed} = session, _input), do: session
 
   def submit(%__MODULE__{} = session, user_input) when is_binary(user_input) do

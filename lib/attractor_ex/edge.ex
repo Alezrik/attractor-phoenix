@@ -1,5 +1,10 @@
 defmodule AttractorEx.Edge do
-  @moduledoc false
+  @moduledoc """
+  Runtime representation of a directed edge between two nodes.
+
+  In addition to the raw attribute map, edges expose normalized `condition` and
+  `status` fields used directly by the routing logic in `AttractorEx.Engine`.
+  """
 
   @type t :: %__MODULE__{
           from: String.t(),
@@ -11,6 +16,7 @@ defmodule AttractorEx.Edge do
 
   defstruct from: nil, to: nil, attrs: %{}, condition: nil, status: nil
 
+  @doc "Builds a normalized edge struct from raw DOT attributes."
   def new(from, to, attrs) do
     %__MODULE__{
       from: from,

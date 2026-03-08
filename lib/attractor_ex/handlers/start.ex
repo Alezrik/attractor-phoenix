@@ -1,5 +1,7 @@
 defmodule AttractorEx.Handlers.Start do
-  @moduledoc false
+  @moduledoc """
+  Handler for the synthetic `start` node.
+  """
 
   alias AttractorEx.Outcome
 

@@ -1,5 +1,10 @@
 defmodule AttractorEx.Interviewers.Server do
-  @moduledoc false
+  @moduledoc """
+  HTTP-oriented interviewer used by `AttractorEx.HTTP`.
+
+  Questions are registered with `AttractorEx.HTTP.Manager`, exposed as pending HTTP
+  resources, and completed when an external client submits an answer.
+  """
 
   @behaviour AttractorEx.Interviewer
 

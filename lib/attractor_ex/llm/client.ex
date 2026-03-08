@@ -1,5 +1,10 @@
 defmodule AttractorEx.LLM.Client do
-  @moduledoc false
+  @moduledoc """
+  Provider-agnostic LLM client used by codergen nodes and agent sessions.
+
+  The client resolves providers, applies middleware, delegates to adapter modules, and
+  supports both request/response and streaming flows.
+  """
 
   alias AttractorEx.LLM.Request
 
@@ -14,6 +19,7 @@ defmodule AttractorEx.LLM.Client do
           streaming_middleware: [middleware()]
         }
 
+  @doc "Executes a completion request and returns either a response or an error tuple."
   def complete(%__MODULE__{} = client, %Request{} = request) do
     case complete_with_request(client, request) do
       {:ok, response, _resolved_request} -> response
@@ -21,6 +27,7 @@ defmodule AttractorEx.LLM.Client do
     end
   end
 
+  @doc "Executes a completion request and also returns the resolved request."
   def complete_with_request(%__MODULE__{} = client, %Request{} = request) do
     run_with_middleware(client.middleware, request, fn req ->
       with {:ok, provider_name} <- resolve_provider(client, req),
@@ -36,6 +43,7 @@ defmodule AttractorEx.LLM.Client do
     |> normalize_complete_result(request)
   end
 
+  @doc "Executes a streaming request and returns the event stream or an error tuple."
   def stream(%__MODULE__{} = client, %Request{} = request) do
     case stream_with_request(client, request) do
       {:ok, events, _resolved_request} -> events
@@ -43,6 +51,7 @@ defmodule AttractorEx.LLM.Client do
     end
   end
 
+  @doc "Executes a streaming request and also returns the resolved request."
   def stream_with_request(%__MODULE__{} = client, %Request{} = request) do
     run_with_middleware(client.streaming_middleware, request, fn req ->
       with {:ok, provider_name} <- resolve_provider(client, req),

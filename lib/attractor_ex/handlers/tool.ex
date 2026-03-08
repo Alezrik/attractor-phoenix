@@ -1,8 +1,14 @@
 defmodule AttractorEx.Handlers.Tool do
-  @moduledoc false
+  @moduledoc """
+  Handler for shell-command tool nodes.
+
+  The handler runs the configured command on the local host, captures stdout and stderr,
+  and optionally executes pre- and post-hook commands declared at graph level.
+  """
 
   alias AttractorEx.Outcome
 
+  @doc "Executes a tool node and returns the command output in context updates."
   def execute(node, _context, graph, stage_dir, _opts) do
     command = node.attrs["tool_command"] || node.attrs["command"] || ""
     graph_attrs = Map.get(graph, :attrs) || Map.get(graph, "attrs") || %{}

@@ -4,6 +4,14 @@ This is a web application written using the Phoenix web framework.
 
 - Use `mix precommit` alias when you are done with all changes and fix any pending issues
 - Use the already included and available `:req` (`Req`) library for HTTP requests, **avoid** `:httpoison`, `:tesla`, and `:httpc`. Req is included by default and is the preferred HTTP client for Phoenix apps
+- `AttractorEx` documentation is a required maintained artifact in this repo. Keep `mix docs` passing when you change the library
+- When you change `lib/attractor_ex/` behavior, also update the relevant docs in `docs/`, module docs in `lib/attractor_ex/**/*.ex`, and spec-compliance references in:
+  - `lib/attractor_ex/README.md`
+  - `lib/attractor_ex/ATTRACTOR_SPEC_COMPLIANCE.md`
+  - `lib/attractor_ex/CODING_AGENT_LOOP_COMPLIANCE.md`
+  - `lib/attractor_ex/UNIFIED_LLM_SPEC_COMPLIANCE.md`
+- If you add or change public APIs, handlers, HTTP endpoints, human-in-the-loop behavior, unified LLM behavior, or agent-loop behavior, do not leave documentation stale
+- Before wrapping work that touches `AttractorEx`, strongly prefer running `mix docs` in addition to `mix precommit`
 
 ### Phoenix v1.8 guidelines
 

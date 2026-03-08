@@ -1,8 +1,14 @@
 defmodule AttractorEx.HTTP do
-  @moduledoc false
+  @moduledoc """
+  Convenience entry point for starting and stopping the AttractorEx HTTP service.
+
+  The service is composed of `AttractorEx.HTTP.Manager`, a `Registry`, and a Bandit
+  server running `AttractorEx.HTTP.Router`.
+  """
 
   alias AttractorEx.HTTP.{Manager, Router}
 
+  @doc "Starts the HTTP manager, registry, and Bandit server."
   def start_server(opts \\ []) do
     manager_name = Keyword.get(opts, :manager, Manager)
     registry_name = Keyword.get(opts, :registry, Module.concat(manager_name, Registry))
@@ -20,6 +26,7 @@ defmodule AttractorEx.HTTP do
     end
   end
 
+  @doc "Stops a running HTTP server process or named server."
   def stop_server(server) when is_pid(server) do
     GenServer.stop(server)
     :ok

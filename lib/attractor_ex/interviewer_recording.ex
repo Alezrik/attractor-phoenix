@@ -1,5 +1,10 @@
 defmodule AttractorEx.Interviewers.Recording do
-  @moduledoc false
+  @moduledoc """
+  Decorator interviewer that records questions, answers, and info payloads.
+
+  `Recording` wraps another interviewer and forwards the interaction while emitting
+  structured events to a sink function or `Agent`.
+  """
 
   @behaviour AttractorEx.Interviewer
 

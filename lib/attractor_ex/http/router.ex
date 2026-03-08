@@ -1,5 +1,11 @@
 defmodule AttractorEx.HTTP.Router do
-  @moduledoc false
+  @moduledoc """
+  Plug router exposing the AttractorEx HTTP API.
+
+  The router supports pipeline creation, status polling, SSE event streams, graph
+  renderings, question answering, cancellation, checkpoint inspection, and context
+  inspection.
+  """
 
   use Plug.Router
 

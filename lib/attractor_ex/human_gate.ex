@@ -1,8 +1,14 @@
 defmodule AttractorEx.HumanGate do
-  @moduledoc false
+  @moduledoc """
+  Helper functions for building and matching `wait.human` choices.
+
+  This module converts outgoing edges into normalized selectable options and performs
+  tolerant matching against keys, labels, and destination node IDs.
+  """
 
   alias AttractorEx.Graph
 
+  @doc "Builds the available choices for a human-gate node from its outgoing edges."
   def choices_for(node_id, %Graph{} = graph) do
     graph.edges
     |> Enum.filter(&(&1.from == node_id))
@@ -18,6 +24,7 @@ defmodule AttractorEx.HumanGate do
     end)
   end
 
+  @doc "Finds the first matching choice for a human answer token."
   def match_choice(value, choices) do
     normalized = normalize_token(value)
 
@@ -28,6 +35,7 @@ defmodule AttractorEx.HumanGate do
     end)
   end
 
+  @doc "Normalizes answer tokens for case-insensitive matching."
   def normalize_token(nil), do: ""
 
   def normalize_token(value) do

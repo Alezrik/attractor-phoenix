@@ -1,8 +1,11 @@
 defmodule AttractorEx.Handlers.ParallelFanIn do
-  @moduledoc false
+  @moduledoc """
+  Handler for `parallel.fan_in` nodes that select a best branch result.
+  """
 
   alias AttractorEx.Outcome
 
+  @doc "Evaluates prior parallel results and selects the best candidate."
   def execute(node, context, _graph, _stage_dir, opts) do
     results = context["parallel.results"] || []
 

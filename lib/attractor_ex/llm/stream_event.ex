@@ -1,5 +1,10 @@
 defmodule AttractorEx.LLM.StreamEvent do
-  @moduledoc false
+  @moduledoc """
+  Event struct used by streaming LLM adapters.
+
+  Events cover stream lifecycle markers, text and reasoning deltas, tool payloads, the
+  final response, and error cases.
+  """
 
   alias AttractorEx.LLM.{Response, Usage}
 

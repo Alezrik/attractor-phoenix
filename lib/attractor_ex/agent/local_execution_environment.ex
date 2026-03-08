@@ -1,5 +1,10 @@
 defmodule AttractorEx.Agent.LocalExecutionEnvironment do
-  @moduledoc false
+  @moduledoc """
+  Local filesystem-backed execution environment for agent sessions.
+
+  It exposes a working directory and a simple platform identifier derived from the host
+  operating system.
+  """
 
   @behaviour AttractorEx.Agent.ExecutionEnvironment
 
@@ -8,6 +13,7 @@ defmodule AttractorEx.Agent.LocalExecutionEnvironment do
   @type t :: %__MODULE__{working_dir: String.t() | nil}
 
   @spec new(keyword()) :: t()
+  @doc "Builds a local execution environment."
   def new(opts \\ []) do
     %__MODULE__{working_dir: Keyword.get(opts, :working_dir)}
   end

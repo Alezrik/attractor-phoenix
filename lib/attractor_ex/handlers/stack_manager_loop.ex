@@ -1,8 +1,14 @@
 defmodule AttractorEx.Handlers.StackManagerLoop do
-  @moduledoc false
+  @moduledoc """
+  Handler for manager-loop nodes that observe and steer a child workflow.
+
+  The current implementation focuses on polling, stop conditions, and configurable
+  observe and steer hooks.
+  """
 
   alias AttractorEx.Outcome
 
+  @doc "Runs the manager loop until the child succeeds, fails, or a stop condition fires."
   def execute(node, context, graph, _stage_dir, opts) do
     child_dotfile = graph.attrs["stack.child_dotfile"]
     child_workdir = graph.attrs["stack.child_workdir"] || File.cwd!()

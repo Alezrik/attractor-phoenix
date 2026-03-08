@@ -1,5 +1,7 @@
 defmodule AttractorEx.LLM.Response do
-  @moduledoc false
+  @moduledoc """
+  Unified response struct returned by provider adapters.
+  """
 
   alias AttractorEx.LLM.Usage
 

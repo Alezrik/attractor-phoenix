@@ -1,5 +1,7 @@
 defmodule AttractorEx.Interviewers.Callback do
-  @moduledoc false
+  @moduledoc """
+  Interviewer that delegates question handling to caller-provided functions.
+  """
 
   @behaviour AttractorEx.Interviewer
 
