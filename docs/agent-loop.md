@@ -27,6 +27,28 @@
 
 The session layer is deliberately conservative: it focuses on determinism, bounded output, and operational safety rather than full parity with every upstream provider feature.
 
+## Event Surface
+
+`AttractorEx.Agent.Session` now emits a typed event stream through `AttractorEx.Agent.Event`.
+
+Implemented event kinds include:
+
+- `session_start`
+- `session_end`
+- `user_input`
+- `assistant_text_start`
+- `assistant_text_delta`
+- `assistant_text_end`
+- `tool_call_start`
+- `tool_call_output_delta`
+- `tool_call_end`
+- `steering_injected`
+- `turn_limit`
+- `loop_detection`
+- `error`
+
+For non-streaming `Client.complete/2` responses and synchronous tool execution, the session synthesizes single-chunk delta events so host applications can still consume a consistent event surface. `tool_call_end` carries the full untruncated tool output for UI/logging integrations, while the model continues to receive the bounded/truncated tool result stored in conversation history.
+
 ## Provider Profiles
 
 `AttractorEx.Agent.ProviderProfile` packages:
@@ -47,6 +69,14 @@ Convenience presets are available for the common coding-agent providers:
 - `ProviderProfile.gemini/1`
 
 Those presets attach the built-in agent tool bundle and default capability metadata so applications do not need to rebuild the baseline profile shape manually.
+
+`ProviderProfile.integration_matrix/0` exposes the maintained cross-provider compatibility matrix for:
+
+- implemented tool names
+- upstream reference tool names
+- provider-specific instruction files
+- reasoning/thinking option paths
+- shared session event kinds
 
 ## Execution Environment
 

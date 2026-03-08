@@ -20,7 +20,7 @@ lifecycle management, and lifecycle events.
   abort_signaled: boolean(),
   config: AttractorEx.Agent.SessionConfig.t(),
   depth: non_neg_integer(),
-  events: [map()],
+  events: [AttractorEx.Agent.Event.t()],
   execution_env: term(),
   followup_queue: :queue.queue(String.t()),
   history: [turn()],

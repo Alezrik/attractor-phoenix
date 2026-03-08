@@ -1,4 +1,5 @@
 AttractorEx.Agent.BuiltinTools.md
+AttractorEx.Agent.Event.md
 AttractorEx.Agent.ExecutionEnvironment.md
 AttractorEx.Agent.LocalExecutionEnvironment.md
 AttractorEx.Agent.ProviderProfile.md

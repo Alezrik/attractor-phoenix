@@ -8,6 +8,7 @@ defmodule AttractorEx.Agent.Session do
   """
 
   alias AttractorEx.Agent.{
+    Event,
     ExecutionEnvironment,
     LocalExecutionEnvironment,
     ProviderProfile,
@@ -58,7 +59,7 @@ defmodule AttractorEx.Agent.Session do
           provider_profile: ProviderProfile.t(),
           execution_env: term(),
           history: [turn()],
-          events: [map()],
+          events: [Event.t()],
           config: SessionConfig.t(),
           state: state(),
           llm_client: Client.t(),
@@ -130,16 +131,15 @@ defmodule AttractorEx.Agent.Session do
     completed =
       session
       |> set_state(:processing)
-      |> emit(:session_start, %{session_id: session.id, input: user_input})
+      |> emit(:session_start, %{input: user_input})
       |> append_turn(%{type: :user, content: user_input, timestamp: DateTime.utc_now()})
       |> emit(:user_input, %{content: user_input})
       |> drain_steering()
       |> run_rounds(0)
       |> process_followups()
 
-    completed
-    |> maybe_set_idle()
-    |> emit(:session_end, %{})
+    finalized = maybe_set_idle(completed)
+    emit(finalized, :session_end, %{final_state: finalized.state})
   end
 
   defp process_followups(%__MODULE__{state: :closed} = session), do: session
@@ -170,6 +170,7 @@ defmodule AttractorEx.Agent.Session do
         case Client.complete(session.llm_client, request) do
           {:error, reason} ->
             session
+            |> emit(:error, %{source: :llm, error: inspect(reason)})
             |> append_turn(%{
               type: :system,
               content: "LLM error: #{inspect(reason)}",
@@ -196,17 +197,25 @@ defmodule AttractorEx.Agent.Session do
   end
 
   defp append_assistant_turn(%__MODULE__{} = session, %Response{} = response) do
+    text = response.text || ""
+
     session
+    |> maybe_emit_assistant_text_start(text, response)
     |> append_turn(%{
       type: :assistant,
-      content: response.text || "",
+      content: text,
       tool_calls: normalize_tool_calls(response.tool_calls),
       reasoning: response.reasoning,
       usage: response.usage || %{},
       response_id: response.id,
       timestamp: DateTime.utc_now()
     })
-    |> emit(:assistant_text_end, %{text: response.text || "", reasoning: response.reasoning})
+    |> maybe_emit_assistant_text_delta(text, response)
+    |> emit(:assistant_text_end, %{
+      text: text,
+      reasoning: response.reasoning,
+      response_id: response.id
+    })
   end
 
   defp execute_tool_round(%__MODULE__{} = session, tool_calls, round_count) do
@@ -322,12 +331,26 @@ defmodule AttractorEx.Agent.Session do
 
           {tool_call, {:exit, reason}} ->
             error_msg = "Tool error (#{tool_call.name}): #{format_task_exit(reason)}"
-            end_event = build_event(:tool_call_end, %{call_id: tool_call.id, error: error_msg})
+
+            end_event =
+              build_event(:tool_call_end, session.id, %{call_id: tool_call.id, error: error_msg})
+
+            error_event =
+              build_event(:error, session.id, %{
+                source: :tool,
+                tool_name: tool_call.name,
+                call_id: tool_call.id,
+                error: error_msg
+              })
 
             {
               %ToolResult{tool_call_id: tool_call.id, content: error_msg, is_error: true},
               [
-                build_event(:tool_call_start, %{tool_name: tool_call.name, call_id: tool_call.id}),
+                build_event(:tool_call_start, session.id, %{
+                  tool_name: tool_call.name,
+                  call_id: tool_call.id
+                }),
+                error_event,
                 end_event
               ],
               session
@@ -350,16 +373,29 @@ defmodule AttractorEx.Agent.Session do
 
   defp execute_single_tool(%__MODULE__{} = session, %ToolCall{} = tool_call) do
     start_event =
-      build_event(:tool_call_start, %{tool_name: tool_call.name, call_id: tool_call.id})
+      build_event(:tool_call_start, session.id, %{
+        tool_name: tool_call.name,
+        call_id: tool_call.id
+      })
 
     case ToolRegistry.get(session.provider_profile.tool_registry, tool_call.name) do
       nil ->
         error_msg = "Unknown tool: #{tool_call.name}"
-        end_event = build_event(:tool_call_end, %{call_id: tool_call.id, error: error_msg})
+
+        end_event =
+          build_event(:tool_call_end, session.id, %{call_id: tool_call.id, error: error_msg})
+
+        error_event =
+          build_event(:error, session.id, %{
+            source: :tool,
+            tool_name: tool_call.name,
+            call_id: tool_call.id,
+            error: error_msg
+          })
 
         {
           %ToolResult{tool_call_id: tool_call.id, content: error_msg, is_error: true},
-          [start_event, end_event],
+          [start_event, error_event, end_event],
           session
         }
 
@@ -378,8 +414,19 @@ defmodule AttractorEx.Agent.Session do
                 raw_text = normalize_tool_output(raw_output)
                 truncated_output = truncate_tool_output(raw_text, tool_call.name, session.config)
 
+                delta_event =
+                  build_event(:tool_call_output_delta, session.id, %{
+                    call_id: tool_call.id,
+                    tool_name: tool_call.name,
+                    output: raw_text
+                  })
+
                 end_event =
-                  build_event(:tool_call_end, %{call_id: tool_call.id, output: truncated_output})
+                  build_event(:tool_call_end, session.id, %{
+                    call_id: tool_call.id,
+                    tool_name: tool_call.name,
+                    output: raw_text
+                  })
 
                 {
                   %ToolResult{
@@ -387,7 +434,7 @@ defmodule AttractorEx.Agent.Session do
                     content: truncated_output,
                     is_error: false
                   },
-                  [start_event, end_event],
+                  [start_event, delta_event, end_event],
                   updated_session
                 }
 
@@ -395,27 +442,59 @@ defmodule AttractorEx.Agent.Session do
                 error_msg = "Tool error (#{tool_call.name}): timeout after #{timeout_ms}ms"
 
                 end_event =
-                  build_event(:tool_call_end, %{call_id: tool_call.id, error: error_msg})
+                  build_event(:tool_call_end, session.id, %{
+                    call_id: tool_call.id,
+                    error: error_msg
+                  })
+
+                error_event =
+                  build_event(:error, session.id, %{
+                    source: :tool,
+                    tool_name: tool_call.name,
+                    call_id: tool_call.id,
+                    error: error_msg
+                  })
 
                 {%ToolResult{tool_call_id: tool_call.id, content: error_msg, is_error: true},
-                 [start_event, end_event], session}
+                 [start_event, error_event, end_event], session}
 
               {:error, reason} ->
                 error_msg = "Tool error (#{tool_call.name}): #{reason}"
 
                 end_event =
-                  build_event(:tool_call_end, %{call_id: tool_call.id, error: error_msg})
+                  build_event(:tool_call_end, session.id, %{
+                    call_id: tool_call.id,
+                    error: error_msg
+                  })
+
+                error_event =
+                  build_event(:error, session.id, %{
+                    source: :tool,
+                    tool_name: tool_call.name,
+                    call_id: tool_call.id,
+                    error: error_msg
+                  })
 
                 {%ToolResult{tool_call_id: tool_call.id, content: error_msg, is_error: true},
-                 [start_event, end_event], session}
+                 [start_event, error_event, end_event], session}
             end
 
           {:error, reason} ->
             error_msg = "Tool error (#{tool_call.name}): #{reason}"
-            end_event = build_event(:tool_call_end, %{call_id: tool_call.id, error: error_msg})
+
+            end_event =
+              build_event(:tool_call_end, session.id, %{call_id: tool_call.id, error: error_msg})
+
+            error_event =
+              build_event(:error, session.id, %{
+                source: :tool,
+                tool_name: tool_call.name,
+                call_id: tool_call.id,
+                error: error_msg
+              })
 
             {%ToolResult{tool_call_id: tool_call.id, content: error_msg, is_error: true},
-             [start_event, end_event], session}
+             [start_event, error_event, end_event], session}
         end
     end
   end
@@ -809,12 +888,24 @@ defmodule AttractorEx.Agent.Session do
   end
 
   defp emit(%__MODULE__{} = session, kind, payload) do
-    event = build_event(kind, payload)
+    event = build_event(kind, session.id, payload)
     %{session | events: session.events ++ [event]}
   end
 
-  defp build_event(kind, payload) do
-    %{kind: kind, payload: payload, timestamp: DateTime.utc_now()}
+  defp build_event(kind, session_id, payload) do
+    Event.new(kind, session_id, payload)
+  end
+
+  defp maybe_emit_assistant_text_start(%__MODULE__{} = session, "", _response), do: session
+
+  defp maybe_emit_assistant_text_start(%__MODULE__{} = session, text, %Response{} = response) do
+    emit(session, :assistant_text_start, %{text: text, response_id: response.id})
+  end
+
+  defp maybe_emit_assistant_text_delta(%__MODULE__{} = session, "", _response), do: session
+
+  defp maybe_emit_assistant_text_delta(%__MODULE__{} = session, text, %Response{} = response) do
+    emit(session, :assistant_text_delta, %{delta: text, text: text, response_id: response.id})
   end
 
   defp execution_working_directory(env) do

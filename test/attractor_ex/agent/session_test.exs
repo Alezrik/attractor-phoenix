@@ -6,7 +6,8 @@ defmodule AttractorEx.Agent.SessionTest do
     LocalExecutionEnvironment,
     ProviderProfile,
     Session,
-    Tool
+    Tool,
+    ToolRegistry
   }
 
   alias AttractorEx.LLM.Client
@@ -17,8 +18,24 @@ defmodule AttractorEx.Agent.SessionTest do
 
     assert completed.state == :idle
     assert Enum.any?(completed.events, &(&1.kind == :session_start))
+    assert Enum.all?(completed.events, &(&1.session_id == completed.id))
     assert event_kinds(completed) |> Enum.member?(:assistant_text_end)
     assert last_assistant_text(completed) == "done"
+  end
+
+  test "single-shot assistant responses emit synthesized text start and delta events" do
+    completed = Session.submit(build_session("no_tools", [echo_tool()]), "hello")
+
+    assert event_kinds(completed) |> Enum.member?(:assistant_text_start)
+    assert event_kinds(completed) |> Enum.member?(:assistant_text_delta)
+
+    delta_event =
+      Enum.find(completed.events, fn event ->
+        event.kind == :assistant_text_delta
+      end)
+
+    assert delta_event.data[:delta] == "done"
+    assert delta_event.payload[:text] == "done"
   end
 
   test "runs tool round and then finishes" do
@@ -392,7 +409,7 @@ defmodule AttractorEx.Agent.SessionTest do
     assert String.length(result.content) <= 40
   end
 
-  test "tool_call_end event output is bounded by truncation limit" do
+  test "tool_call_end event preserves full untruncated output for host integrations" do
     tool =
       %Tool{
         name: "shell_command",
@@ -416,7 +433,19 @@ defmodule AttractorEx.Agent.SessionTest do
         item.kind == :tool_call_end and is_binary(item.payload[:output])
       end)
 
-    assert String.length(event.payload[:output]) <= 60
+    assert String.length(event.payload[:output]) == 500
+    assert String.length(event.data[:output]) == 500
+  end
+
+  test "tool_call_output_delta is emitted for completed tool execution" do
+    completed = Session.submit(build_session("single_tool", [echo_tool()]), "run tool")
+
+    delta_event =
+      Enum.find(completed.events, fn event ->
+        event.kind == :tool_call_output_delta
+      end)
+
+    assert delta_event.data[:output] == "hello"
   end
 
   test "tool execution times out using default session timeout" do
@@ -964,6 +993,59 @@ defmodule AttractorEx.Agent.SessionTest do
            end)
   end
 
+  test "provider integration matrix reports built-in presets and shared event surface" do
+    matrix = ProviderProfile.integration_matrix()
+
+    assert Enum.map(matrix, & &1.id) == ["openai", "anthropic", "gemini"]
+
+    assert Enum.all?(matrix, fn entry ->
+             entry.event_kinds == AttractorEx.Agent.Event.supported_kinds()
+           end)
+
+    openai = Enum.find(matrix, &(&1.id == "openai"))
+    anthropic = Enum.find(matrix, &(&1.id == "anthropic"))
+    gemini = Enum.find(matrix, &(&1.id == "gemini"))
+
+    assert ".codex/instructions.md" in openai.instruction_files
+    assert "apply_patch" in openai.reference_tool_names
+    assert "CLAUDE.md" in anthropic.instruction_files
+    assert "edit_file" in anthropic.reference_tool_names
+    assert "GEMINI.md" in gemini.instruction_files
+    assert "web_search" in gemini.reference_tool_names
+  end
+
+  test "openai anthropic and gemini presets all emit the maintained session event surface" do
+    for profile <- [
+          provider_fixture(ProviderProfile.openai(model: "gpt-5.2")),
+          provider_fixture(ProviderProfile.anthropic(model: "claude-sonnet-4-5")),
+          provider_fixture(ProviderProfile.gemini(model: "gemini-2.5-pro"))
+        ] do
+      client =
+        %Client{
+          providers: %{
+            "openai" => AttractorExTest.AgentAdapter,
+            "anthropic" => AttractorExTest.AgentAdapter,
+            "gemini" => AttractorExTest.AgentAdapter
+          }
+        }
+
+      session =
+        Session.new(client, profile,
+          execution_env: LocalExecutionEnvironment.new(working_dir: File.cwd!())
+        )
+
+      completed = Session.submit(session, "run tool")
+
+      assert event_kinds(completed) |> Enum.member?(:session_start)
+      assert event_kinds(completed) |> Enum.member?(:user_input)
+      assert event_kinds(completed) |> Enum.member?(:tool_call_start)
+      assert event_kinds(completed) |> Enum.member?(:tool_call_output_delta)
+      assert event_kinds(completed) |> Enum.member?(:tool_call_end)
+      assert event_kinds(completed) |> Enum.member?(:assistant_text_end)
+      assert event_kinds(completed) |> Enum.member?(:session_end)
+    end
+  end
+
   defp build_session(scenario, tools, opts \\ []) do
     config_overrides = Keyword.get(opts, :config, [])
 
@@ -1003,6 +1085,17 @@ defmodule AttractorEx.Agent.SessionTest do
         Process.sleep(300)
         args["text"] || ""
       end
+    }
+  end
+
+  defp provider_fixture(%ProviderProfile{} = profile) do
+    tools = [echo_tool()]
+
+    %{
+      profile
+      | tools: tools,
+        tool_registry: ToolRegistry.from_tools(tools),
+        provider_options: %{"scenario" => "single_tool"}
     }
   end
 
