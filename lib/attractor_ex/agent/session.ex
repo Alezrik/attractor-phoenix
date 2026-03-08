@@ -8,6 +8,7 @@ defmodule AttractorEx.Agent.Session do
   """
 
   alias AttractorEx.Agent.{
+    ExecutionEnvironment,
     LocalExecutionEnvironment,
     ProviderProfile,
     SessionConfig,
@@ -111,6 +112,7 @@ defmodule AttractorEx.Agent.Session do
     completed =
       session
       |> set_state(:processing)
+      |> emit(:session_start, %{session_id: session.id, input: user_input})
       |> append_turn(%{type: :user, content: user_input, timestamp: DateTime.utc_now()})
       |> emit(:user_input, %{content: user_input})
       |> drain_steering()
@@ -145,6 +147,7 @@ defmodule AttractorEx.Agent.Session do
 
       true ->
         request = build_request(session)
+        session = maybe_emit_context_warning(session, request)
 
         case Client.complete(session.llm_client, request) do
           {:error, reason} ->
@@ -205,13 +208,19 @@ defmodule AttractorEx.Agent.Session do
 
   defp build_request(%__MODULE__{} = session) do
     working_dir = execution_working_directory(session.execution_env)
+    platform = execution_platform(session.execution_env)
     profile = session.provider_profile
+    project_docs = load_project_docs(working_dir, profile.id)
+    environment_context = execution_environment_context(session.execution_env)
 
     system_prompt =
       ProviderProfile.build_system_prompt(profile,
         environment: session.execution_env,
         working_dir: working_dir,
-        project_docs: discover_project_docs(working_dir, profile.id),
+        platform: platform,
+        project_docs: project_docs,
+        tool_names: Enum.map(profile.tools, & &1.name),
+        environment_context: environment_context,
         date: Date.utc_today() |> Date.to_iso8601()
       )
 
@@ -222,7 +231,13 @@ defmodule AttractorEx.Agent.Session do
       tools: ProviderProfile.tool_definitions(profile),
       tool_choice: "auto",
       reasoning_effort: session.config.reasoning_effort || "high",
-      provider_options: profile.provider_options
+      provider_options: profile.provider_options,
+      metadata: %{
+        "session_id" => session.id,
+        "working_directory" => working_dir,
+        "platform" => platform,
+        "project_docs" => Enum.map(project_docs, & &1.path)
+      }
     }
   end
 
@@ -317,34 +332,49 @@ defmodule AttractorEx.Agent.Session do
 
       tool ->
         args = normalize_arguments(tool_call.arguments)
-        timeout_ms = resolve_tool_timeout_ms(tool_call.name, args, session.config)
 
-        case run_tool_with_timeout(
-               fn -> tool.execute.(args, session.execution_env) end,
-               timeout_ms
-             ) do
-          {:ok, raw_output} ->
-            raw_text = normalize_tool_output(raw_output)
-            truncated_output = truncate_tool_output(raw_text, tool_call.name, session.config)
+        case validate_tool_arguments(tool, args) do
+          :ok ->
+            timeout_ms = resolve_tool_timeout_ms(tool_call.name, args, session.config)
 
-            end_event =
-              build_event(:tool_call_end, %{call_id: tool_call.id, output: truncated_output})
+            case run_tool_with_timeout(
+                   fn -> tool.execute.(args, session.execution_env) end,
+                   timeout_ms
+                 ) do
+              {:ok, raw_output} ->
+                raw_text = normalize_tool_output(raw_output)
+                truncated_output = truncate_tool_output(raw_text, tool_call.name, session.config)
 
-            {
-              %ToolResult{
-                tool_call_id: tool_call.id,
-                content: truncated_output,
-                is_error: false
-              },
-              [start_event, end_event]
-            }
+                end_event =
+                  build_event(:tool_call_end, %{call_id: tool_call.id, output: truncated_output})
 
-          {:error, :timeout} ->
-            error_msg = "Tool error (#{tool_call.name}): timeout after #{timeout_ms}ms"
-            end_event = build_event(:tool_call_end, %{call_id: tool_call.id, error: error_msg})
+                {
+                  %ToolResult{
+                    tool_call_id: tool_call.id,
+                    content: truncated_output,
+                    is_error: false
+                  },
+                  [start_event, end_event]
+                }
 
-            {%ToolResult{tool_call_id: tool_call.id, content: error_msg, is_error: true},
-             [start_event, end_event]}
+              {:error, :timeout} ->
+                error_msg = "Tool error (#{tool_call.name}): timeout after #{timeout_ms}ms"
+
+                end_event =
+                  build_event(:tool_call_end, %{call_id: tool_call.id, error: error_msg})
+
+                {%ToolResult{tool_call_id: tool_call.id, content: error_msg, is_error: true},
+                 [start_event, end_event]}
+
+              {:error, reason} ->
+                error_msg = "Tool error (#{tool_call.name}): #{reason}"
+
+                end_event =
+                  build_event(:tool_call_end, %{call_id: tool_call.id, error: error_msg})
+
+                {%ToolResult{tool_call_id: tool_call.id, content: error_msg, is_error: true},
+                 [start_event, end_event]}
+            end
 
           {:error, reason} ->
             error_msg = "Tool error (#{tool_call.name}): #{reason}"
@@ -640,23 +670,75 @@ defmodule AttractorEx.Agent.Session do
   end
 
   defp discover_project_docs(working_dir, provider_id) do
-    common = find_doc(working_dir, "AGENTS.md")
+    common = find_doc_in_ancestors(working_dir, "AGENTS.md")
 
     provider_doc =
       case provider_id do
-        "anthropic" -> find_doc(working_dir, "CLAUDE.md")
-        "gemini" -> find_doc(working_dir, "GEMINI.md")
-        "openai" -> find_doc(working_dir, "CODEX.md")
+        "anthropic" -> find_doc_in_ancestors(working_dir, "CLAUDE.md")
+        "gemini" -> find_doc_in_ancestors(working_dir, "GEMINI.md")
+        "openai" -> find_doc_in_ancestors(working_dir, "CODEX.md")
         _ -> nil
       end
 
-    [common, provider_doc]
+    codex_instruction_doc =
+      find_doc_in_ancestors(working_dir, Path.join(".codex", "instructions.md"))
+
+    [common, provider_doc, codex_instruction_doc]
     |> Enum.reject(&is_nil/1)
   end
 
-  defp find_doc(dir, filename) do
-    path = Path.join(dir, filename)
-    if File.exists?(path), do: path, else: nil
+  defp load_project_docs(working_dir, provider_id) do
+    working_dir
+    |> discover_project_docs(provider_id)
+    |> Enum.uniq()
+    |> Enum.flat_map(&read_project_doc/1)
+  end
+
+  defp read_project_doc(path) do
+    case File.read(path) do
+      {:ok, content} ->
+        [
+          %{
+            path: path,
+            content: String.slice(content, 0, 32_000)
+          }
+        ]
+
+      {:error, _reason} ->
+        []
+    end
+  end
+
+  defp find_doc_in_ancestors(dir, filename) do
+    dir
+    |> Path.expand()
+    |> ancestor_paths()
+    |> Enum.find(fn current_dir ->
+      File.exists?(Path.join(current_dir, filename))
+    end)
+    |> case do
+      nil -> nil
+      parent -> Path.join(parent, filename)
+    end
+  end
+
+  defp ancestor_paths(dir) do
+    Stream.unfold(dir, fn
+      nil ->
+        nil
+
+      current ->
+        parent = Path.dirname(current)
+
+        next =
+          cond do
+            parent == current -> nil
+            true -> parent
+          end
+
+        {current, next}
+    end)
+    |> Enum.to_list()
   end
 
   defp drain_steering(%__MODULE__{} = session) do
@@ -690,13 +772,92 @@ defmodule AttractorEx.Agent.Session do
     %{kind: kind, payload: payload, timestamp: DateTime.utc_now()}
   end
 
-  defp execution_working_directory(%LocalExecutionEnvironment{} = env) do
-    LocalExecutionEnvironment.working_directory(env)
+  defp execution_working_directory(env) do
+    if ExecutionEnvironment.implementation?(env) do
+      ExecutionEnvironment.working_directory(env)
+    else
+      File.cwd!()
+    end
   end
 
-  defp execution_working_directory(_env) do
-    File.cwd!()
+  defp execution_platform(env) do
+    if ExecutionEnvironment.implementation?(env) do
+      ExecutionEnvironment.platform(env)
+    else
+      "unknown"
+    end
   end
+
+  defp execution_environment_context(env) do
+    if ExecutionEnvironment.implementation?(env) do
+      ExecutionEnvironment.environment_context(env)
+    else
+      %{}
+    end
+  end
+
+  defp maybe_emit_context_warning(%__MODULE__{} = session, %Request{} = request) do
+    context_window = session.provider_profile.context_window_size
+
+    if is_integer(context_window) and context_window > 0 do
+      estimated_chars =
+        request.messages
+        |> Enum.map(&String.length(&1.content || ""))
+        |> Enum.sum()
+
+      if estimated_chars >= trunc(context_window * 0.75) do
+        emit(session, :context_warning, %{
+          estimated_chars: estimated_chars,
+          context_window_size: context_window
+        })
+      else
+        session
+      end
+    else
+      session
+    end
+  end
+
+  defp validate_tool_arguments(%{parameters: %{"type" => "object"} = schema}, args)
+       when is_map(args) do
+    required = Map.get(schema, "required", [])
+    properties = Map.get(schema, "properties", %{})
+
+    case validate_required_arguments(required, args) do
+      :ok -> validate_argument_types(args, properties)
+      error -> error
+    end
+  end
+
+  defp validate_tool_arguments(_tool, _args), do: :ok
+
+  defp validate_required_arguments(required, args) do
+    case Enum.find(required, fn key -> blank_argument?(Map.get(args, key)) end) do
+      nil -> :ok
+      key -> {:error, "invalid arguments: missing required field #{key}"}
+    end
+  end
+
+  defp validate_argument_types(args, properties) do
+    case Enum.find(args, fn {key, value} ->
+           schema = Map.get(properties, key, %{})
+           not valid_argument_type?(value, Map.get(schema, "type"))
+         end) do
+      nil -> :ok
+      {key, _value} -> {:error, "invalid arguments: #{key} has wrong type"}
+    end
+  end
+
+  defp blank_argument?(value), do: value in [nil, ""]
+
+  defp valid_argument_type?(_value, nil), do: true
+  defp valid_argument_type?(value, "string"), do: is_binary(value)
+  defp valid_argument_type?(value, "integer"), do: is_integer(value)
+  defp valid_argument_type?(value, "number"), do: is_integer(value) or is_float(value)
+  defp valid_argument_type?(value, "boolean"), do: is_boolean(value)
+  defp valid_argument_type?(value, "object"), do: is_map(value)
+  defp valid_argument_type?(value, "array"), do: is_list(value)
+  defp valid_argument_type?(_value, _type), do: true
 
   defp maybe_set_idle(%__MODULE__{state: :closed} = session), do: session
   defp maybe_set_idle(%__MODULE__{} = session), do: set_state(session, :idle)

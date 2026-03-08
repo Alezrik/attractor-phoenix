@@ -4,6 +4,7 @@
 
 ## Main Modules
 
+- `AttractorEx.Agent.BuiltinTools`
 - `AttractorEx.Agent.Session`
 - `AttractorEx.Agent.SessionConfig`
 - `AttractorEx.Agent.ProviderProfile`
@@ -32,20 +33,61 @@ The session layer is deliberately conservative: it focuses on determinism, bound
 
 - a provider ID
 - a model name
+- provider capability metadata such as parallel tool-call support and context-window size
 - tool definitions
 - provider options
 - a system prompt builder
 
 This keeps the agent loop portable across LLM providers while letting each integration choose its own prompt and tool behavior.
 
+Convenience presets are available for the common coding-agent providers:
+
+- `ProviderProfile.openai/1`
+- `ProviderProfile.anthropic/1`
+- `ProviderProfile.gemini/1`
+
+Those presets attach the built-in agent tool bundle and default capability metadata so applications do not need to rebuild the baseline profile shape manually.
+
 ## Execution Environment
 
-The current environment contract is intentionally minimal:
+The environment contract now includes the local tool surface used by the coding-agent loop:
 
 - `working_directory/1`
 - `platform/1`
+- `read_file/2`
+- `write_file/3`
+- `list_directory/2`
+- `glob/2`
+- `grep/3`
+- `shell_command/3`
+- `environment_context/1`
 
 `AttractorEx.Agent.LocalExecutionEnvironment` is the default implementation used in tests and local sessions.
+
+## Built-In Tools
+
+`AttractorEx.Agent.BuiltinTools` exposes a provider-neutral baseline toolset:
+
+- `read_file`
+- `write_file`
+- `list_directory`
+- `glob`
+- `grep`
+- `shell_command`
+
+These tools are backed by the execution-environment behaviour, so alternative environments can swap in sandboxed or remote implementations without changing the session loop.
+
+## Prompt Context
+
+The default system-prompt builder now includes:
+
+- working directory and platform
+- provider/model metadata
+- available tool names
+- serialized environment context
+- project instruction files discovered from the working directory ancestry
+
+Project instruction discovery loads `AGENTS.md` plus provider-specific files such as `CODEX.md`, `CLAUDE.md`, `GEMINI.md`, and `.codex/instructions.md` when present.
 
 ## Compliance Status
 

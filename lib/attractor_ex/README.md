@@ -183,6 +183,12 @@ Core Attractor engine behavior is tracked in:
 
 These compliance docs use `implemented` / `partial` / `not implemented` status per upstream section and should be updated whenever upstream spec content changes.
 
+Current coding-agent highlights:
+
+1. `ProviderProfile.openai/1`, `ProviderProfile.anthropic/1`, and `ProviderProfile.gemini/1` bundle the built-in coding-agent toolset and provider capability metadata.
+2. `AttractorEx.Agent.LocalExecutionEnvironment` now exposes file IO, directory listing, globbing, grep, shell execution, and environment metadata through the `ExecutionEnvironment` behaviour.
+3. `AttractorEx.Agent.Session` validates object-style tool arguments, emits session/context lifecycle events, and loads project instruction files such as `AGENTS.md`, `CODEX.md`, and `.codex/instructions.md` into the default prompt context.
+
 ## How to Extract into Another Project
 
 1. Copy `lib/attractor_ex/` into your project under `lib/`.
