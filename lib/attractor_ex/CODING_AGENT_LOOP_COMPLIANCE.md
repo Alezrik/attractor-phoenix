@@ -31,14 +31,14 @@ Legend: `implemented`, `partial`, `not implemented`.
 
 | Upstream section | Status | Notes |
 |---|---|---|
-| `2. Agentic Loop` | `implemented` | Session lifecycle, loop rounds, natural completion, limits, steering/follow-up, loop detection, event emission are covered. |
-| `3. Provider-Aligned Toolsets` | `partial` | Generic tool/profile model exists. Full OpenAI/Anthropic/Gemini profile bundles and spec-level parity are not fully implemented in this library. |
-| `4. Tool Execution Environment` | `partial` | Abstraction exists, but current environment interface is minimal (`working_directory`, `platform`) vs full file/command contract in spec. |
+| `2. Agentic Loop` | `implemented` | Session lifecycle, loop rounds, natural completion, limits, steering/follow-up, loop detection, session/context event emission, and model-recoverable tool validation failures are covered. |
+| `3. Provider-Aligned Toolsets` | `partial` | OpenAI/Anthropic/Gemini provider presets now bundle a shared baseline coding-agent toolset and capability metadata. Exact upstream per-provider tool parity and SDK-specific formatting are still not one-to-one. |
+| `4. Tool Execution Environment` | `implemented` | `ExecutionEnvironment` now covers working directory, platform, file reads/writes, directory listing, globbing, grep, shell execution, and environment context, with `LocalExecutionEnvironment` implementing the contract. |
 | `5. Tool Output and Context Management` | `implemented` | Character-first then line truncation, per-tool limits, timeout controls, and bounded event payload behavior are implemented/tested. |
-| `6. System Prompts and Environment Context` | `partial` | Layered prompt with environment/doc discovery and provider builder hooks exists, but not all spec context fields and provider-specific doc loading behavior are fully implemented. |
+| `6. System Prompts and Environment Context` | `implemented` | Layered prompt construction now includes provider/model metadata, platform, tool inventory, serialized environment context, and ancestor-discovered instruction docs (`AGENTS.md`, provider files, `.codex/instructions.md`) with custom builder hooks preserved. |
 | `7. Subagents` | `not implemented` | No spawn/send/wait/close subagent tooling in current code. |
 | `8. Out of Scope` | `n/a` | Informational section. |
-| `9. Definition of Done` | `partial` | Large coverage for core loop/tool behavior; provider parity, full environment contract, and subagents remain open. |
+| `9. Definition of Done` | `partial` | Core loop behavior, baseline provider bundles, prompt context, and full local environment contract are covered. Subagents and exact provider-native parity remain open. |
 | `Appendix A (apply_patch v4a)` | `not implemented` | Spec appendix documented upstream; no built-in parser/enforcer module here. |
 | `Appendix B (error handling)` | `partial` | Tool/session error propagation and recovery behaviors are implemented, but full cross-provider SDK retry hierarchy is delegated to Unified LLM layer. |
 
@@ -54,18 +54,22 @@ Legend: `implemented`, `partial`, `not implemented`.
 8. Character+line truncation behavior and bounded event output.
 9. Tool failure capture (`raise`/`throw`/`exit`) and LLM error shutdown.
 10. Reasoning effort default/override and working-dir fallback logic.
+11. Provider presets with built-in coding-agent tool bundles.
+12. Execution-environment file/glob/grep/shell primitives.
+13. Tool-argument schema validation and session/context warning events.
+14. Ancestor-based project instruction discovery for prompt context.
 
 ## Known Gaps vs Spec
 
-1. Provider-packaged toolsets aligned exactly to codex-rs, Claude Code, gemini-cli.
-2. Rich execution environment contract (full FS/command APIs and env filtering behaviors as spec defines).
-3. Subagent lifecycle and related tools (`spawn_agent`, `send_input`, `wait`, `close_agent`).
-4. Full event surface parity and cross-provider integration matrix.
-5. Built-in apply_patch grammar enforcement utility as a first-class profile tool.
+1. Provider-packaged toolsets are baseline-compatible, but not yet exact one-to-one mirrors of codex-rs, Claude Code, or gemini-cli.
+2. Subagent lifecycle and related tools (`spawn_agent`, `send_input`, `wait`, `close_agent`).
+3. Full event surface parity and cross-provider integration matrix.
+4. Built-in `apply_patch` grammar enforcement utility as a first-class profile tool.
 
 ## Verification Commands
 
 ```bash
 mix test test/attractor_ex/agent/primitives_test.exs test/attractor_ex/agent/session_test.exs
+mix docs
 mix precommit
 ```

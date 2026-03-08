@@ -60,6 +60,14 @@ defmodule AttractorExTest.AgentAdapter do
     end
   end
 
+  defp do_complete("single_tool_wrong_type_args", messages, _request) do
+    if has_tool_message?(messages) do
+      response("tool-complete")
+    else
+      response("", [%ToolCall{id: "call-1", name: "echo", arguments: %{"timeout_ms" => "bogus"}}])
+    end
+  end
+
   defp do_complete("single_shell_tool", messages, _request) do
     if has_tool_message?(messages) do
       response("tool-complete")
@@ -74,6 +82,16 @@ defmodule AttractorExTest.AgentAdapter do
     else
       response("", [
         %ToolCall{id: "call-1", name: "shell_command", arguments: %{"timeout_ms" => 300}}
+      ])
+    end
+  end
+
+  defp do_complete("single_shell_tool_with_timeout_string_arg", messages, _request) do
+    if has_tool_message?(messages) do
+      response("tool-complete")
+    else
+      response("", [
+        %ToolCall{id: "call-1", name: "shell_command", arguments: %{"timeout_ms" => "300"}}
       ])
     end
   end
@@ -129,6 +147,18 @@ defmodule AttractorExTest.AgentAdapter do
 
   defp do_complete("echo_reasoning_effort", _messages, request) do
     response("effort:" <> to_string(request.reasoning_effort || "nil"))
+  end
+
+  defp do_complete("echo_system_prompt", messages, _request) do
+    system_prompt =
+      messages
+      |> Enum.find(fn msg -> msg.role == :system end)
+      |> case do
+        nil -> ""
+        msg -> msg.content || ""
+      end
+
+    response(system_prompt)
   end
 
   defp do_complete("invalid_tool_calls_shape", _messages, _request) do
