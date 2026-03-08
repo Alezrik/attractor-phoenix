@@ -2,17 +2,21 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
   use AttractorPhoenixWeb, :live_view
 
   alias AttractorExPhx.Client, as: AttractorAPI
+  alias AttractorPhoenix.PipelineLibrary
 
   @refresh_interval_ms 1_500
 
   @impl true
   def mount(_params, _session, socket) do
+    dot = sample_dot()
+    context_json = "{}"
+
     socket =
       assign(socket,
         page_title: "Pipeline Builder",
-        dot: sample_dot(),
-        context_json: "{}",
-        form: build_form(sample_dot(), "{}"),
+        dot: dot,
+        context_json: context_json,
+        form: build_form(dot, context_json),
         result: nil,
         error: nil,
         current_pipeline_id: nil,
@@ -21,17 +25,99 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
         checkpoint: nil,
         questions: [],
         status: nil,
-        graph_json: nil
+        graph_json: nil,
+        loaded_library_entry: nil
       )
 
     {:ok, socket}
   end
 
   @impl true
-  def handle_event("run_pipeline", %{"pipeline" => params}, socket) do
+  def handle_params(%{"library" => id}, _uri, socket) do
+    socket =
+      case PipelineLibrary.get_entry(id) do
+        {:ok, entry} ->
+          assign(socket,
+            page_title: "Pipeline Builder",
+            dot: entry.dot,
+            context_json: entry.context_json,
+            form: build_form(entry.dot, entry.context_json, entry),
+            loaded_library_entry: entry,
+            error: nil
+          )
+
+        {:error, :not_found} ->
+          socket
+          |> put_flash(:error, "Library pipeline not found.")
+          |> assign(loaded_library_entry: nil)
+      end
+
+    {:noreply, socket}
+  end
+
+  def handle_params(_params, _uri, socket) do
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event(
+        "pipeline_action",
+        %{"pipeline" => %{"action" => "save_library"} = params},
+        socket
+      ) do
     dot = Map.get(params, "dot", socket.assigns.dot)
     context_json = Map.get(params, "context_json", socket.assigns.context_json)
-    transport = Map.get(params, "transport", "run")
+
+    attrs = %{
+      "name" => Map.get(params, "library_name", ""),
+      "description" => Map.get(params, "library_description", ""),
+      "dot" => dot,
+      "context_json" => context_json
+    }
+
+    result =
+      case socket.assigns.loaded_library_entry do
+        %{id: id} -> PipelineLibrary.update_entry(id, attrs)
+        nil -> PipelineLibrary.create_entry(attrs)
+      end
+
+    case result do
+      {:ok, entry} ->
+        {:noreply,
+         socket
+         |> assign(
+           dot: dot,
+           context_json: context_json,
+           form: build_form(dot, context_json, entry),
+           loaded_library_entry: entry,
+           error: nil
+         )
+         |> put_flash(:info, "Pipeline saved to the library.")
+         |> push_patch(to: ~p"/builder?library=#{entry.id}")}
+
+      {:error, %{message: message}} ->
+        {:noreply,
+         assign(socket,
+           dot: dot,
+           context_json: context_json,
+           form: build_form(dot, context_json, params),
+           error: message
+         )}
+
+      {:error, :not_found} ->
+        {:noreply, put_flash(socket, :error, "Library pipeline not found.")}
+    end
+  end
+
+  def handle_event("pipeline_action", %{"pipeline" => params}, socket) do
+    dot = Map.get(params, "dot", socket.assigns.dot)
+    context_json = Map.get(params, "context_json", socket.assigns.context_json)
+
+    transport =
+      case Map.get(params, "action", "run") do
+        "pipelines" -> "pipelines"
+        _ -> "run"
+      end
 
     with {:ok, context} <- decode_context(context_json),
          {:ok, %{"pipeline_id" => pipeline_id}} <- submit_pipeline(dot, context, transport),
@@ -40,7 +126,7 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
              assign(socket,
                dot: dot,
                context_json: context_json,
-               form: build_form(dot, context_json),
+               form: build_form(dot, context_json, socket.assigns.loaded_library_entry || params),
                current_pipeline_id: pipeline_id,
                submit_endpoint: transport
              ),
@@ -53,7 +139,7 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
          assign(socket,
            dot: dot,
            context_json: context_json,
-           form: build_form(dot, context_json),
+           form: build_form(dot, context_json, socket.assigns.loaded_library_entry || params),
            current_pipeline_id: nil,
            submit_endpoint: transport,
            result: nil,
@@ -126,7 +212,12 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
 
       {:ok,
        assign(socket,
-         form: build_form(socket.assigns.dot, socket.assigns.context_json),
+         form:
+           build_form(
+             socket.assigns.dot,
+             socket.assigns.context_json,
+             socket.assigns.loaded_library_entry
+           ),
          result: result,
          status: summary["status"],
          checkpoint: checkpoint_payload["checkpoint"],
@@ -153,13 +244,33 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
   end
 
   defp build_form(dot, context_json) do
+    build_form(dot, context_json, nil)
+  end
+
+  defp build_form(dot, context_json, library_entry) do
+    library_entry = library_form_attrs(library_entry)
+
     to_form(
       %{
         "dot" => dot,
-        "context_json" => context_json
+        "context_json" => context_json,
+        "library_name" => library_entry.name,
+        "library_description" => library_entry.description
       },
       as: :pipeline
     )
+  end
+
+  defp library_form_attrs(%{name: name, description: description}) do
+    %{name: name, description: description}
+  end
+
+  defp library_form_attrs(%{"library_name" => name, "library_description" => description}) do
+    %{name: name || "", description: description || ""}
+  end
+
+  defp library_form_attrs(_entry) do
+    %{name: "", description: ""}
   end
 
   defp submit_pipeline(dot, context, "pipelines") do

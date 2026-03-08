@@ -19,6 +19,9 @@ defmodule AttractorPhoenixWeb.Router do
 
     live "/", DashboardLive
     live "/builder", PipelineBuilderLive
+    live "/library", PipelineLibraryLive, :index
+    live "/library/new", PipelineLibraryLive, :new
+    live "/library/:id/edit", PipelineLibraryLive, :edit
   end
 
   # Other scopes may use custom stacks.

@@ -46,6 +46,7 @@ defmodule AttractorPhoenixWeb.Layouts do
           <nav class="flex items-center gap-2" id="top-nav">
             <.nav_link current_path={@current_path} href={~p"/"} label="Dashboard" />
             <.nav_link current_path={@current_path} href={~p"/builder"} label="Builder" />
+            <.nav_link current_path={@current_path} href={~p"/library"} label="Library" />
           </nav>
         </div>
         <div class="flex items-center gap-3">
