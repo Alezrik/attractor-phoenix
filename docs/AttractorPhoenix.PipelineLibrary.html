@@ -8,7 +8,7 @@
     <meta name="project" content="attractor_phoenix v0.1.0">
 
 
-    <title>AttractorExPhx.PubSub — attractor_phoenix v0.1.0</title>
+    <title>AttractorPhoenix.PipelineLibrary — attractor_phoenix v0.1.0</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
@@ -97,19 +97,19 @@ attractor_phoenix
 <div id="top-content">
   <div class="heading-with-actions top-heading">
     <h1>
-      <span translate="no">AttractorExPhx.<wbr>PubSub</span> 
+      <span translate="no">AttractorPhoenix.<wbr>PipelineLibrary</span> 
       <small class="app-vsn" translate="no">(attractor_phoenix v0.1.0)</small>
 
     </h1>
 
-<a href="AttractorExPhx.PubSub.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+<a href="AttractorPhoenix.PipelineLibrary.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
   <i class="ri-markdown-line" aria-hidden="true"></i>
   <span class="sr-only">Copy Markdown</span>
 </a>
 
 
 
-      <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx/pub_sub.ex#L1" title="View Source" class="icon-action" rel="help">
+      <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/pipeline_library.ex#L1" title="View Source" class="icon-action" rel="help">
         <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         <span class="sr-only">View Source</span>
       </a>
@@ -118,11 +118,8 @@ attractor_phoenix
 
 
     <section id="moduledoc">
-<p>Phoenix PubSub bridge for <a href="AttractorEx.html"><code class="inline">AttractorEx</code></a> pipeline updates.</p><p>This module gives Phoenix applications a push-oriented integration path on top of
-the HTTP manager:</p><ul><li>server-side processes and LiveViews can subscribe with <a href="#subscribe_pipeline/2"><code class="inline">subscribe_pipeline/2</code></a></li><li>browser clients can consume the same updates through a Phoenix Channel</li></ul><p>Subscriptions are organized by per-pipeline topics. The bridge keeps a single
-manager subscription for each pipeline and republishes updates onto Phoenix
-PubSub as plain Elixir messages:</p><pre><code class="makeup elixir" translate="no"><span class="p" data-group-id="9414253117-1">{</span><span class="ss">:attractor_ex_event</span><span class="p">,</span><span class="w"> </span><span class="n">event_map</span><span class="p" data-group-id="9414253117-1">}</span></code></pre><p><a href="#subscribe_pipeline/2"><code class="inline">subscribe_pipeline/2</code></a> returns a snapshot so the caller can render initial state
-immediately before incremental events arrive.</p>
+<p>File-backed storage for reusable builder pipelines.</p><p>Entries are persisted as JSON so the builder and <code class="inline">/library</code> LiveViews can
+share saved DOT graphs without introducing a database dependency.</p>
     </section>
 
 </div>
@@ -141,7 +138,15 @@ immediately before incremental events arrive.</p>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#t:snapshot/0" data-no-tooltip="" translate="no">snapshot()</a>
+        <a href="#t:attrs/0" data-no-tooltip="" translate="no">attrs()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:entry/0" data-no-tooltip="" translate="no">entry()</a>
 
       </div>
 
@@ -165,41 +170,57 @@ immediately before incremental events arrive.</p>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#start_link/1" data-no-tooltip="" translate="no">start_link(opts)</a>
+        <a href="#create_entry/1" data-no-tooltip="" translate="no">create_entry(attrs)</a>
 
       </div>
-
-        <div class="summary-synopsis"><p>Starts the PubSub bridge.</p></div>
 
     </div>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#subscribe_pipeline/2" data-no-tooltip="" translate="no">subscribe_pipeline(pipeline_id, opts \\ [])</a>
+        <a href="#delete_entry/1" data-no-tooltip="" translate="no">delete_entry(id)</a>
 
       </div>
-
-        <div class="summary-synopsis"><p>Subscribes the current process to a pipeline topic and returns its current snapshot.</p></div>
 
     </div>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#topic/1" data-no-tooltip="" translate="no">topic(pipeline_id)</a>
+        <a href="#get_entry/1" data-no-tooltip="" translate="no">get_entry(id)</a>
 
       </div>
-
-        <div class="summary-synopsis"><p>Returns the Phoenix PubSub topic name for a pipeline.</p></div>
 
     </div>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#unsubscribe_pipeline/2" data-no-tooltip="" translate="no">unsubscribe_pipeline(pipeline_id, opts \\ [])</a>
+        <a href="#list_entries/0" data-no-tooltip="" translate="no">list_entries()</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Unsubscribes the current process from a pipeline topic.</p></div>
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#reset/0" data-no-tooltip="" translate="no">reset()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#start_link/1" data-no-tooltip="" translate="no">start_link(opts \\ [])</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#update_entry/2" data-no-tooltip="" translate="no">update_entry(id, attrs)</a>
+
+      </div>
 
     </div>
 
@@ -217,17 +238,17 @@ immediately before incremental events arrive.</p>
     </h2>
 
     <div class="types-list">
-<section class="detail" id="t:snapshot/0">
+<section class="detail" id="t:attrs/0">
 
   <div class="detail-header">
-    <a href="#t:snapshot/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+    <a href="#t:attrs/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">snapshot()</h1>
+      <h1 class="signature" translate="no">attrs()</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx/pub_sub.ex#L25" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/pipeline_library.ex#L21" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -238,7 +259,43 @@ immediately before incremental events arrive.</p>
 
       <div class="specs">
 
-          <pre translate="no"><span class="attribute">@type</span> snapshot() :: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()</pre>
+          <pre translate="no"><span class="attribute">@type</span> attrs() :: %{optional(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) =&gt; <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>() | nil}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:entry/0">
+
+  <div class="detail-header">
+    <a href="#t:entry/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">entry()</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/pipeline_library.ex#L11" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> entry() :: %{
+  id: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(),
+  name: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(),
+  description: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(),
+  dot: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(),
+  context_json: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(),
+  inserted_at: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(),
+  updated_at: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()
+}</pre>
 
       </div>
 
@@ -268,7 +325,7 @@ immediately before incremental events arrive.</p>
       <h1 class="signature" translate="no">child_spec(init_arg)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx/pub_sub.ex#L21" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/pipeline_library.ex#L9" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -280,41 +337,159 @@ immediately before incremental events arrive.</p>
 <p>Returns a specification to start this module under a supervisor.</p><p>See <a href="https://hexdocs.pm/elixir/Supervisor.html"><code class="inline">Supervisor</code></a>.</p>
   </section>
 </section>
+<section class="detail" id="create_entry/1">
+
+  <div class="detail-header">
+    <a href="#create_entry/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">create_entry(attrs)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/pipeline_library.ex#L42" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> create_entry(<a href="#t:attrs/0">attrs</a>()) :: {:ok, <a href="#t:entry/0">entry</a>()} | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="delete_entry/1">
+
+  <div class="detail-header">
+    <a href="#delete_entry/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">delete_entry(id)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/pipeline_library.ex#L52" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> delete_entry(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: :ok | {:error, :not_found}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="get_entry/1">
+
+  <div class="detail-header">
+    <a href="#get_entry/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">get_entry(id)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/pipeline_library.ex#L37" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> get_entry(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: {:ok, <a href="#t:entry/0">entry</a>()} | {:error, :not_found}</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="list_entries/0">
+
+  <div class="detail-header">
+    <a href="#list_entries/0" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">list_entries()</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/pipeline_library.ex#L32" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> list_entries() :: [<a href="#t:entry/0">entry</a>()]</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="reset/0">
+
+  <div class="detail-header">
+    <a href="#reset/0" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">reset()</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/pipeline_library.ex#L57" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> reset() :: :ok</pre>
+
+      </div>
+
+
+  </section>
+</section>
 <section class="detail" id="start_link/1">
+
+    <span id="start_link/0"></span>
 
   <div class="detail-header">
     <a href="#start_link/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">start_link(opts)</h1>
+      <h1 class="signature" translate="no">start_link(opts \\ [])</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx/pub_sub.ex#L28" class="icon-action" rel="help" aria-label="View Source">
-          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
-        </a>
-
-    </div>
-  </div>
-
-  <section class="docstring">
-
-<p>Starts the PubSub bridge.</p>
-  </section>
-</section>
-<section class="detail" id="subscribe_pipeline/2">
-
-    <span id="subscribe_pipeline/1"></span>
-
-  <div class="detail-header">
-    <a href="#subscribe_pipeline/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
-      <i class="ri-link-m" aria-hidden="true"></i>
-    </a>
-    <div class="heading-with-actions">
-      <h1 class="signature" translate="no">subscribe_pipeline(pipeline_id, opts \\ [])</h1>
-
-
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx/pub_sub.ex#L37" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/pipeline_library.ex#L26" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -325,27 +500,24 @@ immediately before incremental events arrive.</p>
 
       <div class="specs">
 
-          <pre translate="no"><span class="attribute">@spec</span> subscribe_pipeline(
-  <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(),
-  <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">keyword</a>()
-) :: {:ok, <a href="#t:snapshot/0">snapshot</a>()} | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+          <pre translate="no"><span class="attribute">@spec</span> start_link(<a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">keyword</a>()) :: <a href="https://hexdocs.pm/elixir/GenServer.html#t:on_start/0">GenServer.on_start</a>()</pre>
 
       </div>
 
-<p>Subscribes the current process to a pipeline topic and returns its current snapshot.</p>
+
   </section>
 </section>
-<section class="detail" id="topic/1">
+<section class="detail" id="update_entry/2">
 
   <div class="detail-header">
-    <a href="#topic/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#update_entry/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">topic(pipeline_id)</h1>
+      <h1 class="signature" translate="no">update_entry(id, attrs)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx/pub_sub.ex#L62" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/pipeline_library.ex#L47" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -356,44 +528,12 @@ immediately before incremental events arrive.</p>
 
       <div class="specs">
 
-          <pre translate="no"><span class="attribute">@spec</span> topic(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) :: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()</pre>
+          <pre translate="no"><span class="attribute">@spec</span> update_entry(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="#t:attrs/0">attrs</a>()) ::
+  {:ok, <a href="#t:entry/0">entry</a>()} | {:error, :not_found | <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()}</pre>
 
       </div>
 
-<p>Returns the Phoenix PubSub topic name for a pipeline.</p>
-  </section>
-</section>
-<section class="detail" id="unsubscribe_pipeline/2">
 
-    <span id="unsubscribe_pipeline/1"></span>
-
-  <div class="detail-header">
-    <a href="#unsubscribe_pipeline/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
-      <i class="ri-link-m" aria-hidden="true"></i>
-    </a>
-    <div class="heading-with-actions">
-      <h1 class="signature" translate="no">unsubscribe_pipeline(pipeline_id, opts \\ [])</h1>
-
-
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex_phx/pub_sub.ex#L55" class="icon-action" rel="help" aria-label="View Source">
-          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
-        </a>
-
-    </div>
-  </div>
-
-  <section class="docstring">
-
-      <div class="specs">
-
-          <pre translate="no"><span class="attribute">@spec</span> unsubscribe_pipeline(
-  <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(),
-  <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">keyword</a>()
-) :: :ok</pre>
-
-      </div>
-
-<p>Unsubscribes the current process from a pipeline topic.</p>
   </section>
 </section>
 

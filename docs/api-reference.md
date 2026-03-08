@@ -5,9 +5,11 @@
 - [AttractorPhoenix](AttractorPhoenix.md): AttractorPhoenix keeps the contexts that define your domain
 and business logic.
 - [AttractorPhoenix.Mailer](AttractorPhoenix.Mailer.md)
+- [AttractorPhoenix.PipelineLibrary](AttractorPhoenix.PipelineLibrary.md): File-backed storage for reusable builder pipelines.
 - [AttractorPhoenixWeb](AttractorPhoenixWeb.md): The entrypoint for defining your web interface, such
 as controllers, components, channels, and so on.
-- [AttractorPhoenixWeb.AttractorChannel](AttractorPhoenixWeb.AttractorChannel.md)
+- [AttractorPhoenixWeb.AttractorChannel](AttractorPhoenixWeb.AttractorChannel.md): Phoenix Channel that streams `AttractorEx` pipeline snapshots and live updates.
+
 - [AttractorPhoenixWeb.CoreComponents](AttractorPhoenixWeb.CoreComponents.md): Provides core UI components.
 - [AttractorPhoenixWeb.DashboardLive](AttractorPhoenixWeb.DashboardLive.md)
 - [AttractorPhoenixWeb.Endpoint](AttractorPhoenixWeb.Endpoint.md)
@@ -20,6 +22,7 @@ used by your application.
 - [AttractorPhoenixWeb.PageController](AttractorPhoenixWeb.PageController.md)
 - [AttractorPhoenixWeb.PageHTML](AttractorPhoenixWeb.PageHTML.md): This module contains pages rendered by PageController.
 - [AttractorPhoenixWeb.PipelineBuilderLive](AttractorPhoenixWeb.PipelineBuilderLive.md)
+- [AttractorPhoenixWeb.PipelineLibraryLive](AttractorPhoenixWeb.PipelineLibraryLive.md)
 - [AttractorPhoenixWeb.Router](AttractorPhoenixWeb.Router.md)
 - [AttractorPhoenixWeb.Telemetry](AttractorPhoenixWeb.Telemetry.md)
 - [AttractorPhoenixWeb.UserSocket](AttractorPhoenixWeb.UserSocket.md)

@@ -62,6 +62,7 @@ AttractorExPhx.HTTPServer.md
 AttractorExPhx.PubSub.md
 AttractorExPhx.md
 AttractorPhoenix.Mailer.md
+AttractorPhoenix.PipelineLibrary.md
 AttractorPhoenix.md
 AttractorPhoenixWeb.AttractorChannel.md
 AttractorPhoenixWeb.CoreComponents.md
@@ -74,6 +75,7 @@ AttractorPhoenixWeb.Layouts.md
 AttractorPhoenixWeb.PageController.md
 AttractorPhoenixWeb.PageHTML.md
 AttractorPhoenixWeb.PipelineBuilderLive.md
+AttractorPhoenixWeb.PipelineLibraryLive.md
 AttractorPhoenixWeb.Router.md
 AttractorPhoenixWeb.Telemetry.md
 AttractorPhoenixWeb.UserSocket.md

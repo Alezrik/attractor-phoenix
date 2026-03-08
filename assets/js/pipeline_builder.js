@@ -23,7 +23,7 @@ const NODE_TYPE_TO_SHAPE = {
   "stack.manager_loop": "house",
 }
 const NODE_FIELDS_BY_TYPE = {
-  start: ["id", "label", "type", "class", "timeout", "connections"],
+  start: ["id", "label", "type", "class", "timeout", "edges"],
   exit: ["id", "label", "type", "class", "timeout"],
   tool: [
     "id",
@@ -40,7 +40,7 @@ const NODE_FIELDS_BY_TYPE = {
     "threadId",
     "autoStatus",
     "allowPartial",
-    "connections",
+    "edges",
   ],
   codergen: [
     "id",
@@ -62,7 +62,7 @@ const NODE_FIELDS_BY_TYPE = {
     "temperature",
     "autoStatus",
     "allowPartial",
-    "connections",
+    "edges",
   ],
   "wait.human": [
     "id",
@@ -80,9 +80,9 @@ const NODE_FIELDS_BY_TYPE = {
     "humanInput",
     "humanMultiple",
     "humanRequired",
-    "connections",
+    "edges",
   ],
-  conditional: ["id", "label", "type", "class", "timeout", "fidelity", "threadId", "connections"],
+  conditional: ["id", "label", "type", "class", "timeout", "fidelity", "threadId", "edges"],
   parallel: [
     "id",
     "label",
@@ -95,9 +95,9 @@ const NODE_FIELDS_BY_TYPE = {
     "maxParallel",
     "k",
     "quorumRatio",
-    "connections",
+    "edges",
   ],
-  "parallel.fan_in": ["id", "label", "type", "class", "timeout", "fidelity", "threadId", "connections"],
+  "parallel.fan_in": ["id", "label", "type", "class", "timeout", "fidelity", "threadId", "edges"],
   "stack.manager_loop": [
     "id",
     "label",
@@ -110,7 +110,7 @@ const NODE_FIELDS_BY_TYPE = {
     "managerMaxCycles",
     "managerPollInterval",
     "stackChildAutostart",
-    "connections",
+    "edges",
   ],
 }
 const NODE_ALLOWED_ATTRS_BY_TYPE = {
@@ -256,9 +256,26 @@ const PipelineBuilder = {
     this.propStackChildAutostart = document.getElementById("node-prop-stack-child-autostart")
     this.propAutoStatus = document.getElementById("node-prop-auto-status")
     this.propAllowPartial = document.getElementById("node-prop-allow-partial")
-    this.propConnectionsList = document.getElementById("node-connections-list")
-    this.propAddConnection = document.getElementById("node-prop-add-connection")
+    this.propEdgesList = document.getElementById("node-edges-list")
+    this.propAddEdge = document.getElementById("node-prop-add-edge")
     this.currentEditingNodeId = null
+    this.edgeDialog = document.getElementById("edge-properties-dialog")
+    this.edgePropSource = document.getElementById("edge-prop-source")
+    this.edgePropTarget = document.getElementById("edge-prop-target")
+    this.edgePropMode = document.getElementById("edge-prop-mode")
+    this.edgePropValueWrap = document.getElementById("edge-prop-value-wrap")
+    this.edgePropValue = document.getElementById("edge-prop-value")
+    this.edgePropStatusWrap = document.getElementById("edge-prop-status-wrap")
+    this.edgePropStatus = document.getElementById("edge-prop-status")
+    this.edgePropLabel = document.getElementById("edge-prop-label")
+    this.edgePropWeight = document.getElementById("edge-prop-weight")
+    this.edgePropFidelity = document.getElementById("edge-prop-fidelity")
+    this.edgePropThreadId = document.getElementById("edge-prop-thread-id")
+    this.edgePropLoopRestart = document.getElementById("edge-prop-loop-restart")
+    this.edgePropSave = document.getElementById("edge-prop-save")
+    this.edgePropDelete = document.getElementById("edge-prop-delete")
+    this.currentEditingEdgeIndex = null
+    this.reopenNodePropertiesId = null
     this.graphGoal = document.getElementById("graph-goal")
     this.graphLabel = document.getElementById("graph-label")
     this.graphModelStylesheet = document.getElementById("graph-model-stylesheet")
@@ -300,7 +317,7 @@ const PipelineBuilder = {
       goalGate: document.getElementById("node-prop-wrap-goal-gate"),
       autoStatus: document.getElementById("node-prop-wrap-auto-status"),
       allowPartial: document.getElementById("node-prop-wrap-allow-partial"),
-      connections: document.getElementById("node-prop-wrap-connections"),
+      edges: document.getElementById("node-prop-wrap-edges"),
     }
 
     this.addStartBtn?.addEventListener("click", () => this.addNode("start"))
@@ -328,7 +345,12 @@ const PipelineBuilder = {
 
     this.propType?.addEventListener("change", () => this.applyNodeTypeVisibility())
     this.propSave?.addEventListener("click", () => this.saveNodeProperties())
-    this.propAddConnection?.addEventListener("click", () => this.addConnectionRow())
+    this.propAddEdge?.addEventListener("click", () => this.startEdgeFromNodeDialog())
+    this.edgePropSource?.addEventListener("change", () => this.populateEdgeTargetOptions())
+    this.edgePropMode?.addEventListener("change", () => this.updateEdgeDialogValueVisibility())
+    this.edgePropSave?.addEventListener("click", () => this.saveEdgeProperties())
+    this.edgePropDelete?.addEventListener("click", () => this.deleteCurrentEdge())
+    this.edgeDialog?.addEventListener("close", () => this.handleEdgeDialogClose())
     this.bindGraphInputs()
     this.bindPanelToggles()
 
@@ -874,7 +896,7 @@ const PipelineBuilder = {
     event.stopPropagation()
 
     if (targetId && targetId !== this.edgeDragSource) {
-      this.addEdge(this.edgeDragSource, targetId)
+      this.addEdge(this.edgeDragSource, targetId, { openDialog: true })
       this.sync()
     }
 
@@ -900,7 +922,7 @@ const PipelineBuilder = {
     const existing = this.edgesSvg.querySelectorAll("line.builder-edge")
     existing.forEach((line) => line.remove())
 
-    for (const edge of this.state.edges) {
+    for (const [edgeIndex, edge] of this.state.edges.entries()) {
       const from = this.state.nodes.find((node) => node.id === edge.from)
       const to = this.state.nodes.find((node) => node.id === edge.to)
       if (!from || !to) continue
@@ -912,6 +934,12 @@ const PipelineBuilder = {
       line.setAttribute("x2", `${to.x + 64}`)
       line.setAttribute("y2", `${to.y + 20}`)
       line.setAttribute("marker-end", "url(#builder-arrow)")
+      line.dataset.edgeIndex = `${edgeIndex}`
+      line.addEventListener("click", (event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        this.openEdgeProperties(edgeIndex)
+      })
       this.edgesSvg.appendChild(line)
     }
   },
@@ -955,7 +983,7 @@ const PipelineBuilder = {
     }
 
     if (this.pendingSource !== nodeId) {
-      this.addEdge(this.pendingSource, nodeId)
+      this.addEdge(this.pendingSource, nodeId, { openDialog: true })
     }
 
     this.pendingSource = null
@@ -1112,7 +1140,7 @@ const PipelineBuilder = {
     this.propAllowPartial.checked = this.boolAttr(attrs.allow_partial)
     this.propCommand.value = attrs.tool_command || "echo hello world"
     this.applyNodeTypeVisibility()
-    this.renderConnectionsEditor(node.id)
+    this.renderEdgesEditor(node.id)
     this.propsDialog.showModal()
   },
 
@@ -1122,7 +1150,7 @@ const PipelineBuilder = {
     const type = this.propType.value
     const visible = new Set(NODE_FIELDS_BY_TYPE[type] || NODE_FIELDS_BY_TYPE.codergen)
 
-    if (type !== "exit") visible.add("connections")
+    if (type !== "exit") visible.add("edges")
 
     Object.entries(this.nodeFieldWraps || {}).forEach(([key, element]) => {
       if (!element) return
@@ -1170,14 +1198,6 @@ const PipelineBuilder = {
 
     node.type = requestedType
     node.attrs = this.sanitizeNodeAttrs(this.readNodePropertyAttrs(label, requestedType), requestedType, node.id)
-
-    const updatedConnections = this.readConnectionRows().map((connection) => ({
-      from: node.id,
-      to: connection.to,
-      attrs: connection.attrs,
-    }))
-
-    this.state.edges = this.state.edges.filter((edge) => edge.from !== node.id).concat(updatedConnections)
 
     this.fitNodesInViewport()
     this.sync()
@@ -1241,184 +1261,188 @@ const PipelineBuilder = {
     selectEl.value = selectedValue || ""
   },
 
-  addEdge(fromId, toId) {
-    const exists = this.state.edges.some((edge) => edge.from === fromId && edge.to === toId)
-    if (!exists) {
+  addEdge(fromId, toId, options = {}) {
+    const { openDialog = false, reopenNodeId = null } = options
+    let edgeIndex = this.state.edges.findIndex((edge) => edge.from === fromId && edge.to === toId)
+
+    if (edgeIndex === -1) {
       this.state.edges.push({ from: fromId, to: toId, attrs: {} })
+      edgeIndex = this.state.edges.length - 1
     }
+
+    if (openDialog) this.openEdgeProperties(edgeIndex, { reopenNodeId })
+    return edgeIndex
   },
 
-  renderConnectionsEditor(nodeId) {
-    if (!this.propConnectionsList) return
-    this.propConnectionsList.innerHTML = ""
+  renderEdgesEditor(nodeId) {
+    if (!this.propEdgesList) return
+    this.propEdgesList.innerHTML = ""
 
-    const outgoing = this.state.edges.filter((edge) => edge.from === nodeId)
+    const outgoing = this.state.edges
+      .map((edge, index) => ({ edge, index }))
+      .filter(({ edge }) => edge.from === nodeId)
+
     if (outgoing.length === 0) {
-      this.addConnectionRow()
+      this.propEdgesList.innerHTML = `
+        <div class="rounded border border-dashed border-base-300 px-3 py-2 text-xs text-base-content/60">
+          No outgoing edges yet.
+        </div>
+      `
       return
     }
 
-    outgoing.forEach((edge) => this.addConnectionRow(edge))
+    outgoing.forEach(({ edge, index }) => {
+      const row = document.createElement("div")
+      row.className = "flex items-center justify-between gap-3 rounded border border-base-300 p-2"
+      row.innerHTML = `
+        <div class="min-w-0">
+          <div class="text-xs font-semibold">${this.escapeHtml(edge.from)} -&gt; ${this.escapeHtml(edge.to)}</div>
+          <div class="text-[11px] text-base-content/60">${this.escapeHtml(this.describeEdgeRule(edge.attrs || {}))}</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" class="builder-btn edge-edit">Edit Edge</button>
+          <button type="button" class="builder-btn edge-remove">Remove</button>
+        </div>
+      `
+
+      row.querySelector(".edge-edit")?.addEventListener("click", () => {
+        this.openEdgeProperties(index, { reopenNodeId: nodeId })
+      })
+      row.querySelector(".edge-remove")?.addEventListener("click", () => {
+        this.removeEdge(index, { sync: true })
+        this.renderEdgesEditor(nodeId)
+      })
+
+      this.propEdgesList.appendChild(row)
+    })
   },
 
-  addConnectionRow(edge = null) {
-    if (!this.propConnectionsList || !this.currentEditingNodeId) return
-
+  startEdgeFromNodeDialog() {
+    if (!this.currentEditingNodeId) return
     const availableTargets = this.state.nodes.filter((node) => node.id !== this.currentEditingNodeId)
     if (availableTargets.length === 0) return
+    const edgeIndex = this.addEdge(this.currentEditingNodeId, availableTargets[0].id)
+    this.sync()
+    this.openEdgeProperties(edgeIndex, { reopenNodeId: this.currentEditingNodeId })
+  },
 
-    const row = document.createElement("div")
-    row.className = "grid grid-cols-12 gap-2 rounded border border-base-300 p-2"
-    row.dataset.kind = "connection-row"
+  openEdgeProperties(edgeIndex, options = {}) {
+    if (!this.edgeDialog) return
+    const edge = this.state.edges[edgeIndex]
+    if (!edge) return
 
-    const sourceId = this.currentEditingNodeId
-    const selectedTo = edge?.to || availableTargets[0].id
-    const attrs = edge?.attrs || {}
+    this.currentEditingEdgeIndex = edgeIndex
+    this.reopenNodePropertiesId = options.reopenNodeId || null
+
+    this.populateEdgeSourceOptions(edge.from)
+    this.populateEdgeTargetOptions(edge.to)
+
+    const attrs = edge.attrs || {}
     const edgeCondition = (attrs.condition || "").trim().toLowerCase()
     const shorthandStatus = STATUS_VALUES.includes(edgeCondition) ? edgeCondition : ""
     const mode = shorthandStatus ? "status" : attrs.condition ? "condition" : attrs.status ? "status" : "default"
-    const value = shorthandStatus || attrs.condition || attrs.status || ""
-    const label = attrs.label || ""
-    const weight = attrs.weight || ""
-    const fidelity = attrs.fidelity || ""
-    const threadId = attrs.thread_id || ""
-    const loopRestart = this.boolAttr(attrs.loop_restart)
-    const fidelityOptions = ['<option value="">(default)</option>']
-      .concat(
-        FIDELITY_VALUES.map(
-          (entry) =>
-            `<option value="${entry}" ${entry === fidelity ? "selected" : ""}>${entry}</option>`
-        )
-      )
-      .join("")
 
-    const targetOptions = availableTargets
-      .map((node) => `<option value="${node.id}" ${node.id === selectedTo ? "selected" : ""}>${node.id}</option>`)
-      .join("")
+    this.edgePropMode.value = mode
+    this.edgePropValue.value = shorthandStatus ? "" : attrs.condition || ""
+    this.edgePropStatus.value = attrs.status || shorthandStatus || "success"
+    this.edgePropLabel.value = attrs.label || ""
+    this.edgePropWeight.value = attrs.weight || ""
+    this.edgePropFidelity.value = attrs.fidelity || ""
+    this.edgePropThreadId.value = attrs.thread_id || ""
+    this.edgePropLoopRestart.checked = this.boolAttr(attrs.loop_restart)
+    this.updateEdgeDialogValueVisibility()
 
-    row.innerHTML = `
-      <div class="col-span-5 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2">
-        <div class="space-y-1">
-          <label class="text-[10px] font-semibold uppercase text-base-content/70">Source</label>
-          <div class="rounded border border-base-300 bg-base-200 px-2 py-1 text-xs font-medium text-base-content/80">
-            ${sourceId}
-          </div>
-        </div>
-        <div class="pb-1 text-xs font-semibold text-base-content/50">-&gt;</div>
-        <div class="space-y-1">
-          <label class="text-[10px] font-semibold uppercase text-base-content/70">Target</label>
-          <select class="conn-target w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-xs">
-            ${targetOptions}
-          </select>
-        </div>
-      </div>
-      <div class="col-span-3 space-y-1">
-        <label class="text-[10px] font-semibold uppercase text-base-content/70">Rule</label>
-        <select class="conn-mode w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-xs">
-          <option value="default" ${mode === "default" ? "selected" : ""}>default</option>
-          <option value="status" ${mode === "status" ? "selected" : ""}>status</option>
-          <option value="condition" ${mode === "condition" ? "selected" : ""}>condition</option>
-        </select>
-      </div>
-      <div class="col-span-3 space-y-1">
-        <label class="text-[10px] font-semibold uppercase text-base-content/70">Value</label>
-        <input class="conn-value-input w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-xs font-mono" value="${value.replace(/"/g, "&quot;")}" />
-        <select class="conn-value-status w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-xs">
-          <option value="success" ${value === "success" ? "selected" : ""}>success</option>
-          <option value="fail" ${value === "fail" ? "selected" : ""}>fail</option>
-          <option value="retry" ${value === "retry" ? "selected" : ""}>retry</option>
-          <option value="partial_success" ${value === "partial_success" ? "selected" : ""}>partial_success</option>
-        </select>
-      </div>
-      <div class="col-span-1 flex items-end justify-end">
-        <button type="button" class="builder-btn conn-remove">x</button>
-      </div>
-      <div class="col-span-3 space-y-1">
-        <label class="text-[10px] font-semibold uppercase text-base-content/70">Label</label>
-        <input class="conn-label w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-xs" value="${label.replace(/"/g, "&quot;")}" />
-      </div>
-      <div class="col-span-2 space-y-1">
-        <label class="text-[10px] font-semibold uppercase text-base-content/70">Weight</label>
-        <input class="conn-weight w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-xs" type="number" step="1" value="${weight}" />
-      </div>
-      <div class="col-span-3 space-y-1">
-        <label class="text-[10px] font-semibold uppercase text-base-content/70">Fidelity</label>
-        <select class="conn-fidelity w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-xs">
-          ${fidelityOptions}
-        </select>
-      </div>
-      <div class="col-span-3 space-y-1">
-        <label class="text-[10px] font-semibold uppercase text-base-content/70">Thread ID</label>
-        <input class="conn-thread-id w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-xs" value="${threadId}" />
-      </div>
-      <label class="col-span-1 flex items-end gap-1 text-[10px] font-semibold uppercase text-base-content/70">
-        <input class="conn-loop-restart" type="checkbox" ${loopRestart ? "checked" : ""} />
-        loop
-      </label>
-    `
-
-    const modeEl = row.querySelector(".conn-mode")
-    const valueInputEl = row.querySelector(".conn-value-input")
-    const valueStatusEl = row.querySelector(".conn-value-status")
-    const removeEl = row.querySelector(".conn-remove")
-    const refreshValueState = () => {
-      if (modeEl.value === "status") {
-        valueInputEl.style.display = "none"
-        valueStatusEl.style.display = "block"
-      } else if (modeEl.value === "condition") {
-        valueInputEl.style.display = "block"
-        valueStatusEl.style.display = "none"
-        valueInputEl.disabled = false
-        valueInputEl.placeholder = 'ex: outcome.status == "fail"'
-      } else {
-        valueInputEl.style.display = "none"
-        valueStatusEl.style.display = "none"
-      }
-    }
-    modeEl.addEventListener("change", refreshValueState)
-    removeEl.addEventListener("click", () => {
-      row.remove()
-      if (this.propConnectionsList.children.length === 0) this.addConnectionRow()
-    })
-    refreshValueState()
-
-    this.propConnectionsList.appendChild(row)
+    if (this.propsDialog?.open) this.propsDialog.close()
+    this.edgeDialog.showModal()
   },
 
-  readConnectionRows() {
-    if (!this.propConnectionsList) return []
+  populateEdgeSourceOptions(selectedValue) {
+    const options = this.state.nodes.map((node) => node.id)
+    this.populateSelect(this.edgePropSource, options, selectedValue, "(select source)")
+  },
 
-    const rows = Array.from(this.propConnectionsList.querySelectorAll("[data-kind='connection-row']"))
-    return rows
-      .map((row) => {
-        const to = row.querySelector(".conn-target")?.value || ""
-        const mode = row.querySelector(".conn-mode")?.value || "default"
-        const valueInput = (row.querySelector(".conn-value-input")?.value || "").trim()
-        const valueStatus = (row.querySelector(".conn-value-status")?.value || "").trim()
-        const lowered = valueInput.toLowerCase()
-        const label = (row.querySelector(".conn-label")?.value || "").trim()
-        const weight = (row.querySelector(".conn-weight")?.value || "").trim()
-        const fidelity = (row.querySelector(".conn-fidelity")?.value || "").trim()
-        const threadId = (row.querySelector(".conn-thread-id")?.value || "").trim()
-        const loopRestart = row.querySelector(".conn-loop-restart")?.checked ? true : ""
+  populateEdgeTargetOptions(selectedValue = "") {
+    if (!this.edgePropTarget) return
+    const sourceValue = this.edgePropSource?.value || ""
+    const options = this.state.nodes.filter((node) => node.id !== sourceValue).map((node) => node.id)
+    const nextSelected = options.includes(selectedValue) ? selectedValue : options[0] || ""
+    this.populateSelect(this.edgePropTarget, options, nextSelected, "(select target)")
+  },
 
-        if (!to) return null
-        const attrs = this.cleanEmptyAttrs({
-          label,
-          weight,
-          fidelity,
-          thread_id: threadId,
-          loop_restart: loopRestart,
-        })
+  updateEdgeDialogValueVisibility() {
+    const mode = this.edgePropMode?.value || "default"
+    if (this.edgePropStatusWrap) this.edgePropStatusWrap.style.display = mode === "status" ? "" : "none"
+    if (this.edgePropValueWrap) this.edgePropValueWrap.style.display = mode === "condition" ? "" : "none"
+    if (this.edgePropValue) {
+      this.edgePropValue.placeholder = mode === "condition" ? 'ex: outcome.status == "fail"' : ""
+    }
+  },
 
-        if (mode === "status") return { to, attrs: this.sanitizeEdgeAttrs({ ...attrs, status: valueStatus || "success" }) }
-        if (mode === "condition") {
-          if (STATUS_VALUES.includes(lowered)) return { to, attrs: this.sanitizeEdgeAttrs({ ...attrs, status: lowered }) }
-          return { to, attrs: this.sanitizeEdgeAttrs({ ...attrs, condition: valueInput || "true" }) }
-        }
-        return { to, attrs: this.sanitizeEdgeAttrs(attrs) }
+  saveEdgeProperties() {
+    if (this.currentEditingEdgeIndex === null) return
+    const edge = this.state.edges[this.currentEditingEdgeIndex]
+    if (!edge) return
+
+    const from = (this.edgePropSource?.value || "").trim()
+    const to = (this.edgePropTarget?.value || "").trim()
+    if (!from || !to || from === to) {
+      window.alert("Edge source and target must be different nodes.")
+      return
+    }
+
+    const duplicate = this.state.edges.some(
+      (entry, index) => index !== this.currentEditingEdgeIndex && entry.from === from && entry.to === to
+    )
+    if (duplicate) {
+      window.alert("An edge between those nodes already exists.")
+      return
+    }
+
+    const mode = this.edgePropMode?.value || "default"
+    edge.from = from
+    edge.to = to
+    edge.attrs = this.sanitizeEdgeAttrs(
+      this.cleanEmptyAttrs({
+        label: (this.edgePropLabel?.value || "").trim(),
+        weight: (this.edgePropWeight?.value || "").trim(),
+        fidelity: (this.edgePropFidelity?.value || "").trim(),
+        thread_id: (this.edgePropThreadId?.value || "").trim(),
+        loop_restart: this.edgePropLoopRestart?.checked ? true : "",
+        status: mode === "status" ? (this.edgePropStatus?.value || "success").trim() : "",
+        condition: mode === "condition" ? ((this.edgePropValue?.value || "").trim() || "true") : "",
       })
-      .filter(Boolean)
+    )
+
+    this.sync()
+    this.edgeDialog?.close()
+  },
+
+  deleteCurrentEdge() {
+    if (this.currentEditingEdgeIndex === null) return
+    this.removeEdge(this.currentEditingEdgeIndex, { sync: true, reopenNodeId: this.reopenNodePropertiesId })
+    this.edgeDialog?.close()
+  },
+
+  removeEdge(edgeIndex, options = {}) {
+    const { sync = true, reopenNodeId = null } = options
+    if (edgeIndex < 0 || edgeIndex >= this.state.edges.length) return
+    this.state.edges.splice(edgeIndex, 1)
+    this.currentEditingEdgeIndex = null
+    this.reopenNodePropertiesId = reopenNodeId
+    if (sync) this.sync()
+  },
+
+  handleEdgeDialogClose() {
+    const reopenNodeId = this.reopenNodePropertiesId
+    this.currentEditingEdgeIndex = null
+    this.reopenNodePropertiesId = null
+    if (reopenNodeId) this.openNodeProperties(reopenNodeId)
+  },
+
+  describeEdgeRule(attrs = {}) {
+    if (attrs.status) return `status = ${attrs.status}`
+    if (attrs.condition) return `condition = ${attrs.condition}`
+    return "default route"
   },
 
   hasType(type) {

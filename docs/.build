@@ -63,6 +63,7 @@ AttractorExPhx.HTTPServer.html
 AttractorExPhx.PubSub.html
 AttractorExPhx.html
 AttractorPhoenix.Mailer.html
+AttractorPhoenix.PipelineLibrary.html
 AttractorPhoenix.html
 AttractorPhoenixWeb.AttractorChannel.html
 AttractorPhoenixWeb.CoreComponents.html
@@ -75,6 +76,7 @@ AttractorPhoenixWeb.Layouts.html
 AttractorPhoenixWeb.PageController.html
 AttractorPhoenixWeb.PageHTML.html
 AttractorPhoenixWeb.PipelineBuilderLive.html
+AttractorPhoenixWeb.PipelineLibraryLive.html
 AttractorPhoenixWeb.Router.html
 AttractorPhoenixWeb.Telemetry.html
 AttractorPhoenixWeb.UserSocket.html
@@ -92,8 +94,8 @@ dist/lato-latin-700-normal-2XVSBPG4.woff2
 dist/lato-latin-ext-400-normal-N27NCBWW.woff2
 dist/lato-latin-ext-700-normal-Q2L5DVMW.woff2
 dist/remixicon-ZWU5GQ4X.woff2
-dist/search_data-9ACAB96A.js
-dist/sidebar_items-67DCF797.js
+dist/search_data-8254E82F.js
+dist/sidebar_items-BA105227.js
 http-api.html
 human-in-the-loop.html
 index.html

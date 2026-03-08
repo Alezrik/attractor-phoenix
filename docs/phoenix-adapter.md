@@ -52,6 +52,12 @@ Call the HTTP control plane from LiveView:
 {:ok, graph} = AttractorExPhx.get_pipeline_graph_json(id)
 ```
 
+The Phoenix dashboard in this repository also uses that same client contract to render
+typed `wait.human` controls. Question metadata such as `type`, `multiple`, `required`,
+and `metadata.input_mode` is translated into LiveView forms so operators can answer
+single-select, multi-select, confirmation, yes/no, and freeform prompts directly from
+the browser.
+
 Subscribe a LiveView or other Phoenix process to live updates without polling:
 
 ```elixir
