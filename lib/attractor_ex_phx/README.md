@@ -42,6 +42,10 @@ Typical Phoenix usage should look like this:
 3. Use `AttractorExPhx.Client` from LiveViews or controllers when talking to the HTTP API.
 4. Use `AttractorExPhx.run/3` when a Phoenix controller or process needs direct in-process execution instead of the HTTP transport.
 
+In this application, the LiveView dashboard consumes the pending-question API and maps
+`wait.human` metadata into browser-native answer controls, so Phoenix users can resolve
+human gates without dropping down to raw HTTP calls.
+
 ## Example
 
 ```elixir

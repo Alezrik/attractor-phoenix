@@ -116,10 +116,8 @@ defmodule AttractorPhoenixWeb.DashboardLive do
         %{"question_id" => question_id, "response" => response},
         socket
       ) do
-    answer =
-      response
-      |> Map.get("answer", "")
-      |> normalize_answer()
+    question = Enum.find(socket.assigns.selected_questions, &(&1["id"] == question_id))
+    answer = build_question_answer(question, response || %{})
 
     socket =
       case AttractorAPI.answer_question(socket.assigns.selected_pipeline_id, question_id, answer) do
@@ -251,7 +249,15 @@ defmodule AttractorPhoenixWeb.DashboardLive do
   defp build_answer_forms(questions) do
     questions
     |> Enum.map(fn question ->
-      {question["id"], to_form(%{"answer" => ""}, as: :response)}
+      initial_params = %{
+        "answer" => "",
+        "choice" => default_single_choice(question),
+        "choices" => [],
+        "boolean" => "",
+        "confirmation" => ""
+      }
+
+      {question["id"], to_form(initial_params, as: :response)}
     end)
     |> Map.new()
   end
@@ -259,6 +265,13 @@ defmodule AttractorPhoenixWeb.DashboardLive do
   defp normalize_answer(answer) do
     trimmed = String.trim(to_string(answer || ""))
     if trimmed == "", do: nil, else: trimmed
+  end
+
+  defp normalize_answers(values) do
+    values
+    |> List.wrap()
+    |> Enum.map(&normalize_answer/1)
+    |> Enum.reject(&is_nil/1)
   end
 
   defp refresh_now(socket) do
@@ -275,6 +288,101 @@ defmodule AttractorPhoenixWeb.DashboardLive do
   defp question_options(question) do
     question["options"] || []
   end
+
+  defp question_type(question) do
+    question["type"] || get_in(question, ["metadata", "question_type"]) || "QUESTION"
+  end
+
+  defp question_input_mode(question) do
+    question
+    |> raw_question_input_mode()
+    |> normalize_question_input_mode(question)
+  end
+
+  defp question_multiple?(question), do: question["multiple"] == true
+
+  defp question_required?(question) do
+    case question["required"] do
+      false -> false
+      _ -> true
+    end
+  end
+
+  defp question_timeout_label(question) do
+    case question["timeout_seconds"] do
+      value when is_integer(value) -> "#{value}s timeout"
+      value when is_float(value) -> "#{trunc(value)}s timeout"
+      _ -> nil
+    end
+  end
+
+  defp question_default_label(question) do
+    case question["default"] do
+      value when is_binary(value) and value != "" -> "default #{value}"
+      _ -> nil
+    end
+  end
+
+  defp question_choice_options(question) do
+    Enum.map(question_options(question), fn option ->
+      {option["label"] || option["key"] || option["to"], option["key"] || option["to"]}
+    end)
+  end
+
+  defp default_single_choice(question) do
+    case question_choice_options(question) do
+      [] -> ""
+      [{_label, value} | _] -> value || ""
+    end
+  end
+
+  defp default_input_mode(question) do
+    cond do
+      question_multiple?(question) -> "multi_select"
+      question_options(question) == [] -> "text"
+      true -> "single_select"
+    end
+  end
+
+  defp raw_question_input_mode(question) do
+    get_in(question, ["metadata", "input_mode"]) || default_input_mode(question)
+  end
+
+  defp normalize_question_input_mode(mode, question) when mode in ["multi_select", "checkbox"] do
+    if question_multiple?(question), do: mode, else: "single_select"
+  end
+
+  defp normalize_question_input_mode(mode, _question) when mode in ["select", "dropdown"],
+    do: "single_select"
+
+  defp normalize_question_input_mode(mode, _question), do: mode
+
+  defp build_question_answer(nil, response), do: normalize_answer(response["answer"])
+
+  defp build_question_answer(question, response) do
+    case question_input_mode(question) do
+      mode when mode in ["boolean", "confirmation"] ->
+        normalize_answer(response[mode])
+
+      mode when mode in ["multi_select", "checkbox"] ->
+        normalize_answers(response["choices"])
+
+      "single_select" ->
+        normalize_answer(response["choice"])
+
+      "textarea" ->
+        normalize_answer(response["answer"])
+
+      _ ->
+        cond do
+          question_multiple?(question) -> normalize_answers(response["choices"])
+          question_options(question) != [] -> normalize_answer(response["choice"])
+          true -> normalize_answer(response["answer"])
+        end
+    end
+  end
+
+  defp response_field(form, field), do: form[field]
 
   defp preview_json(value) do
     Jason.encode_to_iodata!(value, pretty: true)

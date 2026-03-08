@@ -25,6 +25,10 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLiveTest do
     assert html =~ "node-prop-temperature"
     assert html =~ "node-prop-human-input"
     assert html =~ "node-prop-join-policy"
+    assert html =~ "Edge Properties"
+    assert html =~ "node-prop-add-edge"
+    assert html =~ "edge-prop-source"
+    assert html =~ "edge-prop-save"
   end
 
   test "submits pipeline through the HTTP API from the builder", %{conn: conn} do
@@ -115,6 +119,43 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLiveTest do
     assert html =~ "/answer"
   end
 
+  test "dashboard answers wait.human questions through typed Phoenix controls", %{conn: conn} do
+    pipeline_id = "dashboard_wait_human_#{System.unique_integer([:positive])}"
+
+    assert {:ok, %{"pipeline_id" => ^pipeline_id}} =
+             AttractorAPI.create_pipeline(wait_human_dot(), %{}, pipeline_id: pipeline_id)
+
+    wait_for_questions(pipeline_id)
+
+    {:ok, view, _html} = live(conn, ~p"/?pipeline=#{pipeline_id}")
+
+    assert has_element?(view, "#answer-form-gate")
+    assert has_element?(view, "#answer-form-gate select[name='response[choice]']")
+
+    view
+    |> element("#answer-form-gate")
+    |> render_submit(%{"question_id" => "gate", "response" => %{"choice" => "A"}})
+
+    wait_for_pipeline_status(pipeline_id, "success")
+
+    refute has_element?(view, "#answer-form-gate")
+  end
+
+  test "dashboard renders multi-select controls for wait.human metadata", %{conn: conn} do
+    pipeline_id = "dashboard_wait_human_multi_#{System.unique_integer([:positive])}"
+
+    assert {:ok, %{"pipeline_id" => ^pipeline_id}} =
+             AttractorAPI.create_pipeline(wait_human_multi_dot(), %{}, pipeline_id: pipeline_id)
+
+    wait_for_questions(pipeline_id)
+
+    {:ok, view, _html} = live(conn, ~p"/?pipeline=#{pipeline_id}")
+
+    assert has_element?(view, "#answer-form-gate select[multiple][name='response[choices][]']")
+    assert render(view) =~ "checkbox"
+    assert render(view) =~ "optional"
+  end
+
   defp sample_dot do
     """
     digraph attractor {
@@ -125,5 +166,75 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLiveTest do
       hello -> done
     }
     """
+  end
+
+  defp wait_human_dot do
+    """
+    digraph attractor {
+      start [shape=Mdiamond]
+      gate [shape=hexagon, prompt="Approve release?", human.timeout="5s"]
+      done [shape=Msquare]
+      retry [shape=box, prompt="Retry release"]
+      start -> gate
+      gate -> done [label="[A] Approve"]
+      gate -> retry [label="[R] Retry"]
+      retry -> done
+    }
+    """
+  end
+
+  defp wait_human_multi_dot do
+    """
+    digraph attractor {
+      start [shape=Mdiamond]
+      gate [
+        shape=hexagon,
+        prompt="Pick release actions",
+        human.multiple=true,
+        human.required=false,
+        human.input="checkbox"
+      ]
+      done [shape=Msquare]
+      retry [shape=box, prompt="Retry release"]
+      start -> gate
+      gate -> done [label="[A] Approve"]
+      gate -> retry [label="[R] Retry"]
+      retry -> done
+    }
+    """
+  end
+
+  defp wait_for_questions(pipeline_id, attempts \\ 100)
+
+  defp wait_for_questions(_pipeline_id, 0), do: flunk("expected pending questions")
+
+  defp wait_for_questions(pipeline_id, attempts) do
+    case AttractorAPI.get_pipeline_questions(pipeline_id) do
+      {:ok, %{"questions" => [_ | _]}} ->
+        :ok
+
+      _ ->
+        receive do
+        after
+          20 -> wait_for_questions(pipeline_id, attempts - 1)
+        end
+    end
+  end
+
+  defp wait_for_pipeline_status(pipeline_id, status, attempts \\ 100)
+
+  defp wait_for_pipeline_status(_pipeline_id, _status, 0), do: flunk("expected pipeline status")
+
+  defp wait_for_pipeline_status(pipeline_id, status, attempts) do
+    case AttractorAPI.get_pipeline(pipeline_id) do
+      {:ok, %{"status" => ^status}} ->
+        :ok
+
+      _ ->
+        receive do
+        after
+          20 -> wait_for_pipeline_status(pipeline_id, status, attempts - 1)
+        end
+    end
   end
 end

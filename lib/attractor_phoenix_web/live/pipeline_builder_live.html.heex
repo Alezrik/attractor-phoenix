@@ -31,7 +31,7 @@
           <button type="button" id="apply-dot" class="builder-btn">Apply DOT</button>
         </div>
         <p class="text-xs text-base-content/70">
-          In Add Edges mode, drag from one node to another to create a connection.
+          In Add Edges mode, drag from one node to another to create an edge.
         </p>
       </aside>
 
@@ -374,24 +374,21 @@
               </label>
             </div>
 
-            <div
-              id="node-prop-wrap-connections"
-              class="space-y-2 rounded-lg border border-base-300 p-3"
-            >
+            <div id="node-prop-wrap-edges" class="space-y-2 rounded-lg border border-base-300 p-3">
               <div class="flex items-center justify-between">
                 <div class="space-y-1">
                   <span class="block text-xs font-semibold uppercase tracking-wide text-base-content/70">
-                    Connections
+                    Edges
                   </span>
                   <span class="block text-[10px] uppercase tracking-wide text-base-content/50">
                     source -&gt; target
                   </span>
                 </div>
-                <button id="node-prop-add-connection" class="builder-btn" type="button">
-                  + Add Connection
+                <button id="node-prop-add-edge" class="builder-btn" type="button">
+                  + Add Edge
                 </button>
               </div>
-              <div id="node-connections-list" class="space-y-2"></div>
+              <div id="node-edges-list" class="space-y-2"></div>
             </div>
 
             <div class="flex items-center justify-end gap-2 pt-2">
@@ -401,6 +398,121 @@
               <button id="node-prop-save" value="default" class="builder-btn" type="button">
                 Save
               </button>
+            </div>
+          </form>
+        </dialog>
+
+        <dialog
+          id="edge-properties-dialog"
+          class="rounded-xl border border-base-300 p-0 backdrop:bg-black/40"
+        >
+          <form method="dialog" class="w-[min(96vw,42rem)] space-y-4 bg-base-100 p-4">
+            <h3 class="text-lg font-semibold">Edge Properties</h3>
+
+            <div class="grid gap-3 md:grid-cols-2">
+              <label class="block space-y-1">
+                <span class="text-xs font-semibold">Source</span>
+                <select
+                  id="edge-prop-source"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                >
+                </select>
+              </label>
+              <label class="block space-y-1">
+                <span class="text-xs font-semibold">Target</span>
+                <select
+                  id="edge-prop-target"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                >
+                </select>
+              </label>
+              <label class="block space-y-1">
+                <span class="text-xs font-semibold">Rule</span>
+                <select
+                  id="edge-prop-mode"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                >
+                  <option value="default">default</option>
+                  <option value="status">status</option>
+                  <option value="condition">condition</option>
+                </select>
+              </label>
+              <div class="space-y-1">
+                <label id="edge-prop-value-wrap" class="block space-y-1">
+                  <span class="text-xs font-semibold">Value</span>
+                  <input
+                    id="edge-prop-value"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm font-mono"
+                  />
+                </label>
+                <label id="edge-prop-status-wrap" class="block space-y-1">
+                  <span class="text-xs font-semibold">Status</span>
+                  <select
+                    id="edge-prop-status"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  >
+                    <option value="success">success</option>
+                    <option value="fail">fail</option>
+                    <option value="retry">retry</option>
+                    <option value="partial_success">partial_success</option>
+                  </select>
+                </label>
+              </div>
+              <label class="block space-y-1 md:col-span-2">
+                <span class="text-xs font-semibold">Label</span>
+                <input
+                  id="edge-prop-label"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label class="block space-y-1">
+                <span class="text-xs font-semibold">Weight</span>
+                <input
+                  id="edge-prop-weight"
+                  type="number"
+                  step="1"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label class="block space-y-1">
+                <span class="text-xs font-semibold">Fidelity</span>
+                <select
+                  id="edge-prop-fidelity"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                >
+                  <option value="">(default)</option>
+                  <option value="full">full</option>
+                  <option value="truncate">truncate</option>
+                  <option value="compact">compact</option>
+                  <option value="summary:low">summary:low</option>
+                  <option value="summary:medium">summary:medium</option>
+                  <option value="summary:high">summary:high</option>
+                </select>
+              </label>
+              <label class="block space-y-1">
+                <span class="text-xs font-semibold">Thread ID</span>
+                <input
+                  id="edge-prop-thread-id"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label class="flex items-center gap-2 text-xs font-semibold">
+                <input id="edge-prop-loop-restart" type="checkbox" /> loop_restart
+              </label>
+            </div>
+
+            <div class="flex items-center justify-between gap-2 pt-2">
+              <button id="edge-prop-delete" value="delete" class="builder-btn" type="button">
+                Delete Edge
+              </button>
+              <div class="flex items-center gap-2">
+                <button id="edge-prop-cancel" value="cancel" class="builder-btn" type="submit">
+                  Cancel
+                </button>
+                <button id="edge-prop-save" value="default" class="builder-btn" type="button">
+                  Save Edge
+                </button>
+              </div>
             </div>
           </form>
         </dialog>

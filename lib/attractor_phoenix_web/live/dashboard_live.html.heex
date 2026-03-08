@@ -237,10 +237,40 @@
                     <div class="flex items-center justify-between gap-3">
                       <strong class="text-sm">{question["id"]}</strong>
                       <span class="text-xs text-base-content/55">
-                        {question["type"] || "QUESTION"}
+                        {question_type(question)}
                       </span>
                     </div>
                     <p class="mt-2 text-sm leading-6">{question_prompt(question)}</p>
+
+                    <div class="mt-3 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.14em] text-base-content/55">
+                      <span class="rounded-full bg-base-200 px-2 py-1">
+                        {question_input_mode(question)}
+                      </span>
+                      <span
+                        :if={question_multiple?(question)}
+                        class="rounded-full bg-base-200 px-2 py-1"
+                      >
+                        multiple
+                      </span>
+                      <span
+                        :if={!question_required?(question)}
+                        class="rounded-full bg-base-200 px-2 py-1"
+                      >
+                        optional
+                      </span>
+                      <span
+                        :if={question_timeout_label(question)}
+                        class="rounded-full bg-base-200 px-2 py-1"
+                      >
+                        {question_timeout_label(question)}
+                      </span>
+                      <span
+                        :if={question_default_label(question)}
+                        class="rounded-full bg-base-200 px-2 py-1"
+                      >
+                        {question_default_label(question)}
+                      </span>
+                    </div>
 
                     <%= if question_options(question) != [] do %>
                       <div class="mt-3 flex flex-wrap gap-2 text-xs">
@@ -261,12 +291,79 @@
                       class="mt-4 space-y-3"
                     >
                       <input type="hidden" name="question_id" value={question["id"]} />
-                      <.input
-                        field={Map.get(@answer_forms, question["id"])[:answer]}
-                        type="text"
-                        label="POST /answer value"
-                        placeholder="Enter option key or answer payload"
-                      />
+
+                      <%= case question_input_mode(question) do %>
+                        <% "boolean" -> %>
+                          <.input
+                            field={
+                              response_field(Map.get(@answer_forms, question["id"]), :boolean)
+                            }
+                            type="select"
+                            label="POST /answer value"
+                            prompt="Choose yes or no"
+                            options={[{"Yes", "yes"}, {"No", "no"}]}
+                            required={question_required?(question)}
+                          />
+                        <% "confirmation" -> %>
+                          <.input
+                            field={
+                              response_field(
+                                Map.get(@answer_forms, question["id"]),
+                                :confirmation
+                              )
+                            }
+                            type="select"
+                            label="POST /answer value"
+                            prompt="Choose confirm or cancel"
+                            options={[{"Confirm", "confirm"}, {"Cancel", "cancel"}]}
+                            required={question_required?(question)}
+                          />
+                        <% mode when mode in ["multi_select", "checkbox"] -> %>
+                          <.input
+                            field={
+                              response_field(Map.get(@answer_forms, question["id"]), :choices)
+                            }
+                            type="select"
+                            label="POST /answer values"
+                            options={question_choice_options(question)}
+                            multiple={true}
+                            required={question_required?(question)}
+                            size={max(length(question_options(question)), 2)}
+                          />
+                        <% "single_select" -> %>
+                          <.input
+                            field={
+                              response_field(Map.get(@answer_forms, question["id"]), :choice)
+                            }
+                            type="select"
+                            label="POST /answer value"
+                            prompt="Choose an option"
+                            options={question_choice_options(question)}
+                            required={question_required?(question)}
+                          />
+                        <% "textarea" -> %>
+                          <.input
+                            field={
+                              response_field(Map.get(@answer_forms, question["id"]), :answer)
+                            }
+                            type="textarea"
+                            label="POST /answer value"
+                            placeholder="Enter a freeform response"
+                            required={question_required?(question)}
+                            rows="4"
+                          />
+                        <% _ -> %>
+                          <.input
+                            field={
+                              response_field(Map.get(@answer_forms, question["id"]), :answer)
+                            }
+                            type="text"
+                            label="POST /answer value"
+                            placeholder="Enter option key or answer payload"
+                            required={question_required?(question)}
+                          />
+                      <% end %>
+
                       <button type="submit" class="builder-btn">Submit Answer</button>
                     </.form>
                   </div>
