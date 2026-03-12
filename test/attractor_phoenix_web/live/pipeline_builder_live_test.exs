@@ -29,6 +29,7 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLiveTest do
     assert html =~ "node-prop-manager-stop-condition"
     assert html =~ "Edge Properties"
     assert html =~ "node-prop-add-edge"
+    assert html =~ "node-prop-delete"
     assert html =~ "edge-prop-source"
     assert html =~ "edge-prop-save"
   end
