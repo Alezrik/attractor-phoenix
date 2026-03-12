@@ -20,15 +20,54 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLiveTest do
     assert html =~ "goodbye"
     assert html =~ "Run via /run"
     assert html =~ "Submit via /pipelines"
+    assert html =~ ">LLM<"
     assert html =~ "Graph Contract"
     assert html =~ "node-prop-max-tokens"
     assert html =~ "node-prop-temperature"
     assert html =~ "node-prop-human-input"
     assert html =~ "node-prop-join-policy"
+    assert html =~ "node-prop-manager-stop-condition"
     assert html =~ "Edge Properties"
     assert html =~ "node-prop-add-edge"
     assert html =~ "edge-prop-source"
     assert html =~ "edge-prop-save"
+  end
+
+  test "builder node type selector covers all runtime node types", %{conn: conn} do
+    {:ok, _view, html} = live(conn, ~p"/builder")
+
+    for node_type <- [
+          "start",
+          "tool",
+          "wait.human",
+          "wait_for_human",
+          "conditional",
+          "parallel",
+          "parallel.fan_in",
+          "stack.manager_loop",
+          "codergen",
+          "exit"
+        ] do
+      assert html =~ ~s(value="#{node_type}")
+    end
+  end
+
+  test "builder quick insert palette covers the primary runtime-backed shapes", %{conn: conn} do
+    {:ok, _view, html} = live(conn, ~p"/builder")
+
+    for button_id <- [
+          "add-start",
+          "add-tool",
+          "add-llm",
+          "add-wait-human",
+          "add-conditional",
+          "add-parallel",
+          "add-parallel-fan-in",
+          "add-stack-manager-loop",
+          "add-end"
+        ] do
+      assert html =~ ~s(id="#{button_id}")
+    end
   end
 
   test "submits pipeline through the HTTP API from the builder", %{conn: conn} do

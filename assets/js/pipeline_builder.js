@@ -16,65 +16,62 @@ const NODE_TYPE_TO_SHAPE = {
   exit: "Msquare",
   codergen: "box",
   "wait.human": "hexagon",
+  wait_for_human: "hexagon",
   conditional: "diamond",
   parallel: "component",
   "parallel.fan_in": "tripleoctagon",
   tool: "parallelogram",
   "stack.manager_loop": "house",
 }
+const COMMON_NODE_FIELDS = [
+  "id",
+  "label",
+  "type",
+  "class",
+  "timeout",
+  "maxRetries",
+  "goalGate",
+  "retryTarget",
+  "fallbackRetryTarget",
+  "fidelity",
+  "threadId",
+  "allowPartial",
+]
+const COMMON_NODE_ALLOWED_ATTRS = [
+  "label",
+  "class",
+  "timeout",
+  "max_retries",
+  "goal_gate",
+  "retry_target",
+  "fallback_retry_target",
+  "fidelity",
+  "thread_id",
+  "allow_partial",
+]
 const NODE_FIELDS_BY_TYPE = {
-  start: ["id", "label", "type", "class", "timeout", "edges"],
-  exit: ["id", "label", "type", "class", "timeout"],
+  start: [...COMMON_NODE_FIELDS, "edges"],
+  exit: COMMON_NODE_FIELDS,
   tool: [
-    "id",
-    "label",
-    "type",
-    "class",
-    "timeout",
+    ...COMMON_NODE_FIELDS,
     "command",
-    "maxRetries",
-    "goalGate",
-    "retryTarget",
-    "fallbackRetryTarget",
-    "fidelity",
-    "threadId",
     "autoStatus",
-    "allowPartial",
     "edges",
   ],
   codergen: [
-    "id",
-    "label",
-    "type",
-    "class",
-    "timeout",
+    ...COMMON_NODE_FIELDS,
     "prompt",
-    "maxRetries",
-    "goalGate",
-    "retryTarget",
-    "fallbackRetryTarget",
-    "fidelity",
-    "threadId",
     "llmModel",
     "llmProvider",
     "reasoningEffort",
     "maxTokens",
     "temperature",
     "autoStatus",
-    "allowPartial",
     "edges",
   ],
   "wait.human": [
-    "id",
-    "label",
-    "type",
-    "class",
-    "timeout",
+    ...COMMON_NODE_FIELDS,
     "prompt",
-    "retryTarget",
-    "fallbackRetryTarget",
-    "fidelity",
-    "threadId",
     "humanDefaultChoice",
     "humanTimeout",
     "humanInput",
@@ -82,110 +79,88 @@ const NODE_FIELDS_BY_TYPE = {
     "humanRequired",
     "edges",
   ],
-  conditional: ["id", "label", "type", "class", "timeout", "fidelity", "threadId", "edges"],
+  wait_for_human: [
+    ...COMMON_NODE_FIELDS,
+    "prompt",
+    "humanDefaultChoice",
+    "humanTimeout",
+    "humanInput",
+    "humanMultiple",
+    "humanRequired",
+    "edges",
+  ],
+  conditional: [...COMMON_NODE_FIELDS, "edges"],
   parallel: [
-    "id",
-    "label",
-    "type",
-    "class",
-    "timeout",
-    "fidelity",
-    "threadId",
+    ...COMMON_NODE_FIELDS,
     "joinPolicy",
     "maxParallel",
     "k",
     "quorumRatio",
     "edges",
   ],
-  "parallel.fan_in": ["id", "label", "type", "class", "timeout", "fidelity", "threadId", "edges"],
+  "parallel.fan_in": [...COMMON_NODE_FIELDS, "edges"],
   "stack.manager_loop": [
-    "id",
-    "label",
-    "type",
-    "class",
-    "timeout",
-    "fidelity",
-    "threadId",
+    ...COMMON_NODE_FIELDS,
     "managerActions",
     "managerMaxCycles",
     "managerPollInterval",
+    "managerStopCondition",
     "stackChildAutostart",
     "edges",
   ],
 }
 const NODE_ALLOWED_ATTRS_BY_TYPE = {
-  start: ["label", "class", "timeout"],
-  exit: ["label", "class", "timeout"],
+  start: COMMON_NODE_ALLOWED_ATTRS,
+  exit: COMMON_NODE_ALLOWED_ATTRS,
   tool: [
-    "label",
-    "class",
-    "timeout",
+    ...COMMON_NODE_ALLOWED_ATTRS,
     "tool_command",
-    "max_retries",
-    "goal_gate",
-    "retry_target",
-    "fallback_retry_target",
-    "fidelity",
-    "thread_id",
+    "command",
     "auto_status",
-    "allow_partial",
   ],
   codergen: [
-    "label",
-    "class",
-    "timeout",
+    ...COMMON_NODE_ALLOWED_ATTRS,
     "prompt",
-    "max_retries",
-    "goal_gate",
-    "retry_target",
-    "fallback_retry_target",
-    "fidelity",
-    "thread_id",
     "llm_model",
     "llm_provider",
     "reasoning_effort",
     "max_tokens",
     "temperature",
     "auto_status",
-    "allow_partial",
   ],
   "wait.human": [
-    "label",
-    "class",
-    "timeout",
+    ...COMMON_NODE_ALLOWED_ATTRS,
     "prompt",
-    "retry_target",
-    "fallback_retry_target",
-    "fidelity",
-    "thread_id",
     "human.default_choice",
     "human.timeout",
     "human.input",
     "human.multiple",
     "human.required",
   ],
-  conditional: ["label", "class", "timeout", "fidelity", "thread_id"],
+  wait_for_human: [
+    ...COMMON_NODE_ALLOWED_ATTRS,
+    "prompt",
+    "human.default_choice",
+    "human.timeout",
+    "human.input",
+    "human.multiple",
+    "human.required",
+  ],
+  conditional: COMMON_NODE_ALLOWED_ATTRS,
   parallel: [
-    "label",
-    "class",
-    "timeout",
-    "fidelity",
-    "thread_id",
+    ...COMMON_NODE_ALLOWED_ATTRS,
     "join_policy",
     "max_parallel",
     "k",
     "quorum_ratio",
   ],
-  "parallel.fan_in": ["label", "class", "timeout", "fidelity", "thread_id"],
+  "parallel.fan_in": COMMON_NODE_ALLOWED_ATTRS,
   "stack.manager_loop": [
-    "label",
-    "class",
-    "timeout",
-    "fidelity",
-    "thread_id",
+    ...COMMON_NODE_ALLOWED_ATTRS,
     "manager.actions",
     "manager.max_cycles",
     "manager.poll_interval",
+    "manager.stop_condition",
     "stack.child_autostart",
   ],
 }
@@ -216,6 +191,12 @@ const PipelineBuilder = {
 
     this.addStartBtn = document.getElementById("add-start")
     this.addToolBtn = document.getElementById("add-tool")
+    this.addLlmBtn = document.getElementById("add-llm")
+    this.addWaitHumanBtn = document.getElementById("add-wait-human")
+    this.addConditionalBtn = document.getElementById("add-conditional")
+    this.addParallelBtn = document.getElementById("add-parallel")
+    this.addParallelFanInBtn = document.getElementById("add-parallel-fan-in")
+    this.addStackManagerLoopBtn = document.getElementById("add-stack-manager-loop")
     this.addEndBtn = document.getElementById("add-end")
     this.connectBtn = document.getElementById("connect-toggle")
     this.clearEdgesBtn = document.getElementById("clear-edges")
@@ -253,6 +234,7 @@ const PipelineBuilder = {
     this.propManagerActions = document.getElementById("node-prop-manager-actions")
     this.propManagerMaxCycles = document.getElementById("node-prop-manager-max-cycles")
     this.propManagerPollInterval = document.getElementById("node-prop-manager-poll-interval")
+    this.propManagerStopCondition = document.getElementById("node-prop-manager-stop-condition")
     this.propStackChildAutostart = document.getElementById("node-prop-stack-child-autostart")
     this.propAutoStatus = document.getElementById("node-prop-auto-status")
     this.propAllowPartial = document.getElementById("node-prop-allow-partial")
@@ -313,6 +295,7 @@ const PipelineBuilder = {
       managerActions: document.getElementById("node-prop-wrap-manager-actions"),
       managerMaxCycles: document.getElementById("node-prop-wrap-manager-max-cycles"),
       managerPollInterval: document.getElementById("node-prop-wrap-manager-poll-interval"),
+      managerStopCondition: document.getElementById("node-prop-wrap-manager-stop-condition"),
       stackChildAutostart: document.getElementById("node-prop-wrap-stack-child-autostart"),
       goalGate: document.getElementById("node-prop-wrap-goal-gate"),
       autoStatus: document.getElementById("node-prop-wrap-auto-status"),
@@ -322,6 +305,12 @@ const PipelineBuilder = {
 
     this.addStartBtn?.addEventListener("click", () => this.addNode("start"))
     this.addToolBtn?.addEventListener("click", () => this.addNode("tool"))
+    this.addLlmBtn?.addEventListener("click", () => this.addNode("codergen"))
+    this.addWaitHumanBtn?.addEventListener("click", () => this.addNode("wait.human"))
+    this.addConditionalBtn?.addEventListener("click", () => this.addNode("conditional"))
+    this.addParallelBtn?.addEventListener("click", () => this.addNode("parallel"))
+    this.addParallelFanInBtn?.addEventListener("click", () => this.addNode("parallel.fan_in"))
+    this.addStackManagerLoopBtn?.addEventListener("click", () => this.addNode("stack.manager_loop"))
     this.addEndBtn?.addEventListener("click", () => this.addNode("exit"))
     this.clearEdgesBtn?.addEventListener("click", () => {
       this.state.edges = []
@@ -716,6 +705,7 @@ const PipelineBuilder = {
       if (node.type === "start") return `${label}: this section starts the workflow.`
       if (node.type === "exit") return `${label}: this section finishes the workflow.`
       if (node.type === "wait.human") return `${label}: this section waits for a human choice.`
+      if (node.type === "wait_for_human") return `${label}: this section waits for a human choice.`
       if (node.type === "conditional") return `${label}: this section checks conditions to choose a path.`
       if (node.type === "parallel") return `${label}: this section runs multiple paths at the same time.`
       if (node.type === "parallel.fan_in") return `${label}: this section combines results from parallel paths.`
@@ -1135,10 +1125,11 @@ const PipelineBuilder = {
     this.propManagerActions.value = attrs["manager.actions"] || ""
     this.propManagerMaxCycles.value = attrs["manager.max_cycles"] || ""
     this.propManagerPollInterval.value = attrs["manager.poll_interval"] || ""
+    this.propManagerStopCondition.value = attrs["manager.stop_condition"] || ""
     this.propStackChildAutostart.checked = this.boolAttr(attrs["stack.child_autostart"])
     this.propAutoStatus.checked = this.boolAttr(attrs.auto_status)
     this.propAllowPartial.checked = this.boolAttr(attrs.allow_partial)
-    this.propCommand.value = attrs.tool_command || "echo hello world"
+    this.propCommand.value = attrs.tool_command || attrs.command || "echo hello world"
     this.applyNodeTypeVisibility()
     this.renderEdgesEditor(node.id)
     this.propsDialog.showModal()
@@ -1236,6 +1227,7 @@ const PipelineBuilder = {
       "manager.actions": (this.propManagerActions?.value || "").trim(),
       "manager.max_cycles": (this.propManagerMaxCycles?.value || "").trim(),
       "manager.poll_interval": (this.propManagerPollInterval?.value || "").trim(),
+      "manager.stop_condition": (this.propManagerStopCondition?.value || "").trim(),
       "stack.child_autostart": this.propStackChildAutostart?.checked ? true : "",
     })
   },

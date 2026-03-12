@@ -1,42 +1,67 @@
 <Layouts.app flash={@flash} current_scope={assigns[:current_scope]} current_path={~p"/builder"}>
   <section class="space-y-6" id="pipeline-builder-page">
-    <div>
-      <h1 class="text-3xl font-bold tracking-tight">Pipeline Builder</h1>
-      <p class="text-sm text-base-content/70">
-        Live graphical pipeline builder backed by the attractor-ex HTTP API.
-      </p>
+    <div class="rounded-[1.75rem] border border-base-300/70 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.18),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.94),rgba(248,250,252,0.92))] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.12),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.92),rgba(15,23,42,0.84))]">
+      <p class="builder-kicker">Graph Studio</p>
+      <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div class="space-y-2">
+          <h1 class="text-3xl font-bold tracking-tight md:text-4xl">Pipeline Builder</h1>
+          <p class="max-w-2xl text-sm leading-6 text-base-content/70">
+            Design, connect, and run `AttractorEx` workflows in a lighter-touch visual editor.
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em] text-base-content/55">
+          <span class="rounded-full border border-base-300/80 px-3 py-1">
+            visual graph editing
+          </span>
+          <span class="rounded-full border border-base-300/80 px-3 py-1">dot round-trip</span>
+          <span class="rounded-full border border-base-300/80 px-3 py-1">
+            runtime-backed types
+          </span>
+        </div>
+      </div>
     </div>
 
     <div id="builder-shell" class="builder-shell">
       <aside id="builder-left-panel" class="builder-side builder-left">
         <div class="flex items-center justify-between">
-          <h2 class="text-sm font-semibold tracking-wide">Workflow Summary</h2>
+          <h2 class="text-sm font-semibold tracking-wide">Quick Insert</h2>
           <button id="toggle-left-panel" type="button" class="builder-btn">Hide Left</button>
         </div>
-        <div
-          id="workflow-summary"
-          class="builder-summary-host min-h-[220px] rounded-xl border border-base-300 bg-base-100/80 p-3 text-sm leading-6"
-        >
-        </div>
-        <p class="text-xs text-base-content/70">
-          Read-only plain-language guide for less technical users.
-        </p>
 
         <div class="builder-left-actions">
-          <button type="button" id="add-start" class="builder-btn">Add Start</button>
-          <button type="button" id="add-tool" class="builder-btn">Add Tool</button>
-          <button type="button" id="add-end" class="builder-btn">Add End</button>
+          <button type="button" id="add-start" class="builder-btn">Start</button>
+          <button type="button" id="add-tool" class="builder-btn">Tool</button>
+          <button type="button" id="add-llm" class="builder-btn">LLM</button>
+          <button type="button" id="add-wait-human" class="builder-btn">Human</button>
+          <button type="button" id="add-conditional" class="builder-btn">Decision</button>
+          <button type="button" id="add-parallel" class="builder-btn">Parallel</button>
+          <button type="button" id="add-parallel-fan-in" class="builder-btn">Fan-In</button>
+          <button type="button" id="add-stack-manager-loop" class="builder-btn">Manager</button>
+          <button type="button" id="add-end" class="builder-btn">End</button>
+        </div>
+
+        <div class="builder-command-bar">
           <button type="button" id="connect-toggle" class="builder-btn">Add Edges</button>
-          <button type="button" id="clear-edges" class="builder-btn">Clear Edges</button>
+          <button type="button" id="clear-edges" class="builder-btn">Clear</button>
           <button type="button" id="apply-dot" class="builder-btn">Apply DOT</button>
         </div>
-        <p class="text-xs text-base-content/70">
-          In Add Edges mode, drag from one node to another to create an edge.
+
+        <div
+          id="workflow-summary"
+          class="builder-summary-host min-h-[220px] rounded-[1.1rem] border border-base-300/80 bg-base-100/90 p-4 text-sm leading-6 shadow-[0_14px_45px_rgba(15,23,42,0.05)]"
+        >
+        </div>
+        <p class="text-xs leading-5 text-base-content/62">
+          Drag to reposition nodes. In edge mode, pull from one node to another to create a connection.
         </p>
       </aside>
 
       <main class="builder-center">
-        <div class="flex flex-wrap items-center justify-end gap-2 pb-2">
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-3">
+          <div>
+            <p class="builder-kicker">Canvas</p>
+            <p class="text-sm text-base-content/65">Direct manipulation with DOT kept in sync.</p>
+          </div>
           <button id="toggle-left-panel-center" type="button" class="builder-btn">
             Toggle Left
           </button>
@@ -99,6 +124,7 @@
                   <option value="start">start</option>
                   <option value="tool">tool</option>
                   <option value="wait.human">wait.human</option>
+                  <option value="wait_for_human">wait_for_human</option>
                   <option value="conditional">conditional</option>
                   <option value="parallel">parallel</option>
                   <option value="parallel.fan_in">parallel.fan_in</option>
@@ -344,6 +370,14 @@
                 <input
                   id="node-prop-manager-poll-interval"
                   placeholder="500ms"
+                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                />
+              </label>
+              <label id="node-prop-wrap-manager-stop-condition" class="block space-y-1">
+                <span class="text-xs font-semibold">Manager Stop Condition</span>
+                <input
+                  id="node-prop-manager-stop-condition"
+                  placeholder={"context.stack.child.status == \"completed\""}
                   class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
                 />
               </label>
