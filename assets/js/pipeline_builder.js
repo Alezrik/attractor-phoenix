@@ -208,6 +208,7 @@ const PipelineBuilder = {
     this.propCommandWrap = document.getElementById("node-prop-wrap-command")
     this.propCommand = document.getElementById("node-prop-command")
     this.propSave = document.getElementById("node-prop-save")
+    this.propDelete = document.getElementById("node-prop-delete")
     this.propPrompt = document.getElementById("node-prop-prompt")
     this.propMaxRetries = document.getElementById("node-prop-max-retries")
     this.propGoalGate = document.getElementById("node-prop-goal-gate")
@@ -334,6 +335,7 @@ const PipelineBuilder = {
 
     this.propType?.addEventListener("change", () => this.applyNodeTypeVisibility())
     this.propSave?.addEventListener("click", () => this.saveNodeProperties())
+    this.propDelete?.addEventListener("click", () => this.deleteCurrentNode())
     this.propAddEdge?.addEventListener("click", () => this.startEdgeFromNodeDialog())
     this.edgePropSource?.addEventListener("change", () => this.populateEdgeTargetOptions())
     this.edgePropMode?.addEventListener("change", () => this.updateEdgeDialogValueVisibility())
@@ -820,29 +822,46 @@ const PipelineBuilder = {
   renderNodes() {
     this.canvas.innerHTML = ""
     for (const node of this.state.nodes) {
-      const el = document.createElement("button")
-      el.type = "button"
+      const el = document.createElement("div")
       el.className = `builder-node builder-node-${node.type}`
       el.dataset.id = node.id
       const displayLabel = (node.attrs?.label || node.id).trim()
-      el.textContent = displayLabel === node.id ? node.id : `${node.id} (${displayLabel})`
       el.style.left = `${node.x}px`
       el.style.top = `${node.y}px`
 
-      el.addEventListener("mousedown", (event) => {
+      const label = document.createElement("button")
+      label.type = "button"
+      label.className = "builder-node-label"
+      label.textContent = displayLabel === node.id ? node.id : `${node.id} (${displayLabel})`
+
+      const deleteBtn = document.createElement("button")
+      deleteBtn.type = "button"
+      deleteBtn.className = "builder-node-delete"
+      deleteBtn.setAttribute("aria-label", `Delete node ${node.id}`)
+      deleteBtn.textContent = "x"
+
+      label.addEventListener("mousedown", (event) => {
         if (this.connectMode) {
           this.beginEdgeDrag(event, node.id)
         } else {
           this.startDrag(event, node.id)
         }
       })
-      el.addEventListener("mouseup", (event) => this.completeEdgeDrag(event, node.id))
-      el.addEventListener("click", () => this.handleNodeClick(node.id))
-      el.addEventListener("dblclick", (event) => {
+      label.addEventListener("mouseup", (event) => this.completeEdgeDrag(event, node.id))
+      label.addEventListener("click", () => this.handleNodeClick(node.id))
+      label.addEventListener("dblclick", (event) => {
         event.preventDefault()
         event.stopPropagation()
         this.openNodeProperties(node.id)
       })
+      deleteBtn.addEventListener("click", (event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        this.deleteNode(node.id)
+      })
+
+      el.appendChild(label)
+      el.appendChild(deleteBtn)
 
       this.canvas.appendChild(el)
     }
@@ -1193,6 +1212,35 @@ const PipelineBuilder = {
     this.fitNodesInViewport()
     this.sync()
     this.propsDialog?.close()
+  },
+
+  deleteCurrentNode() {
+    if (!this.currentEditingNodeId) return
+    this.deleteNode(this.currentEditingNodeId)
+    this.propsDialog?.close()
+  },
+
+  deleteNode(nodeId) {
+    const nodeIndex = this.state.nodes.findIndex((entry) => entry.id === nodeId)
+    if (nodeIndex === -1) return
+
+    this.state.nodes.splice(nodeIndex, 1)
+    this.state.edges = this.state.edges.filter((edge) => edge.from !== nodeId && edge.to !== nodeId)
+
+    this.state.nodes.forEach((node) => {
+      if (node.attrs?.retry_target === nodeId) delete node.attrs.retry_target
+      if (node.attrs?.fallback_retry_target === nodeId) delete node.attrs.fallback_retry_target
+    })
+
+    if (this.state.graphAttrs?.retry_target === nodeId) delete this.state.graphAttrs.retry_target
+    if (this.state.graphAttrs?.fallback_retry_target === nodeId) {
+      delete this.state.graphAttrs.fallback_retry_target
+    }
+
+    if (this.currentEditingNodeId === nodeId) this.currentEditingNodeId = null
+    if (this.reopenNodePropertiesId === nodeId) this.reopenNodePropertiesId = null
+    if (this.edgeDragSource === nodeId) this.cancelEdgeDrag()
+    this.sync()
   },
 
   readNodePropertyAttrs(label, nodeType) {

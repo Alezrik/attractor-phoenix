@@ -173,8 +173,58 @@
   backdrop-filter: blur(8px);
 }
 
-.builder-node:active {
+.builder-node:active,
+.builder-node:has(.builder-node-label:active) {
   cursor: grabbing;
+}
+
+.builder-node-label {
+  width: 100%;
+  min-height: 40px;
+  padding: 0.65rem 2rem 0.65rem 0.75rem;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  cursor: inherit;
+}
+
+.builder-node-delete {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  display: inline-flex;
+  height: 1.15rem;
+  width: 1.15rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in oklch, var(--color-error) 30%, transparent);
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--color-base-100) 88%, transparent);
+  color: color-mix(in oklch, var(--color-error) 76%, var(--color-base-content));
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0;
+  transform: scale(0.92);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease,
+    background 140ms ease,
+    border-color 140ms ease;
+}
+
+.builder-node:hover .builder-node-delete,
+.builder-node:focus-within .builder-node-delete {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.builder-node-delete:hover {
+  background: color-mix(in oklch, var(--color-error) 10%, var(--color-base-100));
+  border-color: color-mix(in oklch, var(--color-error) 48%, transparent);
 }
 
 .builder-node-start {
