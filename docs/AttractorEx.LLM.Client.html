@@ -12,7 +12,7 @@
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
-    <script defer src="dist/sidebar_items-8955EF5A.js"></script>
+    <script defer src="dist/sidebar_items-4569997D.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-YU4BZFVS.js"></script>
 
@@ -370,6 +370,37 @@ supports both request/response and streaming flows.</p><p>Beyond the low-level <
 
     <div class="summary-row">
       <div class="summary-signature">
+        <a href="#stream_object_deltas/1" data-no-tooltip="" translate="no">stream_object_deltas(request)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Streams normalized events with inserted <code class="inline">:object_delta</code> JSON events.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#stream_object_deltas/2" data-no-tooltip="" translate="no">stream_object_deltas(client, request)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Streams normalized events with inserted <code class="inline">:object_delta</code> JSON events.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#stream_object_deltas_with_request/2" data-no-tooltip="" translate="no">stream_object_deltas_with_request(client, request)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Streams normalized events with inserted <code class="inline">:object_delta</code> JSON events and returns the
+resolved request.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
         <a href="#stream_object_with_request/2" data-no-tooltip="" translate="no">stream_object_with_request(client, request)</a>
 
       </div>
@@ -413,7 +444,7 @@ the normalized response plus resolved request.</p></div>
       <h1 class="signature" translate="no">middleware()</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L25" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L29" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -442,7 +473,7 @@ the normalized response plus resolved request.</p></div>
       <h1 class="signature" translate="no">t()</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L27" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L31" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -457,6 +488,7 @@ the normalized response plus resolved request.</p></div>
   default_provider: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>() | nil,
   middleware: [<a href="#t:middleware/0">middleware</a>()],
   providers: %{optional(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()) =&gt; <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">module</a>()},
+  retry_policy: <a href="AttractorEx.LLM.RetryPolicy.html#t:t/0">AttractorEx.LLM.RetryPolicy.t</a>() | nil,
   streaming_middleware: [<a href="#t:middleware/0">middleware</a>()]
 }</pre>
 
@@ -488,7 +520,7 @@ the normalized response plus resolved request.</p></div>
       <h1 class="signature" translate="no">accumulate_stream(request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L181" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L196" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -518,7 +550,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">accumulate_stream(client, request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L189" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L204" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -547,7 +579,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">accumulate_stream_with_request(client, request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L201" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L216" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -577,7 +609,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">clear_default()</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L111" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L123" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -605,7 +637,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">complete(request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L118" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L130" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -634,7 +666,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">complete(client, request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L123" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L135" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -656,7 +688,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">complete_with_request(client, request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L145" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L157" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -678,7 +710,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">default()</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L102" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L114" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -708,7 +740,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">from_env(opts \\ [])</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L55" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L61" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -724,7 +756,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       </div>
 
 <p>Builds a client from application config, with direct opts taking precedence.</p><p>Supported config shape:</p><pre><code class="makeup elixir" translate="no"><span class="n">config</span><span class="w"> </span><span class="ss">:attractor_phoenix</span><span class="p">,</span><span class="w"> </span><span class="ss">:attractor_ex_llm</span><span class="p">,</span><span class="w">
-  </span><span class="ss">providers</span><span class="p">:</span><span class="w"> </span><span class="p" data-group-id="0027182368-1">%{</span><span class="s">&quot;openai&quot;</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nc">MyApp.OpenAIAdapter</span><span class="p" data-group-id="0027182368-1">}</span><span class="p">,</span><span class="w">
+  </span><span class="ss">providers</span><span class="p">:</span><span class="w"> </span><span class="p" data-group-id="0485886639-1">%{</span><span class="s">&quot;openai&quot;</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nc">MyApp.OpenAIAdapter</span><span class="p" data-group-id="0485886639-1">}</span><span class="p">,</span><span class="w">
   </span><span class="ss">default_provider</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;openai&quot;</span></code></pre>
   </section>
 </section>
@@ -738,7 +770,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">generate(request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L132" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L144" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -767,7 +799,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">generate(client, request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L136" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L148" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -796,7 +828,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">generate_object(request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L214" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L229" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -825,7 +857,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">generate_object(client, request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L224" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L239" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -854,7 +886,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">generate_object_with_request(client, request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L236" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L251" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -885,7 +917,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">generate_with_request(client, request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L141" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L153" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -917,7 +949,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">new(opts \\ [])</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L36" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L41" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -945,7 +977,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">put_default(client)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L95" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L107" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -973,7 +1005,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">stream(request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L162" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L177" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -1001,7 +1033,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">stream(client, request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L167" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L182" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -1023,7 +1055,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">stream_object(request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L245" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L260" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -1052,7 +1084,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">stream_object(client, request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L253" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L283" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -1071,6 +1103,94 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
 <p>Generates a JSON object by first accumulating a streamed response.</p>
   </section>
 </section>
+<section class="detail" id="stream_object_deltas/1">
+
+  <div class="detail-header">
+    <a href="#stream_object_deltas/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">stream_object_deltas(request)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L266" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> stream_object_deltas(<a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()) ::
+  <a href="https://hexdocs.pm/elixir/Enumerable.html#t:t/0">Enumerable.t</a>() | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+<p>Streams normalized events with inserted <code class="inline">:object_delta</code> JSON events.</p>
+  </section>
+</section>
+<section class="detail" id="stream_object_deltas/2">
+
+  <div class="detail-header">
+    <a href="#stream_object_deltas/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">stream_object_deltas(client, request)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L272" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> stream_object_deltas(<a href="#t:t/0">t</a>(), <a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()) ::
+  <a href="https://hexdocs.pm/elixir/Enumerable.html#t:t/0">Enumerable.t</a>() | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+<p>Streams normalized events with inserted <code class="inline">:object_delta</code> JSON events.</p>
+  </section>
+</section>
+<section class="detail" id="stream_object_deltas_with_request/2">
+
+  <div class="detail-header">
+    <a href="#stream_object_deltas_with_request/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">stream_object_deltas_with_request(client, request)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L309" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> stream_object_deltas_with_request(<a href="#t:t/0">t</a>(), <a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()) ::
+  {:ok, <a href="https://hexdocs.pm/elixir/Enumerable.html#t:t/0">Enumerable.t</a>(), <a href="AttractorEx.LLM.Request.html#t:t/0">AttractorEx.LLM.Request.t</a>()} | {:error, <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>()}</pre>
+
+      </div>
+
+<p>Streams normalized events with inserted <code class="inline">:object_delta</code> JSON events and returns the
+resolved request.</p>
+  </section>
+</section>
 <section class="detail" id="stream_object_with_request/2">
 
   <div class="detail-header">
@@ -1081,7 +1201,7 @@ single accumulated <a href="AttractorEx.LLM.Response.html"><code class="inline">
       <h1 class="signature" translate="no">stream_object_with_request(client, request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L266" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L296" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -1113,7 +1233,7 @@ the normalized response plus resolved request.</p>
       <h1 class="signature" translate="no">stream_with_request(client, request)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L274" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/client.ex#L316" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 

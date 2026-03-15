@@ -1,7 +1,16 @@
 defmodule AttractorEx.LLMClientTest do
   use ExUnit.Case, async: true
 
-  alias AttractorEx.LLM.{Client, Message, MessagePart, Request, Response, StreamEvent, Usage}
+  alias AttractorEx.LLM.{
+    Client,
+    Error,
+    Message,
+    MessagePart,
+    Request,
+    Response,
+    StreamEvent,
+    Usage
+  }
 
   test "routes request by explicit provider" do
     client = %Client{
@@ -150,7 +159,7 @@ defmodule AttractorEx.LLMClientTest do
       default_provider: "openai"
     }
 
-    assert {:error, {:stream_not_supported, "openai"}} =
+    assert {:error, %Error{type: :unsupported, provider: "openai"}} =
              Client.stream(client, %Request{model: "gpt-5.2", messages: []})
   end
 
@@ -270,6 +279,14 @@ defmodule AttractorEx.LLMClientTest do
 
       invalid = Client.new(providers: [:bad])
       assert invalid.providers == %{}
+    end
+
+    test "new normalizes retry policy configuration" do
+      client = Client.new(retry_policy: [max_attempts: 3, base_delay_ms: 0, jitter_ratio: 0.0])
+
+      assert client.retry_policy.max_attempts == 3
+      assert client.retry_policy.base_delay_ms == 0
+      assert client.retry_policy.jitter_ratio == 0.0
     end
 
     test "from_env opts override configured middleware values" do
@@ -504,7 +521,7 @@ defmodule AttractorEx.LLMClientTest do
         default_provider: "openai"
       }
 
-      assert {:error, :stream_boom} =
+      assert {:error, %Error{type: :unknown, raw: :stream_boom, provider: "openai"}} =
                Client.stream_with_request(client, %Request{model: "gpt-5.2", messages: []})
     end
 
@@ -607,8 +624,44 @@ defmodule AttractorEx.LLMClientTest do
         default_provider: "openai"
       }
 
-      assert {:error, {:stream_not_supported, "openai"}} =
+      assert {:error, %Error{type: :unsupported, provider: "openai"}} =
                Client.accumulate_stream(client, %Request{model: "gpt-5.2", messages: []})
+    end
+
+    test "complete retries retryable adapter errors using client retry policy" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.RetryLLMAdapter},
+        default_provider: "openai",
+        retry_policy: %{max_attempts: 3, base_delay_ms: 0, jitter_ratio: 0.0}
+      }
+
+      assert %Response{text: "retried"} =
+               Client.complete(client, %Request{
+                 model: "gpt-5.2",
+                 messages: [],
+                 metadata: %{"attempt_key" => "complete-retry"}
+               })
+    end
+
+    test "stream retries retryable adapter errors and returns streamed object deltas" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.RetryLLMAdapter},
+        default_provider: "openai",
+        retry_policy: %{max_attempts: 2, base_delay_ms: 0, jitter_ratio: 0.0}
+      }
+
+      assert [
+               %StreamEvent{type: :stream_start},
+               %StreamEvent{type: :text_delta, text: "stream retried"},
+               %StreamEvent{type: :stream_end}
+             ] =
+               client
+               |> Client.stream(%Request{
+                 model: "gpt-5.2",
+                 messages: [],
+                 metadata: %{"attempt_key" => "stream-retry"}
+               })
+               |> Enum.to_list()
     end
 
     test "accumulate_stream falls back to usage totals from input/output counters" do
@@ -943,6 +996,32 @@ defmodule AttractorEx.LLMClientTest do
                })
 
       assert text == Jason.encode!(%{"provider" => "openai", "streamed" => true})
+    end
+
+    test "stream_object_deltas inserts typed object events for newline-delimited JSON chunks" do
+      client = %Client{
+        providers: %{"openai" => AttractorExTest.UnifiedLLMAdapter},
+        default_provider: "openai"
+      }
+
+      events =
+        client
+        |> Client.stream_object_deltas(%Request{
+          model: "gpt-5.2",
+          messages: [%Message{role: :user, content: "hi"}],
+          metadata: %{"json_lines_mode" => true}
+        })
+        |> Enum.to_list()
+
+      assert Enum.any?(events, fn
+               %StreamEvent{type: :object_delta, object: %{"step" => 1}} -> true
+               _ -> false
+             end)
+
+      assert Enum.any?(events, fn
+               %StreamEvent{type: :object_delta, object: %{"step" => 2}} -> true
+               _ -> false
+             end)
     end
   end
 end

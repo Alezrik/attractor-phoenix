@@ -181,9 +181,10 @@ Upstream baseline currently tracked by this repo:
 1. Provider routing by request provider or client default provider.
 2. Request middleware for blocking completion flows.
 3. Streaming middleware for stream flows.
-4. Provider adapter contract with `complete/1` and optional `stream/1`.
-5. Unified request model fields including `top_p`, `stop_sequences`, and `response_format`.
-6. Unified stream event envelope via `AttractorEx.LLM.StreamEvent`.
+4. Provider adapter contract with `complete/1` and optional `stream/1`, plus native OpenAI, Anthropic, and Gemini adapters.
+5. Unified request model fields including `top_p`, `stop_sequences`, `response_format`, cache hints, and retry policy overrides.
+6. Unified stream event envelope via `AttractorEx.LLM.StreamEvent`, including incremental `:object_delta` events for typed JSON streams.
+7. Typed `AttractorEx.LLM.Error` failures and `AttractorEx.LLM.RetryPolicy` backoff/retry handling.
 
 Current scope is intentionally low-level and adapter-agnostic. See the detailed matrix in `lib/attractor_ex/UNIFIED_LLM_SPEC_COMPLIANCE.md` or the published page at https://alezrik.github.io/attractor-phoenix/unified_llm_spec_compliance.html.
 

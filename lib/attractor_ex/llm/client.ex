@@ -14,13 +14,17 @@ defmodule AttractorEx.LLM.Client do
   5. JSON object generation helpers layered on top of the normalized response surface
   """
 
-  alias AttractorEx.LLM.{Request, Response, StreamEvent, Usage}
+  alias AttractorEx.LLM.{Error, ObjectStream, Request, Response, RetryPolicy, StreamEvent, Usage}
 
   @default_client_key {__MODULE__, :default_client}
   @default_otp_app :attractor_phoenix
   @default_config_key :attractor_ex_llm
 
-  defstruct providers: %{}, default_provider: nil, middleware: [], streaming_middleware: []
+  defstruct providers: %{},
+            default_provider: nil,
+            middleware: [],
+            streaming_middleware: [],
+            retry_policy: nil
 
   @type middleware :: (Request.t(), (Request.t() -> any()) -> any())
 
@@ -28,7 +32,8 @@ defmodule AttractorEx.LLM.Client do
           providers: %{optional(String.t()) => module()},
           default_provider: String.t() | nil,
           middleware: [middleware()],
-          streaming_middleware: [middleware()]
+          streaming_middleware: [middleware()],
+          retry_policy: RetryPolicy.t() | nil
         }
 
   @doc "Builds a client from keyword options."
@@ -38,7 +43,8 @@ defmodule AttractorEx.LLM.Client do
       providers: normalize_provider_map(Keyword.get(opts, :providers, %{})),
       default_provider: blank_to_nil(Keyword.get(opts, :default_provider)),
       middleware: Keyword.get(opts, :middleware, []),
-      streaming_middleware: Keyword.get(opts, :streaming_middleware, [])
+      streaming_middleware: Keyword.get(opts, :streaming_middleware, []),
+      retry_policy: RetryPolicy.new(Keyword.get(opts, :retry_policy))
     }
   end
 
@@ -82,11 +88,17 @@ defmodule AttractorEx.LLM.Client do
         Map.get(config_map, "streaming_middleware") ||
         []
 
+    retry_policy =
+      Keyword.get(opts, :retry_policy) ||
+        Map.get(config_map, :retry_policy) ||
+        Map.get(config_map, "retry_policy")
+
     new(
       providers: providers,
       default_provider: default_provider,
       middleware: middleware,
-      streaming_middleware: streaming_middleware
+      streaming_middleware: streaming_middleware,
+      retry_policy: retry_policy
     )
   end
 
@@ -147,11 +159,14 @@ defmodule AttractorEx.LLM.Client do
       with {:ok, provider_name} <- resolve_provider(client, req),
            {:ok, adapter} <- fetch_adapter(client, provider_name) do
         resolved_request = %{req | provider: provider_name}
+        policy = resolve_retry_policy(client, resolved_request)
 
-        case adapter.complete(resolved_request) do
-          {:error, _reason} = error -> error
-          response -> {:ok, response, resolved_request}
-        end
+        invoke_with_retry(policy, provider_name, fn ->
+          case adapter.complete(resolved_request) do
+            {:error, reason} -> {:error, normalize_error(reason, provider_name)}
+            response -> {:ok, response, resolved_request}
+          end
+        end)
       end
     end)
     |> normalize_complete_result(request)
@@ -246,6 +261,21 @@ defmodule AttractorEx.LLM.Client do
     with_default_client(fn client -> stream_object(client, request) end)
   end
 
+  @doc "Streams normalized events with inserted `:object_delta` JSON events."
+  @spec stream_object_deltas(Request.t()) :: Enumerable.t() | {:error, term()}
+  def stream_object_deltas(%Request{} = request) do
+    with_default_client(fn client -> stream_object_deltas(client, request) end)
+  end
+
+  @doc "Streams normalized events with inserted `:object_delta` JSON events."
+  @spec stream_object_deltas(t(), Request.t()) :: Enumerable.t() | {:error, term()}
+  def stream_object_deltas(%__MODULE__{} = client, %Request{} = request) do
+    case stream_object_deltas_with_request(client, request) do
+      {:ok, events, _resolved_request} -> events
+      {:error, _reason} = error -> error
+    end
+  end
+
   @doc """
   Generates a JSON object by first accumulating a streamed response.
   """
@@ -270,23 +300,25 @@ defmodule AttractorEx.LLM.Client do
     end
   end
 
+  @doc """
+  Streams normalized events with inserted `:object_delta` JSON events and returns the
+  resolved request.
+  """
+  @spec stream_object_deltas_with_request(t(), Request.t()) ::
+          {:ok, Enumerable.t(), Request.t()} | {:error, term()}
+  def stream_object_deltas_with_request(%__MODULE__{} = client, %Request{} = request) do
+    with {:ok, events, resolved_request} <- stream_with_request(client, request) do
+      {:ok, ObjectStream.insert_object_events(events), resolved_request}
+    end
+  end
+
   @doc "Executes a streaming request and also returns the resolved request."
   def stream_with_request(%__MODULE__{} = client, %Request{} = request) do
     run_with_middleware(client.streaming_middleware, request, fn req ->
       with {:ok, provider_name} <- resolve_provider(client, req),
            {:ok, adapter} <- fetch_adapter(client, provider_name) do
         resolved_request = %{req | provider: provider_name}
-
-        cond do
-          not adapter_supports_stream?(adapter) ->
-            {:error, {:stream_not_supported, provider_name}}
-
-          true ->
-            case adapter.stream(resolved_request) do
-              {:error, _reason} = error -> error
-              events -> {:ok, events, resolved_request}
-            end
-        end
+        stream_with_adapter(client, adapter, provider_name, resolved_request)
       end
     end)
     |> normalize_complete_result(request)
@@ -341,6 +373,75 @@ defmodule AttractorEx.LLM.Client do
 
   defp run_with_middleware([_ | rest], request, call),
     do: run_with_middleware(rest, request, call)
+
+  defp stream_with_adapter(client, adapter, provider_name, resolved_request) do
+    if adapter_supports_stream?(adapter) do
+      policy = resolve_retry_policy(client, resolved_request)
+
+      invoke_with_retry(policy, provider_name, fn ->
+        case adapter.stream(resolved_request) do
+          {:error, reason} -> {:error, normalize_error(reason, provider_name)}
+          events -> {:ok, events, resolved_request}
+        end
+      end)
+    else
+      {:error,
+       Error.new(
+         type: :unsupported,
+         provider: provider_name,
+         message: "streaming is not supported for #{provider_name}"
+       )}
+    end
+  end
+
+  defp resolve_retry_policy(%__MODULE__{} = client, %Request{} = request) do
+    case RetryPolicy.new(request.retry_policy) do
+      nil -> RetryPolicy.new(client.retry_policy)
+      %RetryPolicy{} = policy -> policy
+    end
+  end
+
+  defp invoke_with_retry(nil, _provider_name, callback), do: callback.()
+
+  defp invoke_with_retry(%RetryPolicy{} = policy, provider_name, callback) do
+    do_invoke_with_retry(policy, provider_name, callback, 1)
+  end
+
+  defp do_invoke_with_retry(%RetryPolicy{} = policy, provider_name, callback, attempt) do
+    case callback.() do
+      {:error, %Error{} = error} ->
+        maybe_retry(policy, provider_name, callback, attempt, error)
+
+      {:error, reason} ->
+        maybe_retry(
+          policy,
+          provider_name,
+          callback,
+          attempt,
+          normalize_error(reason, provider_name)
+        )
+
+      result ->
+        result
+    end
+  end
+
+  defp maybe_retry(%RetryPolicy{} = policy, provider_name, callback, attempt, %Error{} = error) do
+    if RetryPolicy.retry?(policy, error, attempt) do
+      Process.sleep(RetryPolicy.delay_ms(policy, error, attempt))
+      do_invoke_with_retry(policy, provider_name, callback, attempt + 1)
+    else
+      {:error, normalize_error(error, provider_name)}
+    end
+  end
+
+  defp normalize_error(%Error{} = error, provider_name) do
+    Error.normalize(error, provider: provider_name)
+  end
+
+  defp normalize_error(reason, provider_name) do
+    Error.normalize(reason, provider: provider_name)
+  end
 
   defp empty_accumulated_response do
     %Response{

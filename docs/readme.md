@@ -161,8 +161,18 @@ Unified client contract:
    - `generate/2` and `generate_with_request/2`
    - `accumulate_stream/2` to turn raw streaming events into a final `%AttractorEx.LLM.Response{}`
    - `generate_object/2` and `stream_object/2` for JSON object decoding
+   - `stream_object_deltas/2` to inject typed `:object_delta` events while a JSON stream is still in flight
 5. Message content:
    - `AttractorEx.LLM.Message.content` accepts either plain text or a list of `AttractorEx.LLM.MessagePart` structs for richer multimodal/tool/thinking payloads
+6. Reliability hooks:
+   - request/client retry policies normalize provider errors into `AttractorEx.LLM.Error`
+   - request-level `cache` metadata is translated into provider cache hooks where supported
+
+Included native adapters under `lib/attractor_phoenix/llm_adapters/`:
+
+1. `openai.ex` for OpenAI Responses API request/stream translation
+2. `anthropic.ex` for Anthropic Messages API request/stream translation
+3. `gemini.ex` for Gemini generate/stream content translation
 
 Example backend module:
 

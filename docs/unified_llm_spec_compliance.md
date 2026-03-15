@@ -38,13 +38,13 @@ Legend: `implemented`, `partial`, `not implemented`.
 
 | Upstream section | Status | Notes |
 |---|---|---|
-| `2. Architecture` | `partial` | Programmatic client config, provider resolution, middleware chain, adapter boundary, env-based construction (`from_env/1`), and module-level default client helpers are implemented. Model catalog and prompt caching machinery are still open. |
-| `3. Data Model` | `partial` | Core request/response/usage/stream event/message structs exist. Messages now support tagged `MessagePart` content blocks, but full provider-round-trip multimodal semantics are still incomplete. |
-| `4. Generation and Streaming` | `partial` | Low-level `complete`/raw `stream` plus `complete_with_request` and `stream_with_request` are implemented. High-level `generate`, stream accumulation, `generate_object`, and `stream_object` helpers are now implemented. Incremental typed object streaming is still not implemented. |
+| `2. Architecture` | `implemented` | Programmatic client config, provider resolution, middleware chain, adapter boundary, env-based construction (`from_env/1`), module-level default client helpers, client/request retry policy wiring, and provider cache hooks are implemented. |
+| `3. Data Model` | `partial` | Core request/response/usage/stream event/message structs exist, including typed error/retry metadata, cache hints, `MessagePart` multimodal blocks, and `:object_delta` stream events. Some provider-specific multimodal edge cases are still normalized conservatively. |
+| `4. Generation and Streaming` | `implemented` | Low-level `complete`/raw `stream`, resolved-request helpers, stream accumulation, `generate_object`, `stream_object`, and incremental `stream_object_deltas` JSON streaming are implemented. Native OpenAI, Anthropic, and Gemini adapters now translate both non-streaming and streaming flows. |
 | `5. Tool Calling` | `partial` | Request/response fields support tool call payload transfer. Automatic high-level multi-step tool loop at this SDK layer is not implemented here (handled in agent session layer). |
-| `6. Error Handling and Retry` | `not implemented` | Typed error hierarchy, retry taxonomy, backoff/retry-after handling are not implemented in this layer. |
-| `7. Provider Adapter Contract` | `partial` | Adapter behavior contract (`complete`, optional `stream`) and unsupported-stream handling exist. Full provider translation guidance and concrete provider implementations are not included. |
-| `8. Definition of Done` | `partial` | Core routing/middleware coverage exists and now includes env/default-client construction, message-part projection, stream accumulation, and JSON object helpers. Provider-native adapters, full multimodal round-trip parity, retries, and caching parity remain open. |
+| `6. Error Handling and Retry` | `implemented` | `AttractorEx.LLM.Error` and `AttractorEx.LLM.RetryPolicy` provide typed provider/transport errors, retryability metadata, backoff, and `retry-after` handling at the client layer. |
+| `7. Provider Adapter Contract` | `implemented` | Adapter behavior contract (`complete`, optional `stream`) is exercised by concrete OpenAI, Anthropic, and Gemini adapters with normalized text, tool-call, reasoning, usage, and cache-hook translation. |
+| `8. Definition of Done` | `partial` | Core routing/middleware coverage now includes native adapters, retries, cache hooks, stream accumulation, JSON object helpers, and incremental object streaming. Remaining gaps are mostly around exhaustive multimodal/provider parity rather than missing primitives. |
 
 ## Verified Behaviors (with tests)
 
@@ -54,19 +54,20 @@ Legend: `implemented`, `partial`, `not implemented`.
 4. `complete_with_request/2` and `stream_with_request/2` return resolved requests.
 5. Stream adapter dispatch and unsupported-stream error path.
 6. Request field pass-through including reasoning/cache usage counters.
-7. `from_env/1` runtime construction and module-level default client helpers.
-8. Message-part content projection for richer request payloads.
+7. `from_env/1` runtime construction, retry-policy config, and module-level default client helpers.
+8. Message-part content projection plus cache hints for richer request payloads.
 9. Stream accumulation into a normalized final response.
 10. JSON object decoding for non-streaming and streaming helper APIs.
+11. Incremental `:object_delta` streaming for NDJSON/full-document streams.
+12. Typed retry/error normalization with retryable adapter failures.
+13. Native OpenAI, Anthropic, and Gemini request/stream translation coverage.
 
 ## Known Gaps vs Spec
 
-1. Full content-part round-trip semantics across concrete provider adapters remain incomplete even though the normalized message model now supports tagged parts.
-2. Incremental typed object streaming is not implemented; `stream_object/2` currently accumulates the underlying event stream before decoding.
-3. Built-in tool-loop orchestration at unified client layer.
-4. Error taxonomy and automatic retries with jitter/retry-after.
-5. Native provider adapters for OpenAI Responses, Anthropic Messages, Gemini APIs.
-6. Prompt caching provider-specific behaviors.
+1. Full content-part round-trip semantics across every provider-specific multimodal edge case remain incomplete even though the normalized message model and native adapters now carry richer parts.
+2. Built-in tool-loop orchestration at unified client layer.
+3. Prompt caching support is implemented as request hooks where providers expose a compatible surface, but not every provider offers identical cache semantics.
+4. Provider compatibility coverage is focused on normalized translation and does not yet claim exhaustive upstream fixture parity.
 
 ## Verification Commands
 

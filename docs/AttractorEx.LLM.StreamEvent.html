@@ -12,7 +12,7 @@
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
-    <script defer src="dist/sidebar_items-8955EF5A.js"></script>
+    <script defer src="dist/sidebar_items-4569997D.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-YU4BZFVS.js"></script>
 
@@ -191,6 +191,7 @@ final response, and error cases.</p>
   :stream_start
   | :text_delta
   | :reasoning_delta
+  | :object_delta
   | :tool_call
   | :tool_result
   | :response
@@ -212,7 +213,7 @@ final response, and error cases.</p>
       <h1 class="signature" translate="no">t()</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/stream_event.ex#L31" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/llm/stream_event.ex#L33" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -225,6 +226,7 @@ final response, and error cases.</p>
 
           <pre translate="no"><span class="attribute">@type</span> t() :: %AttractorEx.LLM.StreamEvent{
   error: <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">term</a>() | nil,
+  object: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>() | <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">list</a>() | nil,
   raw: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>(),
   reasoning: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>() | nil,
   response: <a href="AttractorEx.LLM.Response.html#t:t/0">AttractorEx.LLM.Response.t</a>() | nil,

@@ -48,7 +48,7 @@ Legend: `implemented`, `partial`, `not implemented`.
 | `8. Out of Scope` | `n/a` | Informational section. |
 | `9. Definition of Done` | `implemented` | The session loop, provider presets, registry dispatch/error paths, truncation policy, steering/follow-up controls, reasoning controls, layered prompt context, local execution environment contract, subagent lifecycle, and maintained event surface are implemented and covered by tests. Exact provider-native prompt/tool-harness parity is still tracked separately as a known non-blocking gap. |
 | `Appendix A (apply_patch v4a)` | `partial` | A built-in `apply_patch` tool now parses and applies add/delete/update/move operations in the appendix-style envelope for local sessions. Full appendix-edge-case coverage and exhaustive parity validation remain open. |
-| `Appendix B (error handling)` | `partial` | Tool/session error propagation and recovery behaviors are implemented, but full cross-provider SDK retry hierarchy is delegated to Unified LLM layer. |
+| `Appendix B (error handling)` | `implemented` | Tool/session error propagation and recovery behaviors are implemented, and the underlying Unified LLM layer now contributes typed provider errors plus client-side retry/backoff semantics for recoverable LLM failures. |
 
 ## Verified Behaviors (with tests)
 
