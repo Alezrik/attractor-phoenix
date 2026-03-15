@@ -144,14 +144,11 @@ defmodule AttractorPhoenixWeb.RunLive do
         |> stream(:events, events, reset: true)
         |> ensure_subscription()
 
-      {:error, :not_found} ->
+      {:error, message} ->
         socket
-        |> assign(error: "Run not found.", selected_pipeline: nil)
+        |> assign(error: message, selected_pipeline: nil)
         |> stream(:questions, [], reset: true)
         |> stream(:events, [], reset: true)
-
-      {:error, message} ->
-        assign(socket, error: message)
     end
   end
 
