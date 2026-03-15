@@ -134,13 +134,13 @@ defmodule AttractorEx.HTTP.FileRunStore do
 
   defp write_json(path, value) do
     dir = Path.dirname(path)
-    temp_path = path <> ".tmp"
+    temp_path = path <> ".#{System.unique_integer([:positive])}.tmp"
 
     File.mkdir_p!(dir)
 
     with {:ok, encoded} <- Jason.encode(value, pretty: true),
          :ok <- File.write(temp_path, encoded),
-         :ok <- File.rename(temp_path, path) do
+         :ok <- replace_file(temp_path, path, encoded) do
       :ok
     else
       error ->
@@ -153,6 +153,24 @@ defmodule AttractorEx.HTTP.FileRunStore do
     dir = run_dir(config, pipeline_id)
     File.mkdir_p!(dir)
     dir
+  end
+
+  defp replace_file(temp_path, path, encoded) do
+    case File.rename(temp_path, path) do
+      :ok ->
+        :ok
+
+      {:error, reason} when reason in [:eacces, :eperm] ->
+        _ = File.rm(path)
+
+        case File.rename(temp_path, path) do
+          :ok -> :ok
+          {:error, _reason} -> File.write(path, encoded)
+        end
+
+      {:error, _reason} ->
+        File.write(path, encoded)
+    end
   end
 
   defp run_dir(config, pipeline_id), do: Path.join([config.root, "runs", pipeline_id])

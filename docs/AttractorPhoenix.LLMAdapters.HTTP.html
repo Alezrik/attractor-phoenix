@@ -8,7 +8,7 @@
     <meta name="project" content="attractor_phoenix v0.1.0">
 
 
-    <title>AttractorPhoenixWeb.Telemetry — attractor_phoenix v0.1.0</title>
+    <title>AttractorPhoenix.LLMAdapters.HTTP — attractor_phoenix v0.1.0</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
@@ -97,25 +97,29 @@ attractor_phoenix
 <div id="top-content">
   <div class="heading-with-actions top-heading">
     <h1>
-      <span translate="no">AttractorPhoenixWeb.<wbr>Telemetry</span> 
+      <span translate="no">AttractorPhoenix.<wbr>LLMAdapters.<wbr>HTTP</span> 
       <small class="app-vsn" translate="no">(attractor_phoenix v0.1.0)</small>
 
     </h1>
 
-<a href="AttractorPhoenixWeb.Telemetry.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+<a href="AttractorPhoenix.LLMAdapters.HTTP.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
   <i class="ri-markdown-line" aria-hidden="true"></i>
   <span class="sr-only">Copy Markdown</span>
 </a>
 
 
 
-      <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/telemetry.ex#L1" title="View Source" class="icon-action" rel="help">
+      <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/llm_adapters/http.ex#L1" title="View Source" class="icon-action" rel="help">
         <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         <span class="sr-only">View Source</span>
       </a>
 
   </div>
 
+
+    <section id="moduledoc">
+<p>Shared HTTP helpers for native LLM provider adapters.</p>
+    </section>
 
 </div>
 
@@ -133,17 +137,7 @@ attractor_phoenix
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#child_spec/1" data-no-tooltip="" translate="no">child_spec(init_arg)</a>
-
-      </div>
-
-        <div class="summary-synopsis"><p>Returns a specification to start this module under a supervisor.</p></div>
-
-    </div>
-
-    <div class="summary-row">
-      <div class="summary-signature">
-        <a href="#metrics/0" data-no-tooltip="" translate="no">metrics()</a>
+        <a href="#post_json/4" data-no-tooltip="" translate="no">post_json(url, headers, payload, opts \\ [])</a>
 
       </div>
 
@@ -151,7 +145,7 @@ attractor_phoenix
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#start_link/1" data-no-tooltip="" translate="no">start_link(arg)</a>
+        <a href="#post_json_stream/4" data-no-tooltip="" translate="no">post_json_stream(url, headers, payload, opts \\ [])</a>
 
       </div>
 
@@ -171,17 +165,19 @@ attractor_phoenix
     </h2>
 
     <div class="functions-list">
-<section class="detail" id="child_spec/1">
+<section class="detail" id="post_json/4">
+
+    <span id="post_json/3"></span>
 
   <div class="detail-header">
-    <a href="#child_spec/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#post_json/4" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">child_spec(init_arg)</h1>
+      <h1 class="signature" translate="no">post_json(url, headers, payload, opts \\ [])</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/telemetry.ex#L2" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/llm_adapters/http.ex#L11" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -190,42 +186,29 @@ attractor_phoenix
 
   <section class="docstring">
 
-<p>Returns a specification to start this module under a supervisor.</p><p>See <a href="https://hexdocs.pm/elixir/Supervisor.html"><code class="inline">Supervisor</code></a>.</p>
-  </section>
-</section>
-<section class="detail" id="metrics/0">
+      <div class="specs">
 
-  <div class="detail-header">
-    <a href="#metrics/0" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
-      <i class="ri-link-m" aria-hidden="true"></i>
-    </a>
-    <div class="heading-with-actions">
-      <h1 class="signature" translate="no">metrics()</h1>
+          <pre translate="no"><span class="attribute">@spec</span> post_json(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), [{<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()}], <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">keyword</a>()) ::
+  {:ok, <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()} | {:error, <a href="AttractorEx.LLM.Error.html#t:t/0">AttractorEx.LLM.Error.t</a>()}</pre>
 
-
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/telemetry.ex#L22" class="icon-action" rel="help" aria-label="View Source">
-          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
-        </a>
-
-    </div>
-  </div>
-
-  <section class="docstring">
+      </div>
 
 
   </section>
 </section>
-<section class="detail" id="start_link/1">
+<section class="detail" id="post_json_stream/4">
+
+    <span id="post_json_stream/3"></span>
 
   <div class="detail-header">
-    <a href="#start_link/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#post_json_stream/4" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">start_link(arg)</h1>
+      <h1 class="signature" translate="no">post_json_stream(url, headers, payload, opts \\ [])</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/telemetry.ex#L5" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/llm_adapters/http.ex#L30" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -233,6 +216,14 @@ attractor_phoenix
   </div>
 
   <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> post_json_stream(<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), [{<a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()}], <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>(), <a href="https://hexdocs.pm/elixir/typespecs.html#built-in-types">keyword</a>()) ::
+  {:ok, %{body: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>(), headers: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>(), status: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">pos_integer</a>()}}
+  | {:error, <a href="AttractorEx.LLM.Error.html#t:t/0">AttractorEx.LLM.Error.t</a>()}</pre>
+
+      </div>
 
 
   </section>

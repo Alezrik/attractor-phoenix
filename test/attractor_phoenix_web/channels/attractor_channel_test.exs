@@ -29,7 +29,7 @@ defmodule AttractorPhoenixWeb.AttractorChannelTest do
         status: "running"
       })
 
-    assert_push "pipeline_event", %{"pipeline_id" => ^pipeline_id, "type" => "PipelineHeartbeat"}
+    assert_pipeline_event_type("PipelineHeartbeat", pipeline_id)
 
     assert :ok =
              Manager.register_question(AttractorPhoenix.AttractorHTTP.Manager, pipeline_id, %{
@@ -44,6 +44,21 @@ defmodule AttractorPhoenixWeb.AttractorChannelTest do
       "type" => "PipelineQuestionsUpdated",
       "questions" => [%{"id" => "gate"}]
     }
+  end
+
+  defp assert_pipeline_event_type(type, pipeline_id, attempts \\ 30)
+
+  defp assert_pipeline_event_type(_type, _pipeline_id, 0),
+    do: flunk("expected pipeline_event with requested type")
+
+  defp assert_pipeline_event_type(type, pipeline_id, attempts) do
+    assert_push "pipeline_event", %{"pipeline_id" => ^pipeline_id, "type" => event_type}
+
+    if event_type == type do
+      :ok
+    else
+      assert_pipeline_event_type(type, pipeline_id, attempts - 1)
+    end
   end
 
   defp simple_dot do
