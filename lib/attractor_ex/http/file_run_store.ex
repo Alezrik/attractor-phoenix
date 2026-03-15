@@ -43,6 +43,7 @@ defmodule AttractorEx.HTTP.FileRunStore do
         case load_run(config, run_id) do
           {:ok, loaded_run} -> [loaded_run | acc]
           {:error, :enoent} -> acc
+          {:error, :invalid_run} -> acc
           {:error, reason} -> throw({:error, reason})
         end
       end)
@@ -96,6 +97,10 @@ defmodule AttractorEx.HTTP.FileRunStore do
          questions: Enum.map(questions_attrs, &QuestionRecord.from_map/1),
          events: events
        }}
+    else
+      {:error, {:decode_error, _path}} -> {:error, :invalid_run}
+      {:error, {:invalid_events, _path}} -> {:error, :invalid_run}
+      other -> other
     end
   end
 
@@ -104,7 +109,7 @@ defmodule AttractorEx.HTTP.FileRunStore do
 
     case File.read(path) do
       {:ok, contents} ->
-        Jason.decode(contents)
+        decode_json(contents, path, default)
 
       {:error, :enoent} when default != :no_default ->
         {:ok, default}
@@ -117,12 +122,7 @@ defmodule AttractorEx.HTTP.FileRunStore do
   defp read_events(path) do
     case File.read(path) do
       {:ok, contents} ->
-        events =
-          contents
-          |> String.split("\n", trim: true)
-          |> Enum.map(fn line -> line |> Jason.decode!() |> EventRecord.from_map() end)
-
-        {:ok, events}
+        decode_events(contents, path)
 
       {:error, :enoent} ->
         {:ok, []}
@@ -133,12 +133,20 @@ defmodule AttractorEx.HTTP.FileRunStore do
   end
 
   defp write_json(path, value) do
-    path
-    |> Path.dirname()
-    |> File.mkdir_p!()
+    dir = Path.dirname(path)
+    temp_path = path <> ".tmp"
 
-    encoded = Jason.encode!(value, pretty: true)
-    File.write(path, encoded)
+    File.mkdir_p!(dir)
+
+    with {:ok, encoded} <- Jason.encode(value, pretty: true),
+         :ok <- File.write(temp_path, encoded),
+         :ok <- File.rename(temp_path, path) do
+      :ok
+    else
+      error ->
+        _ = File.rm(temp_path)
+        error
+    end
   end
 
   defp ensure_run_dir(config, pipeline_id) do
@@ -148,4 +156,30 @@ defmodule AttractorEx.HTTP.FileRunStore do
   end
 
   defp run_dir(config, pipeline_id), do: Path.join([config.root, "runs", pipeline_id])
+
+  defp decode_json(contents, _path, default)
+       when contents in ["", " ", "\n", "\r\n"] and default != :no_default,
+       do: {:ok, default}
+
+  defp decode_json(contents, path, _default) do
+    case Jason.decode(contents) do
+      {:ok, decoded} -> {:ok, decoded}
+      {:error, _reason} -> {:error, {:decode_error, path}}
+    end
+  end
+
+  defp decode_events(contents, path) do
+    contents
+    |> String.split("\n", trim: true)
+    |> Enum.reduce_while({:ok, []}, fn line, {:ok, acc} ->
+      case Jason.decode(line) do
+        {:ok, decoded} -> {:cont, {:ok, [EventRecord.from_map(decoded) | acc]}}
+        {:error, _reason} -> {:halt, {:error, {:invalid_events, path}}}
+      end
+    end)
+    |> case do
+      {:ok, events} -> {:ok, Enum.reverse(events)}
+      error -> error
+    end
+  end
 end

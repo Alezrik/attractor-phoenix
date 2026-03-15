@@ -23,7 +23,12 @@ defmodule AttractorEx.HTTP.ArtifactRecord do
       |> Path.join("**/*")
       |> Path.wildcard(match_dot: true)
       |> Enum.filter(&File.regular?/1)
-      |> Enum.map(&from_path(run_root, &1))
+      |> Enum.flat_map(fn path ->
+        case from_path(run_root, path) do
+          {:ok, artifact} -> [artifact]
+          :error -> []
+        end
+      end)
       |> Enum.sort_by(& &1.path)
     else
       []
@@ -53,14 +58,19 @@ defmodule AttractorEx.HTTP.ArtifactRecord do
   end
 
   defp from_path(run_root, path) do
-    stat = File.stat!(path, time: :posix)
+    case File.stat(path, time: :posix) do
+      {:ok, stat} ->
+        {:ok,
+         %__MODULE__{
+           path: Path.relative_to(path, run_root),
+           kind: artifact_kind(path),
+           size: stat.size,
+           updated_at: stat.mtime |> DateTime.from_unix!(:second) |> iso8601()
+         }}
 
-    %__MODULE__{
-      path: Path.relative_to(path, run_root),
-      kind: artifact_kind(path),
-      size: stat.size,
-      updated_at: stat.mtime |> DateTime.from_unix!(:second) |> iso8601()
-    }
+      {:error, _reason} ->
+        :error
+    end
   end
 
   defp artifact_kind(path) do
