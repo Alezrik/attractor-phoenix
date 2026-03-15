@@ -615,6 +615,61 @@
   background: color-mix(in oklch, var(--color-primary) 14%, var(--color-base-100));
 }
 
+.dashboard-run-row {
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 8%, transparent);
+  border-radius: 1rem;
+  padding: 1rem;
+  background:
+    radial-gradient(circle at top right, color-mix(in oklch, var(--color-info) 8%, transparent), transparent 30%),
+    color-mix(in oklch, var(--color-base-200) 36%, var(--color-base-100));
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.dashboard-run-row:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklch, var(--color-info) 34%, transparent);
+  box-shadow: 0 18px 45px color-mix(in oklch, black 6%, transparent);
+}
+
+.run-status-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.28rem 0.6rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.run-status-running {
+  background: color-mix(in oklch, var(--color-info) 14%, var(--color-base-100));
+  color: color-mix(in oklch, var(--color-info) 74%, var(--color-base-content));
+}
+
+.run-status-success {
+  background: color-mix(in oklch, var(--color-success) 16%, var(--color-base-100));
+  color: color-mix(in oklch, var(--color-success) 74%, var(--color-base-content));
+}
+
+.run-status-fail {
+  background: color-mix(in oklch, var(--color-error) 14%, var(--color-base-100));
+  color: color-mix(in oklch, var(--color-error) 78%, var(--color-base-content));
+}
+
+.run-status-cancelled {
+  background: color-mix(in oklch, var(--color-warning) 18%, var(--color-base-100));
+  color: color-mix(in oklch, var(--color-warning) 58%, var(--color-base-content));
+}
+
+.run-status-question {
+  background: color-mix(in oklch, var(--color-secondary) 18%, var(--color-base-100));
+  color: color-mix(in oklch, var(--color-secondary) 78%, var(--color-base-content));
+}
+
 .dashboard-detail-grid {
   display: grid;
   gap: 1rem;
@@ -633,6 +688,30 @@
     color-mix(in oklch, var(--color-base-100) 96%, transparent);
   background-size: 24px 24px;
   padding: 1rem;
+}
+
+.run-connection-badge {
+  display: flex;
+  min-width: 240px;
+  flex-direction: column;
+  gap: 0.35rem;
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 10%, transparent);
+  border-radius: 1rem;
+  background: color-mix(in oklch, var(--color-base-100) 92%, transparent);
+  padding: 0.95rem 1rem;
+  box-shadow: 0 18px 45px color-mix(in oklch, black 6%, transparent);
+}
+
+.run-connection-badge strong {
+  font-size: 0.82rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.run-connection-badge span {
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: color-mix(in oklch, var(--color-base-content) 72%, transparent);
 }
 
 @media (max-width: 1100px) {

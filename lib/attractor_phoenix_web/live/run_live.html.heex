@@ -1,0 +1,360 @@
+<Layouts.app
+  flash={@flash}
+  current_scope={assigns[:current_scope]}
+  current_path={if @run_id, do: ~p"/runs/#{@run_id}", else: ~p"/"}
+>
+  <section
+    id="run-detail-page"
+    class="space-y-6"
+    phx-hook="OperatorConnection"
+    data-update-mode={@update_mode}
+  >
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div class="space-y-2">
+        <.link navigate={~p"/"} class="dashboard-kicker">Operator Overview</.link>
+        <h1 class="text-3xl font-bold tracking-tight sm:text-4xl">
+          {if @selected_pipeline, do: @selected_pipeline["pipeline_id"], else: @run_id || "Run"}
+        </h1>
+        <p class="max-w-2xl text-sm leading-6 text-base-content/70">
+          Deep-linkable run detail with payload inspection, recent events, pending questions, and
+          topology artifacts.
+        </p>
+      </div>
+
+      <div class="run-connection-badge" id="run-connection-panel">
+        <strong>{OperatorRunData.default_connection_label(@connection_state)}</strong>
+        <span>{OperatorRunData.connection_detail(@connection_state, @update_mode)}</span>
+      </div>
+    </div>
+
+    <%= if @error do %>
+      <div
+        id="run-detail-error"
+        class="rounded-2xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
+      >
+        {@error}
+      </div>
+    <% end %>
+
+    <%= if @selected_pipeline do %>
+      <section class="dashboard-detail-grid">
+        <article class="dashboard-panel lg:col-span-2">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="dashboard-card-label">Run Summary</p>
+              <h2 class="text-2xl font-bold">{@selected_pipeline["pipeline_id"]}</h2>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class={[
+                "run-status-pill",
+                OperatorRunData.status_tone(@selected_pipeline["status"])
+              ]}>
+                {@selected_pipeline["status"]}
+              </span>
+              <button
+                id="cancel-pipeline"
+                type="button"
+                class="builder-btn"
+                phx-click="cancel_pipeline"
+                disabled={OperatorRunData.terminal_status?(@selected_pipeline["status"])}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-4 grid gap-3 sm:grid-cols-4">
+            <div class="rounded-2xl bg-base-200/70 p-3">
+              <p class="dashboard-card-label">Events</p>
+              <p class="mt-2 text-2xl font-bold">{@selected_pipeline["event_count"]}</p>
+              <p class="mt-1 text-xs text-base-content/65">recorded against this run</p>
+            </div>
+            <div class="rounded-2xl bg-base-200/70 p-3">
+              <p class="dashboard-card-label">Questions</p>
+              <p class="mt-2 text-2xl font-bold">{@selected_pipeline["pending_questions"]}</p>
+              <p class="mt-1 text-xs text-base-content/65">pending human answers</p>
+            </div>
+            <div class="rounded-2xl bg-base-200/70 p-3">
+              <p class="dashboard-card-label">Checkpoint</p>
+              <p class="mt-2 text-2xl font-bold">
+                {if @selected_pipeline["has_checkpoint"], do: "Yes", else: "No"}
+              </p>
+              <p class="mt-1 text-xs text-base-content/65">resume state available</p>
+            </div>
+            <div class="rounded-2xl bg-base-200/70 p-3">
+              <p class="dashboard-card-label">Logs Root</p>
+              <p class="mt-2 truncate text-sm font-semibold">{@selected_pipeline["logs_root"]}</p>
+              <p class="mt-1 text-xs text-base-content/65">runtime output path</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="dashboard-panel">
+          <p class="dashboard-card-label">Status Alias Payload</p>
+          <pre class="mt-3 overflow-x-auto text-xs"><%= OperatorRunData.preview_json(@selected_status_alias) %></pre>
+        </article>
+
+        <article class="dashboard-panel lg:col-span-2">
+          <div class="flex items-center justify-between">
+            <p class="dashboard-card-label">Pipeline Graph</p>
+            <span class="text-xs text-base-content/60">GET /pipelines/:id/graph</span>
+          </div>
+          <div class="dashboard-graph-frame">
+            {OperatorRunData.graph_markup(@selected_graphs["svg"])}
+          </div>
+        </article>
+
+        <article class="dashboard-panel">
+          <p class="dashboard-card-label">Context Snapshot</p>
+          <pre class="mt-3 overflow-x-auto text-xs"><%= OperatorRunData.preview_json(@selected_context) %></pre>
+        </article>
+      </section>
+
+      <section class="grid gap-4 xl:grid-cols-2">
+        <article class="dashboard-panel">
+          <div class="flex items-center justify-between">
+            <p class="dashboard-card-label">Pending Questions</p>
+            <span class="text-xs text-base-content/60">GET /pipelines/:id/questions</span>
+          </div>
+
+          <div id="run-questions" class="mt-3 space-y-3" phx-update="stream">
+            <p id="run-questions-empty" class="hidden text-sm text-base-content/60 only:block">
+              No open human-in-the-loop questions.
+            </p>
+
+            <div
+              :for={{dom_id, question} <- @streams.questions}
+              id={dom_id}
+              class="rounded-2xl border border-base-300/70 px-4 py-3"
+            >
+              <div class="flex items-center justify-between gap-3">
+                <strong class="text-sm">{question["id"]}</strong>
+                <span class="text-xs text-base-content/55">
+                  {OperatorRunData.question_type(question)}
+                </span>
+              </div>
+              <p class="mt-2 text-sm leading-6">{OperatorRunData.question_prompt(question)}</p>
+
+              <div class="mt-3 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.14em] text-base-content/55">
+                <span class="rounded-full bg-base-200 px-2 py-1">
+                  {OperatorRunData.question_input_mode(question)}
+                </span>
+                <span
+                  :if={OperatorRunData.question_multiple?(question)}
+                  class="rounded-full bg-base-200 px-2 py-1"
+                >
+                  multiple
+                </span>
+                <span
+                  :if={!OperatorRunData.question_required?(question)}
+                  class="rounded-full bg-base-200 px-2 py-1"
+                >
+                  optional
+                </span>
+                <span
+                  :if={OperatorRunData.question_timeout_label(question)}
+                  class="rounded-full bg-base-200 px-2 py-1"
+                >
+                  {OperatorRunData.question_timeout_label(question)}
+                </span>
+                <span
+                  :if={OperatorRunData.question_default_label(question)}
+                  class="rounded-full bg-base-200 px-2 py-1"
+                >
+                  {OperatorRunData.question_default_label(question)}
+                </span>
+              </div>
+
+              <%= if OperatorRunData.question_options(question) != [] do %>
+                <div class="mt-3 flex flex-wrap gap-2 text-xs">
+                  <%= for option <- OperatorRunData.question_options(question) do %>
+                    <div class="rounded-full border border-base-300 px-2 py-1">
+                      <span class="font-semibold">{option["key"]}</span>
+                      <span class="mx-1 text-base-content/40">•</span>
+                      <span>{option["label"]}</span>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+
+              <.form
+                for={Map.get(@answer_forms, question["id"])}
+                id={"answer-form-#{question["id"]}"}
+                phx-submit="answer_question"
+                class="mt-4 space-y-3"
+              >
+                <input type="hidden" name="question_id" value={question["id"]} />
+
+                <%= case OperatorRunData.question_input_mode(question) do %>
+                  <% "boolean" -> %>
+                    <.input
+                      field={
+                        OperatorRunData.response_field(
+                          Map.get(@answer_forms, question["id"]),
+                          :boolean
+                        )
+                      }
+                      type="select"
+                      label="POST /answer value"
+                      prompt="Choose yes or no"
+                      options={[{"Yes", "yes"}, {"No", "no"}]}
+                      required={OperatorRunData.question_required?(question)}
+                    />
+                  <% "confirmation" -> %>
+                    <.input
+                      field={
+                        OperatorRunData.response_field(
+                          Map.get(@answer_forms, question["id"]),
+                          :confirmation
+                        )
+                      }
+                      type="select"
+                      label="POST /answer value"
+                      prompt="Choose confirm or cancel"
+                      options={[{"Confirm", "confirm"}, {"Cancel", "cancel"}]}
+                      required={OperatorRunData.question_required?(question)}
+                    />
+                  <% mode when mode in ["multi_select", "checkbox"] -> %>
+                    <.input
+                      field={
+                        OperatorRunData.response_field(
+                          Map.get(@answer_forms, question["id"]),
+                          :choices
+                        )
+                      }
+                      type="select"
+                      label="POST /answer values"
+                      options={OperatorRunData.question_choice_options(question)}
+                      multiple={true}
+                      required={OperatorRunData.question_required?(question)}
+                      size={max(length(OperatorRunData.question_options(question)), 2)}
+                    />
+                  <% "single_select" -> %>
+                    <.input
+                      field={
+                        OperatorRunData.response_field(
+                          Map.get(@answer_forms, question["id"]),
+                          :choice
+                        )
+                      }
+                      type="select"
+                      label="POST /answer value"
+                      prompt="Choose an option"
+                      options={OperatorRunData.question_choice_options(question)}
+                      required={OperatorRunData.question_required?(question)}
+                    />
+                  <% "textarea" -> %>
+                    <.input
+                      field={
+                        OperatorRunData.response_field(
+                          Map.get(@answer_forms, question["id"]),
+                          :answer
+                        )
+                      }
+                      type="textarea"
+                      label="POST /answer value"
+                      placeholder="Enter a freeform response"
+                      required={OperatorRunData.question_required?(question)}
+                      rows="4"
+                    />
+                  <% _ -> %>
+                    <.input
+                      field={
+                        OperatorRunData.response_field(
+                          Map.get(@answer_forms, question["id"]),
+                          :answer
+                        )
+                      }
+                      type="text"
+                      label="POST /answer value"
+                      placeholder="Enter option key or answer payload"
+                      required={OperatorRunData.question_required?(question)}
+                    />
+                <% end %>
+
+                <button type="submit" class="builder-btn">Submit Answer</button>
+              </.form>
+            </div>
+          </div>
+        </article>
+
+        <article class="dashboard-panel">
+          <div class="flex items-center justify-between">
+            <p class="dashboard-card-label">Recent Events</p>
+            <span class="text-xs text-base-content/60">GET /pipelines/:id/events</span>
+          </div>
+
+          <div id="run-events" class="mt-3 space-y-3" phx-update="stream">
+            <p id="run-events-empty" class="hidden text-sm text-base-content/60 only:block">
+              No events recorded yet.
+            </p>
+
+            <div
+              :for={{dom_id, event} <- @streams.events}
+              id={dom_id}
+              class="rounded-2xl border border-base-300/70 px-4 py-3"
+            >
+              <div class="flex items-center justify-between gap-3">
+                <strong class="text-sm">{event["type"] || "event"}</strong>
+                <span class="text-xs text-base-content/55">{event["timestamp"]}</span>
+              </div>
+              <%= if event["status"] do %>
+                <p class="mt-1 text-xs uppercase tracking-[0.16em] text-base-content/60">
+                  {event["status"]}
+                </p>
+              <% end %>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="grid gap-4 xl:grid-cols-2">
+        <article class="dashboard-panel">
+          <div class="flex items-center justify-between">
+            <p class="dashboard-card-label">Checkpoint Payload</p>
+            <span class="text-xs text-base-content/60">GET /pipelines/:id/checkpoint</span>
+          </div>
+          <%= if @selected_checkpoint do %>
+            <pre class="mt-3 overflow-x-auto text-xs"><%= OperatorRunData.preview_json(@selected_checkpoint) %></pre>
+          <% else %>
+            <p class="mt-3 text-sm text-base-content/60">No checkpoint has been published yet.</p>
+          <% end %>
+        </article>
+
+        <article class="dashboard-panel">
+          <div class="flex items-center justify-between">
+            <p class="dashboard-card-label">Graph JSON</p>
+            <span class="text-xs text-base-content/60">format=json</span>
+          </div>
+          <pre class="mt-3 overflow-x-auto text-xs"><%= OperatorRunData.preview_json(@selected_graphs["json"]) %></pre>
+        </article>
+      </section>
+
+      <section class="grid gap-4 xl:grid-cols-3">
+        <article class="dashboard-panel">
+          <div class="flex items-center justify-between">
+            <p class="dashboard-card-label">DOT</p>
+            <span class="text-xs text-base-content/60">format=dot</span>
+          </div>
+          <pre class="mt-3 overflow-x-auto text-xs">{@selected_graphs["dot"]}</pre>
+        </article>
+
+        <article class="dashboard-panel">
+          <div class="flex items-center justify-between">
+            <p class="dashboard-card-label">Mermaid</p>
+            <span class="text-xs text-base-content/60">format=mermaid</span>
+          </div>
+          <pre class="mt-3 overflow-x-auto text-xs">{@selected_graphs["mermaid"]}</pre>
+        </article>
+
+        <article class="dashboard-panel">
+          <div class="flex items-center justify-between">
+            <p class="dashboard-card-label">Text Summary</p>
+            <span class="text-xs text-base-content/60">format=text</span>
+          </div>
+          <pre class="mt-3 overflow-x-auto text-xs">{@selected_graphs["text"]}</pre>
+        </article>
+      </section>
+    <% end %>
+  </section>
+</Layouts.app>
