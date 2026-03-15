@@ -19,6 +19,7 @@ defmodule AttractorPhoenixWeb.Router do
 
     live "/", DashboardLive
     live "/runs/:id", RunLive
+    live "/runs/:id/debugger", DebuggerLive
     live "/benchmark", BenchmarkLive
     live "/builder", PipelineBuilderLive
     live "/create", PipelineBuilderLive, :create

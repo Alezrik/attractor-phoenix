@@ -211,6 +211,272 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
     |> Enum.take(limit)
   end
 
+  def timeline_events(events) do
+    Enum.sort_by(events, &event_sequence/1, :asc)
+  end
+
+  def default_debugger_filters do
+    %{
+      "type" => "all",
+      "status" => "all",
+      "node" => "all",
+      "search" => "",
+      "focus" => "all"
+    }
+  end
+
+  def debugger_filters_from_params(params) do
+    defaults = default_debugger_filters()
+
+    %{
+      "type" => blank_to_default(params["type"], defaults["type"]),
+      "status" => blank_to_default(params["status"], defaults["status"]),
+      "node" => blank_to_default(params["node"], defaults["node"]),
+      "search" => String.trim(params["search"] || ""),
+      "focus" => blank_to_default(params["focus"], defaults["focus"])
+    }
+  end
+
+  def debugger_query_params(filters, selected_event_sequence \\ nil) do
+    defaults = default_debugger_filters()
+
+    filters
+    |> Map.take(["type", "status", "node", "search", "focus"])
+    |> Enum.reject(fn {key, value} ->
+      value in [nil, "", defaults[key]]
+    end)
+    |> Enum.into(%{}, fn {key, value} -> {key, to_string(value)} end)
+    |> maybe_put_selected_sequence(selected_event_sequence)
+  end
+
+  def filter_events(events, filters) do
+    Enum.filter(events, fn event ->
+      type_match?(event, filters["type"]) and
+        status_match?(event, filters["status"]) and
+        node_match?(event, filters["node"]) and
+        focus_match?(event, filters["focus"]) and
+        search_match?(event, filters["search"])
+    end)
+  end
+
+  def event_filter_options(events) do
+    %{
+      types:
+        events |> Enum.map(&event_type/1) |> Enum.reject(&blank?/1) |> Enum.uniq() |> Enum.sort(),
+      statuses:
+        events
+        |> Enum.map(&event_status/1)
+        |> Enum.reject(&blank?/1)
+        |> Enum.uniq()
+        |> Enum.sort(),
+      nodes:
+        events
+        |> Enum.map(&event_node_id/1)
+        |> Enum.reject(&blank?/1)
+        |> Enum.uniq()
+        |> Enum.sort()
+    }
+  end
+
+  def find_event(events, nil), do: List.last(events)
+
+  def find_event(events, sequence) when is_integer(sequence) do
+    Enum.find(events, &(event_sequence(&1) == sequence)) || List.last(events)
+  end
+
+  def find_event(events, sequence) when is_binary(sequence) do
+    case Integer.parse(sequence) do
+      {value, ""} -> find_event(events, value)
+      _ -> List.last(events)
+    end
+  end
+
+  def event_sequence(event), do: Map.get(event, "sequence") || Map.get(event, :sequence) || 0
+
+  def event_type(event) do
+    Map.get(event, "type") || Map.get(event, :type) || get_in(event_payload(event), ["type"]) ||
+      "event"
+  end
+
+  def event_status(event) do
+    Map.get(event, "status") || Map.get(event, :status) ||
+      get_in(event_payload(event), ["status"])
+  end
+
+  def event_timestamp(event) do
+    Map.get(event, "timestamp") || Map.get(event, :timestamp) ||
+      get_in(event_payload(event), ["timestamp"])
+  end
+
+  def event_payload(event) do
+    Map.get(event, "payload") || Map.get(event, :payload) || event
+  end
+
+  def event_node_id(event) do
+    payload = event_payload(event)
+
+    payload["node_id"] ||
+      payload["node"] ||
+      payload["current_node"] ||
+      payload["question_id"] ||
+      payload["step"]
+  end
+
+  def event_title(event) do
+    event
+    |> event_type()
+    |> Macro.underscore()
+    |> String.replace("_", " ")
+    |> String.replace(".", " ")
+    |> String.trim()
+    |> String.split()
+    |> Enum.map_join(" ", &String.capitalize/1)
+  end
+
+  def event_summary(event) do
+    payload = event_payload(event)
+
+    cond do
+      present?(payload["message"]) ->
+        display_value(payload["message"])
+
+      present?(payload["detail"]) ->
+        display_value(payload["detail"])
+
+      present?(payload["question"]) ->
+        display_value(payload["question"])
+
+      present?(payload["prompt"]) ->
+        display_value(payload["prompt"])
+
+      present?(payload["error"]) ->
+        "Error: #{display_value(payload["error"])}"
+
+      present?(payload["current_node"]) ->
+        "Current node #{payload["current_node"]}"
+
+      present?(event_node_id(event)) and present?(event_status(event)) ->
+        "#{event_node_id(event)} marked #{event_status(event)}"
+
+      present?(event_node_id(event)) ->
+        "Node #{event_node_id(event)} activity"
+
+      true ->
+        "Captured runtime event"
+    end
+  end
+
+  def event_metadata(event) do
+    payload = event_payload(event)
+
+    [
+      {"Type", event_type(event)},
+      {"Status", event_status(event)},
+      {"Node", event_node_id(event)},
+      {"Sequence", event_sequence(event)},
+      {"Timestamp", event_timestamp(event)},
+      {"Question", payload["question_id"]},
+      {"Transition", payload["to"]},
+      {"Retry", payload["retry"]},
+      {"Attempt", payload["attempt"]}
+    ]
+    |> Enum.reject(fn {_label, value} -> blank?(value) end)
+  end
+
+  def event_tone(event) do
+    type = String.downcase(to_string(event_type(event)))
+    status = String.downcase(to_string(event_status(event) || ""))
+
+    cond do
+      String.contains?(status, "fail") or String.contains?(type, "fail") or
+          String.contains?(type, "error") ->
+        "run-status-fail"
+
+      String.contains?(status, "cancel") ->
+        "run-status-cancelled"
+
+      String.contains?(type, "question") or String.contains?(type, "human") ->
+        "run-status-question"
+
+      String.contains?(status, "success") or String.contains?(type, "complete") ->
+        "run-status-success"
+
+      true ->
+        "run-status-running"
+    end
+  end
+
+  def event_payload_without_wrapper(event) do
+    event_payload(event)
+    |> Map.drop(["payload"])
+  end
+
+  def context_checkpoint_diff(_context, nil),
+    do: %{entries: [], counts: %{changed: 0, added: 0, removed: 0}}
+
+  def context_checkpoint_diff(context, checkpoint) do
+    checkpoint_context =
+      checkpoint
+      |> Map.get("context", %{})
+      |> normalize_map()
+
+    context = normalize_map(context)
+
+    entries =
+      diff_maps(checkpoint_context, context)
+      |> Enum.sort_by(& &1.path)
+
+    counts =
+      Enum.reduce(entries, %{changed: 0, added: 0, removed: 0}, fn entry, acc ->
+        Map.update!(acc, entry.kind, &(&1 + 1))
+      end)
+
+    %{entries: entries, counts: counts}
+  end
+
+  def question_inserted_at(question) do
+    question["inserted_at"] || get_in(question, ["metadata", "inserted_at"])
+  end
+
+  def question_default_value(question) do
+    question["default"] || get_in(question, ["metadata", "default"])
+  end
+
+  def question_default_badge(question) do
+    case question_default_value(question) do
+      value when is_binary(value) and value != "" ->
+        "Default #{value}"
+
+      value when is_list(value) and value != [] ->
+        "Default #{Enum.map_join(value, ", ", &to_string/1)}"
+
+      _ ->
+        nil
+    end
+  end
+
+  def question_provenance(question) do
+    metadata = question["metadata"] || %{}
+
+    [
+      metadata["source"],
+      metadata["handler"],
+      metadata["node_type"],
+      question_type(question)
+    ]
+    |> Enum.reject(&blank?/1)
+    |> Enum.join(" / ")
+  end
+
+  def question_option_notes(question) do
+    question_options(question)
+    |> Enum.map(fn option ->
+      [option["key"], option["label"], option["to"]]
+      |> Enum.reject(&blank?/1)
+      |> Enum.join(" -> ")
+    end)
+  end
+
   def default_connection_label(:live), do: "Live"
   def default_connection_label(:reconnecting), do: "Reconnecting"
   def default_connection_label(:stale), do: "Polling fallback"
@@ -265,4 +531,137 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
     do: "single_select"
 
   defp normalize_question_input_mode(mode, _question), do: mode
+
+  defp maybe_put_selected_sequence(params, nil), do: params
+  defp maybe_put_selected_sequence(params, ""), do: params
+
+  defp maybe_put_selected_sequence(params, sequence),
+    do: Map.put(params, "event", to_string(sequence))
+
+  defp type_match?(_event, "all"), do: true
+
+  defp type_match?(event, type),
+    do: String.downcase(to_string(event_type(event))) == String.downcase(type)
+
+  defp status_match?(_event, "all"), do: true
+
+  defp status_match?(event, status) do
+    String.downcase(to_string(event_status(event) || "")) == String.downcase(status)
+  end
+
+  defp node_match?(_event, "all"), do: true
+  defp node_match?(event, node), do: to_string(event_node_id(event) || "") == node
+
+  defp focus_match?(_event, "all"), do: true
+
+  defp focus_match?(event, "failures") do
+    tone = event_tone(event)
+
+    tone == "run-status-fail" or
+      String.contains?(String.downcase(to_string(event_status(event) || "")), "fail")
+  end
+
+  defp focus_match?(event, "questions") do
+    type = String.downcase(to_string(event_type(event)))
+    String.contains?(type, "question") or String.contains?(type, "human")
+  end
+
+  defp focus_match?(event, "checkpoints") do
+    payload = event_payload(event)
+
+    String.contains?(String.downcase(to_string(event_type(event))), "checkpoint") or
+      is_map(payload["checkpoint"]) or present?(payload["current_node"])
+  end
+
+  defp focus_match?(_event, _focus), do: true
+
+  defp search_match?(_event, ""), do: true
+
+  defp search_match?(event, search) do
+    haystack =
+      [
+        event_type(event),
+        event_status(event),
+        event_node_id(event),
+        event_summary(event),
+        inspect(event_payload(event))
+      ]
+      |> Enum.reject(&blank?/1)
+      |> Enum.join(" ")
+      |> String.downcase()
+
+    String.contains?(haystack, String.downcase(search))
+  end
+
+  defp diff_maps(left, right, path \\ [])
+
+  defp diff_maps(left, right, path) when is_map(left) and is_map(right) do
+    keys =
+      (Map.keys(left) ++ Map.keys(right))
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    Enum.flat_map(keys, fn key ->
+      left_value = Map.get(left, key, :__missing__)
+      right_value = Map.get(right, key, :__missing__)
+
+      cond do
+        left_value == :__missing__ ->
+          [diff_entry(:added, path ++ [key], nil, right_value)]
+
+        right_value == :__missing__ ->
+          [diff_entry(:removed, path ++ [key], left_value, nil)]
+
+        is_map(left_value) and is_map(right_value) ->
+          diff_maps(left_value, right_value, path ++ [key])
+
+        left_value != right_value ->
+          [diff_entry(:changed, path ++ [key], left_value, right_value)]
+
+        true ->
+          []
+      end
+    end)
+  end
+
+  defp diff_maps(left, right, path) when left != right do
+    [diff_entry(:changed, path, left, right)]
+  end
+
+  defp diff_maps(_left, _right, _path), do: []
+
+  defp diff_entry(kind, path, left, right) do
+    %{
+      kind: kind,
+      path: Enum.map_join(path, ".", &to_string/1),
+      left: left,
+      right: right
+    }
+  end
+
+  defp normalize_map(value) when is_map(value), do: value
+  defp normalize_map(_value), do: %{}
+
+  defp display_value(value) when is_binary(value), do: value
+  defp display_value(value) when is_atom(value), do: Atom.to_string(value)
+  defp display_value(value) when is_number(value), do: to_string(value)
+
+  defp display_value(value) do
+    inspect(value, pretty: true, limit: 5)
+  end
+
+  defp blank_to_default(nil, default), do: default
+
+  defp blank_to_default(value, default) do
+    if blank?(value), do: default, else: to_string(value)
+  end
+
+  defp blank?(value), do: !present?(value)
+
+  defp present?(value) when is_binary(value), do: String.trim(value) != ""
+  defp present?(value) when is_list(value), do: value != []
+  defp present?(value) when is_map(value), do: map_size(value) > 0
+  defp present?(nil), do: false
+  defp present?(false), do: false
+  defp present?(value), do: value != ""
 end

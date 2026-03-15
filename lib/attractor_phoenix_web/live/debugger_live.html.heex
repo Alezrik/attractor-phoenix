@@ -1,0 +1,570 @@
+<Layouts.app
+  flash={@flash}
+  current_scope={assigns[:current_scope]}
+  current_path={if @run_id, do: ~p"/runs/#{@run_id}/debugger", else: ~p"/"}
+>
+  <section
+    id="run-debugger-page"
+    class="space-y-6"
+    phx-hook="OperatorConnection"
+    data-update-mode={@update_mode}
+  >
+    <div class="debugger-hero">
+      <div class="space-y-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <.link navigate={~p"/"} class="dashboard-kicker">Operator Overview</.link>
+          <span class="text-base-content/35">/</span>
+          <.link :if={@run_id} navigate={~p"/runs/#{@run_id}"} class="dashboard-kicker">
+            Run Overview
+          </.link>
+        </div>
+
+        <div class="space-y-2">
+          <h1 class="text-3xl font-black tracking-tight sm:text-4xl">
+            {if @selected_pipeline,
+              do: @selected_pipeline["pipeline_id"],
+              else: @run_id || "Debugger"}
+          </h1>
+          <p class="max-w-3xl text-sm leading-6 text-base-content/70">
+            Timeline-first debugger for event flow, state changes, and human-gate work. Filters
+            and selected events stay encoded in the URL so the view is shareable.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <.link :if={@run_id} navigate={~p"/runs/#{@run_id}"} class="builder-btn">
+            Run Overview
+          </.link>
+          <.link navigate={~p"/builder"} class="builder-btn">Open Builder</.link>
+          <button
+            id="debugger-cancel-pipeline"
+            type="button"
+            class="builder-btn"
+            phx-click="cancel_pipeline"
+            disabled={
+              is_nil(@selected_pipeline) ||
+                OperatorRunData.terminal_status?(@selected_pipeline["status"])
+            }
+          >
+            Cancel Run
+          </button>
+        </div>
+      </div>
+
+      <div class="debugger-status-stack">
+        <div class="run-connection-badge" id="debugger-connection-panel">
+          <strong>{OperatorRunData.default_connection_label(@connection_state)}</strong>
+          <span>{OperatorRunData.connection_detail(@connection_state, @update_mode)}</span>
+        </div>
+
+        <div :if={@selected_pipeline} class="debugger-summary-grid">
+          <div class="debugger-summary-card">
+            <span class="dashboard-card-label">Run Status</span>
+            <span class={[
+              "run-status-pill mt-3",
+              OperatorRunData.status_tone(@selected_pipeline["status"])
+            ]}>
+              {@selected_pipeline["status"]}
+            </span>
+          </div>
+          <div class="debugger-summary-card">
+            <span class="dashboard-card-label">Timeline</span>
+            <strong>{length(@filtered_events)} / {length(@all_events)}</strong>
+          </div>
+          <div class="debugger-summary-card">
+            <span class="dashboard-card-label">Human Inbox</span>
+            <strong>{length(@selected_questions)}</strong>
+          </div>
+          <div class="debugger-summary-card">
+            <span class="dashboard-card-label">Checkpoint</span>
+            <strong>{if @selected_checkpoint, do: "Available", else: "Not yet"}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%= if @error do %>
+      <div
+        id="run-debugger-error"
+        class="rounded-2xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
+      >
+        {@error}
+      </div>
+    <% end %>
+
+    <%= if @selected_pipeline do %>
+      <section class="debugger-shell">
+        <div class="space-y-4">
+          <article class="dashboard-panel">
+            <div class="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p class="dashboard-card-label">Timeline Filters</p>
+                <h2 class="text-xl font-semibold">
+                  Isolate failures, questions, and node activity
+                </h2>
+              </div>
+              <button
+                id="debugger-clear-filters"
+                type="button"
+                class="builder-btn"
+                phx-click="clear_debugger_filters"
+              >
+                Clear Filters
+              </button>
+            </div>
+
+            <.form
+              for={@filter_form}
+              id="debugger-filter-form"
+              phx-change="filter_debugger"
+              class="mt-4"
+            >
+              <div class="grid gap-3 lg:grid-cols-5">
+                <.input
+                  field={@filter_form[:search]}
+                  id="debugger-search"
+                  type="text"
+                  label="Search"
+                  placeholder="question, error, node id"
+                />
+
+                <.input
+                  field={@filter_form[:focus]}
+                  id="debugger-focus-filter"
+                  type="select"
+                  label="Focus"
+                  options={[
+                    {"All timeline events", "all"},
+                    {"Failures only", "failures"},
+                    {"Question events", "questions"},
+                    {"Checkpoint events", "checkpoints"}
+                  ]}
+                />
+
+                <.input
+                  field={@filter_form[:type]}
+                  id="debugger-type-filter"
+                  type="select"
+                  label="Event type"
+                  options={
+                    [{"All event types", "all"}] ++
+                      Enum.map(@event_filter_options.types, &{&1, &1})
+                  }
+                />
+
+                <.input
+                  field={@filter_form[:status]}
+                  id="debugger-status-filter"
+                  type="select"
+                  label="Status"
+                  options={
+                    [{"All statuses", "all"}] ++
+                      Enum.map(@event_filter_options.statuses, &{&1, &1})
+                  }
+                />
+
+                <.input
+                  field={@filter_form[:node]}
+                  id="debugger-node-filter"
+                  type="select"
+                  label="Node / gate"
+                  options={
+                    [{"All nodes", "all"}] ++
+                      Enum.map(@event_filter_options.nodes, &{&1, &1})
+                  }
+                />
+              </div>
+            </.form>
+          </article>
+
+          <article class="dashboard-panel">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p class="dashboard-card-label">Run Timeline</p>
+                <h2 class="text-xl font-semibold">Chronological event flow</h2>
+              </div>
+              <div class="flex flex-wrap gap-2 text-xs text-base-content/65">
+                <span>
+                  Selected event: {if @selected_event,
+                    do: OperatorRunData.event_sequence(@selected_event),
+                    else: "none"}
+                </span>
+                <span>
+                  Updated: {if @last_updated_at,
+                    do: Calendar.strftime(@last_updated_at, "%H:%M:%S UTC"),
+                    else: "waiting"}
+                </span>
+              </div>
+            </div>
+
+            <div id="debugger-timeline" class="debugger-timeline" phx-update="stream">
+              <div
+                id="debugger-timeline-empty"
+                class="hidden rounded-2xl border border-dashed border-base-300 px-4 py-6 text-sm text-base-content/60 only:block"
+              >
+                No events match the current debugger filters.
+              </div>
+
+              <button
+                :for={{dom_id, event} <- @streams.timeline_events}
+                id={dom_id}
+                type="button"
+                class={[
+                  "debugger-timeline-item",
+                  @selected_event &&
+                    OperatorRunData.event_sequence(@selected_event) ==
+                      OperatorRunData.event_sequence(event) && "debugger-timeline-item-active"
+                ]}
+                phx-click="select_event"
+                phx-value-sequence={OperatorRunData.event_sequence(event)}
+              >
+                <div class="debugger-timeline-rail">
+                  <span class={["run-status-pill", OperatorRunData.event_tone(event)]}>
+                    {OperatorRunData.event_title(event)}
+                  </span>
+                  <span class="text-xs text-base-content/55">
+                    #{OperatorRunData.event_sequence(event)}
+                  </span>
+                </div>
+                <div class="space-y-2 text-left">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <strong>{OperatorRunData.event_summary(event)}</strong>
+                    <span
+                      :if={OperatorRunData.event_node_id(event)}
+                      class="rounded-full bg-base-200 px-2 py-1 text-[11px] uppercase tracking-[0.14em] text-base-content/60"
+                    >
+                      {OperatorRunData.event_node_id(event)}
+                    </span>
+                  </div>
+                  <div class="flex flex-wrap gap-3 text-xs text-base-content/60">
+                    <span>{OperatorRunData.event_timestamp(event)}</span>
+                    <span :if={OperatorRunData.event_status(event)}>
+                      status {OperatorRunData.event_status(event)}
+                    </span>
+                    <span>type {OperatorRunData.event_type(event)}</span>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </article>
+
+          <section class="grid gap-4 xl:grid-cols-2">
+            <article class="dashboard-panel">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p class="dashboard-card-label">State Diff</p>
+                  <h2 class="text-lg font-semibold">Current context vs checkpoint snapshot</h2>
+                </div>
+                <div class="flex flex-wrap gap-2 text-xs">
+                  <span class="debugger-diff-chip debugger-diff-chip-changed">
+                    changed {@context_diff.counts.changed}
+                  </span>
+                  <span class="debugger-diff-chip debugger-diff-chip-added">
+                    added {@context_diff.counts.added}
+                  </span>
+                  <span class="debugger-diff-chip debugger-diff-chip-removed">
+                    removed {@context_diff.counts.removed}
+                  </span>
+                </div>
+              </div>
+
+              <%= if @selected_checkpoint do %>
+                <div id="debugger-context-diff" class="mt-4 space-y-3">
+                  <div
+                    :if={@context_diff.entries == []}
+                    class="rounded-2xl bg-base-200/70 px-4 py-3 text-sm text-base-content/65"
+                  >
+                    No checkpoint-context deltas detected from the latest snapshot.
+                  </div>
+
+                  <div :for={entry <- @context_diff.entries} class="debugger-diff-row">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                      <strong>{entry.path}</strong>
+                      <span class={[
+                        "debugger-diff-chip",
+                        entry.kind == :changed && "debugger-diff-chip-changed",
+                        entry.kind == :added && "debugger-diff-chip-added",
+                        entry.kind == :removed && "debugger-diff-chip-removed"
+                      ]}>
+                        {entry.kind}
+                      </span>
+                    </div>
+                    <div class="mt-2 grid gap-2 lg:grid-cols-2">
+                      <div class="debugger-diff-value">
+                        <span class="dashboard-card-label">Checkpoint</span>
+                        <pre class="mt-2 overflow-x-auto text-xs"><%= OperatorRunData.preview_json(entry.left) %></pre>
+                      </div>
+                      <div class="debugger-diff-value">
+                        <span class="dashboard-card-label">Current</span>
+                        <pre class="mt-2 overflow-x-auto text-xs"><%= OperatorRunData.preview_json(entry.right) %></pre>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <% else %>
+                <p class="mt-4 text-sm text-base-content/60">
+                  No checkpoint has been published yet, so the debugger cannot compute a diff.
+                </p>
+              <% end %>
+            </article>
+
+            <article class="dashboard-panel">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p class="dashboard-card-label">Human-Gate Inbox</p>
+                  <h2 class="text-lg font-semibold">
+                    Pending questions with provenance and defaults
+                  </h2>
+                </div>
+                <span class="text-sm text-base-content/60">
+                  {length(@selected_questions)} open
+                </span>
+              </div>
+
+              <div id="debugger-question-inbox" class="mt-4 space-y-4" phx-update="stream">
+                <div
+                  id="debugger-question-empty"
+                  class="hidden rounded-2xl border border-dashed border-base-300 px-4 py-6 text-sm text-base-content/60 only:block"
+                >
+                  No pending human-gate work for this run.
+                </div>
+
+                <div
+                  :for={{dom_id, question} <- @streams.questions}
+                  id={dom_id}
+                  class="debugger-question-card"
+                >
+                  <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div class="space-y-2">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <strong>{question["id"]}</strong>
+                        <span class="run-status-pill run-status-question">
+                          {OperatorRunData.question_type(question)}
+                        </span>
+                        <span
+                          :if={OperatorRunData.question_default_badge(question)}
+                          class="debugger-default-pill"
+                        >
+                          {OperatorRunData.question_default_badge(question)}
+                        </span>
+                      </div>
+                      <p class="text-sm leading-6">{OperatorRunData.question_prompt(question)}</p>
+                    </div>
+
+                    <div class="text-right text-xs text-base-content/60">
+                      <p>{OperatorRunData.question_inserted_at(question) || "pending now"}</p>
+                      <p>{OperatorRunData.question_provenance(question)}</p>
+                    </div>
+                  </div>
+
+                  <div class="mt-3 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.14em] text-base-content/55">
+                    <span class="rounded-full bg-base-200 px-2 py-1">
+                      {OperatorRunData.question_input_mode(question)}
+                    </span>
+                    <span
+                      :if={OperatorRunData.question_multiple?(question)}
+                      class="rounded-full bg-base-200 px-2 py-1"
+                    >
+                      multi
+                    </span>
+                    <span
+                      :if={!OperatorRunData.question_required?(question)}
+                      class="rounded-full bg-base-200 px-2 py-1"
+                    >
+                      optional
+                    </span>
+                    <span
+                      :if={OperatorRunData.question_timeout_label(question)}
+                      class="rounded-full bg-base-200 px-2 py-1"
+                    >
+                      {OperatorRunData.question_timeout_label(question)}
+                    </span>
+                  </div>
+
+                  <%= if OperatorRunData.question_option_notes(question) != [] do %>
+                    <div class="mt-3 flex flex-wrap gap-2 text-xs">
+                      <%= for note <- OperatorRunData.question_option_notes(question) do %>
+                        <div class="rounded-full border border-base-300 px-2 py-1">{note}</div>
+                      <% end %>
+                    </div>
+                  <% end %>
+
+                  <.form
+                    for={Map.get(@answer_forms, question["id"])}
+                    id={"debugger-answer-form-#{question["id"]}"}
+                    phx-submit="answer_question"
+                    class="mt-4 space-y-3"
+                  >
+                    <input type="hidden" name="question_id" value={question["id"]} />
+
+                    <%= case OperatorRunData.question_input_mode(question) do %>
+                      <% "boolean" -> %>
+                        <.input
+                          field={
+                            OperatorRunData.response_field(
+                              Map.get(@answer_forms, question["id"]),
+                              :boolean
+                            )
+                          }
+                          type="select"
+                          label="Answer"
+                          prompt="Choose yes or no"
+                          options={[{"Yes", "yes"}, {"No", "no"}]}
+                          required={OperatorRunData.question_required?(question)}
+                        />
+                      <% "confirmation" -> %>
+                        <.input
+                          field={
+                            OperatorRunData.response_field(
+                              Map.get(@answer_forms, question["id"]),
+                              :confirmation
+                            )
+                          }
+                          type="select"
+                          label="Answer"
+                          prompt="Choose confirm or cancel"
+                          options={[{"Confirm", "confirm"}, {"Cancel", "cancel"}]}
+                          required={OperatorRunData.question_required?(question)}
+                        />
+                      <% mode when mode in ["multi_select", "checkbox"] -> %>
+                        <.input
+                          field={
+                            OperatorRunData.response_field(
+                              Map.get(@answer_forms, question["id"]),
+                              :choices
+                            )
+                          }
+                          type="select"
+                          label="Answers"
+                          options={OperatorRunData.question_choice_options(question)}
+                          multiple={true}
+                          required={OperatorRunData.question_required?(question)}
+                          size={max(length(OperatorRunData.question_options(question)), 2)}
+                        />
+                      <% "single_select" -> %>
+                        <.input
+                          field={
+                            OperatorRunData.response_field(
+                              Map.get(@answer_forms, question["id"]),
+                              :choice
+                            )
+                          }
+                          type="select"
+                          label="Answer"
+                          prompt="Choose an option"
+                          options={OperatorRunData.question_choice_options(question)}
+                          required={OperatorRunData.question_required?(question)}
+                        />
+                      <% "textarea" -> %>
+                        <.input
+                          field={
+                            OperatorRunData.response_field(
+                              Map.get(@answer_forms, question["id"]),
+                              :answer
+                            )
+                          }
+                          type="textarea"
+                          label="Answer"
+                          placeholder="Enter a freeform response"
+                          required={OperatorRunData.question_required?(question)}
+                          rows="4"
+                        />
+                      <% _ -> %>
+                        <.input
+                          field={
+                            OperatorRunData.response_field(
+                              Map.get(@answer_forms, question["id"]),
+                              :answer
+                            )
+                          }
+                          type="text"
+                          label="Answer"
+                          placeholder="Enter option key or answer payload"
+                          required={OperatorRunData.question_required?(question)}
+                        />
+                    <% end %>
+
+                    <button type="submit" class="builder-btn">Submit Answer</button>
+                  </.form>
+                </div>
+              </div>
+            </article>
+          </section>
+        </div>
+
+        <aside class="space-y-4">
+          <article class="dashboard-panel" id="debugger-event-inspector">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p class="dashboard-card-label">Event Inspector</p>
+                <h2 class="text-lg font-semibold">
+                  {if @selected_event,
+                    do: OperatorRunData.event_title(@selected_event),
+                    else: "Select an event"}
+                </h2>
+              </div>
+              <span
+                :if={@selected_event}
+                class={["run-status-pill", OperatorRunData.event_tone(@selected_event)]}
+              >
+                #{OperatorRunData.event_sequence(@selected_event)}
+              </span>
+            </div>
+
+            <%= if @selected_event do %>
+              <p class="mt-3 text-sm leading-6 text-base-content/70">
+                {OperatorRunData.event_summary(@selected_event)}
+              </p>
+
+              <div class="mt-4 grid gap-2">
+                <div
+                  :for={{label, value} <- OperatorRunData.event_metadata(@selected_event)}
+                  class="debugger-meta-row"
+                >
+                  <span>{label}</span>
+                  <strong>{value}</strong>
+                </div>
+              </div>
+
+              <details class="debugger-details" open>
+                <summary>Payload</summary>
+                <pre class="mt-3 overflow-x-auto text-xs"><%= OperatorRunData.preview_json(OperatorRunData.event_payload_without_wrapper(@selected_event)) %></pre>
+              </details>
+
+              <details class="debugger-details">
+                <summary>Status Alias</summary>
+                <pre class="mt-3 overflow-x-auto text-xs"><%= OperatorRunData.preview_json(@selected_status_alias) %></pre>
+              </details>
+            <% else %>
+              <p class="mt-3 text-sm text-base-content/60">
+                Choose a timeline item to inspect structured metadata and payload details.
+              </p>
+            <% end %>
+          </article>
+
+          <article class="dashboard-panel">
+            <div class="flex items-center justify-between">
+              <p class="dashboard-card-label">Checkpoint Snapshot</p>
+              <span class="text-xs text-base-content/60">GET /pipelines/:id/checkpoint</span>
+            </div>
+            <%= if @selected_checkpoint do %>
+              <pre class="mt-3 overflow-x-auto text-xs"><%= OperatorRunData.preview_json(@selected_checkpoint) %></pre>
+            <% else %>
+              <p class="mt-3 text-sm text-base-content/60">
+                No checkpoint has been published yet.
+              </p>
+            <% end %>
+          </article>
+
+          <article class="dashboard-panel">
+            <div class="flex items-center justify-between">
+              <p class="dashboard-card-label">Context Snapshot</p>
+              <span class="text-xs text-base-content/60">GET /pipelines/:id/context</span>
+            </div>
+            <pre class="mt-3 overflow-x-auto text-xs"><%= OperatorRunData.preview_json(@selected_context) %></pre>
+          </article>
+        </aside>
+      </section>
+    <% end %>
+  </section>
+</Layouts.app>
