@@ -77,6 +77,7 @@ AttractorExPhx.HTTPServer.md
 AttractorExPhx.PubSub.md
 AttractorExPhx.md
 AttractorPhoenix.Benchmark.md
+AttractorPhoenix.Conformance.md
 AttractorPhoenix.DotGenerator.md
 AttractorPhoenix.LLMProviderDiscovery.md
 AttractorPhoenix.LLMSetup.md
