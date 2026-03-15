@@ -57,3 +57,13 @@ This workstream is done when:
 2. checkpoints are durable and resumable without relying on transient process state
 3. event replay works for SSE and Phoenix consumers
 4. regression tests prove replay and resume invariants
+
+## Current Implementation
+
+This repository now implements the runtime foundation described above:
+
+1. `AttractorEx.HTTP.Manager` persists run metadata, questions, checkpoints, and append-only event history through a file-backed run store.
+2. Typed runtime records exist for runs, events, questions, checkpoints, and indexed artifacts under `lib/attractor_ex/http/*_record.ex`.
+3. HTTP event consumers can replay from `GET /pipelines/:id/events?after=<sequence>`, and Phoenix PubSub consumers can request replay-filtered snapshots with `after_sequence:`.
+4. Manager boot reloads persisted runs and restarts incomplete executions from the latest checkpoint or initial context.
+5. Regression coverage for persistence, replay, and restart-safe loading lives in `test/attractor_ex/http_manager_test.exs`, `test/attractor_ex/http_test.exs`, and `test/attractor_ex_phx/pub_sub_test.exs`.

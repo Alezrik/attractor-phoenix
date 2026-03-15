@@ -34,7 +34,12 @@ defmodule AttractorExPhx.Client do
   def get_pipeline_context(id), do: get_json("/pipelines/#{id}/context")
   def get_pipeline_checkpoint(id), do: get_json("/pipelines/#{id}/checkpoint")
   def get_pipeline_questions(id), do: get_json("/pipelines/#{id}/questions")
-  def get_pipeline_events(id), do: get_json("/pipelines/#{id}/events?stream=false")
+
+  def get_pipeline_events(id, opts \\ []) do
+    after_sequence = Keyword.get(opts, :after_sequence, 0)
+    get_json("/pipelines/#{id}/events?stream=false&after=#{after_sequence}")
+  end
+
   def cancel_pipeline(id), do: post_json("/pipelines/#{id}/cancel", %{})
 
   def answer_pipeline_question(id, question_id, answer) do

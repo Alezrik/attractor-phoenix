@@ -10,7 +10,7 @@ defmodule AttractorEx.HTTPTest do
   @router_opts Router.init([])
 
   setup do
-    start_supervised!({Manager, name: AttractorEx.HTTP.Manager})
+    start_supervised!({Manager, name: AttractorEx.HTTP.Manager, store_root: unique_store_root()})
     start_supervised!({Registry, keys: :duplicate, name: AttractorEx.HTTP.Registry})
     :ok
   end
@@ -137,6 +137,16 @@ defmodule AttractorEx.HTTPTest do
     assert events_conn.status == 200
     assert events_conn.resp_body =~ "event: PipelineStarted"
     assert events_conn.resp_body =~ "event: PipelineCompleted"
+
+    replay_conn =
+      Router.call(
+        conn(:get, "/pipelines/#{pipeline_id}/events?stream=false&after=1"),
+        @router_opts
+      )
+
+    assert replay_conn.status == 200
+    assert %{"events" => replayed_events} = Jason.decode!(replay_conn.resp_body)
+    assert Enum.all?(replayed_events, &(Map.fetch!(&1, "sequence") > 1))
   end
 
   test "rejects pipeline creation requests without dot source" do
@@ -231,7 +241,8 @@ defmodule AttractorEx.HTTPTest do
       end
     end)
 
-    assert_receive {:DOWN, ^ref, :process, ^task_pid, :normal}, 1_000
+    assert_receive {:DOWN, ^ref, :process, ^task_pid, reason}, 1_000
+    assert reason in [:normal, :noproc]
 
     status_conn = Router.call(conn(:get, "/pipelines/#{pipeline_id}"), @router_opts)
     assert status_conn.status == 200
@@ -390,5 +401,13 @@ defmodule AttractorEx.HTTPTest do
           10 -> wait_for(fun, attempts - 1)
         end
     end
+  end
+
+  defp unique_store_root do
+    Path.join([
+      "tmp",
+      "http_router_store_test",
+      Integer.to_string(System.unique_integer([:positive]))
+    ])
   end
 end

@@ -2,6 +2,11 @@
 
 This file tracks compliance of `AttractorEx.LLM.*` with the upstream unified LLM client specification.
 
+The durable HTTP runtime introduced for the runtime-foundation workstream is transport
+and orchestration infrastructure. It does not change the unified LLM request and
+response contract directly, but it does make persisted run, checkpoint, and event
+replay state available around LLM-backed pipelines.
+
 ## Source Documents
 
 - Unified LLM spec: https://github.com/strongdm/attractor/blob/main/unified-llm-spec.md

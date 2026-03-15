@@ -12,7 +12,7 @@
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
-    <script defer src="dist/sidebar_items-40D862AA.js"></script>
+    <script defer src="dist/sidebar_items-4D12FA9A.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-YU4BZFVS.js"></script>
 
@@ -118,8 +118,9 @@ attractor_phoenix
 
 
     <section id="moduledoc">
-<p>GenServer that owns the in-memory state for HTTP-managed pipeline runs.</p><p>It tracks pipeline status, events, checkpoints, pending human questions, and event
-subscribers, and acts as the coordination point between the engine and the router.</p>
+<p>GenServer that owns durable runtime state for HTTP-managed pipeline runs.</p><p>Run metadata, event history, checkpoints, pending questions, and artifact indexes are
+persisted through a pluggable run store so HTTP and Phoenix consumers can replay run
+history after process restarts.</p>
     </section>
 
 </div>
@@ -238,6 +239,16 @@ subscribers, and acts as the coordination point between the engine and the route
 
     <div class="summary-row">
       <div class="summary-signature">
+        <a href="#replay_events/3" data-no-tooltip="" translate="no">replay_events(server, id, opts \\ [])</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Returns persisted events after the given sequence number.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
         <a href="#snapshot/2" data-no-tooltip="" translate="no">snapshot(server, id)</a>
 
       </div>
@@ -302,7 +313,7 @@ subscribers, and acts as the coordination point between the engine and the route
       <h1 class="signature" translate="no">cancel(server, id)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L38" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L52" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -324,7 +335,7 @@ subscribers, and acts as the coordination point between the engine and the route
       <h1 class="signature" translate="no">child_spec(init_arg)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L9" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L10" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -348,7 +359,7 @@ subscribers, and acts as the coordination point between the engine and the route
       <h1 class="signature" translate="no">create_pipeline(server, dot, context, opts \\ [])</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L21" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L30" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -370,7 +381,7 @@ subscribers, and acts as the coordination point between the engine and the route
       <h1 class="signature" translate="no">get_pipeline(server, id)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L25" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L34" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -392,7 +403,7 @@ subscribers, and acts as the coordination point between the engine and the route
       <h1 class="signature" translate="no">list_pipelines(server)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L26" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L35" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -414,7 +425,7 @@ subscribers, and acts as the coordination point between the engine and the route
       <h1 class="signature" translate="no">pending_questions(server, id)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L31" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L40" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -436,7 +447,7 @@ subscribers, and acts as the coordination point between the engine and the route
       <h1 class="signature" translate="no">pipeline_checkpoint(server, id)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L29" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L38" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -458,7 +469,7 @@ subscribers, and acts as the coordination point between the engine and the route
       <h1 class="signature" translate="no">pipeline_context(server, id)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L28" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L37" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -480,7 +491,7 @@ subscribers, and acts as the coordination point between the engine and the route
       <h1 class="signature" translate="no">pipeline_events(server, id)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L30" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L39" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -502,7 +513,7 @@ subscribers, and acts as the coordination point between the engine and the route
       <h1 class="signature" translate="no">pipeline_graph(server, id)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L27" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L36" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -524,7 +535,7 @@ subscribers, and acts as the coordination point between the engine and the route
       <h1 class="signature" translate="no">record_event(server, id, event)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L39" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L53" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -546,7 +557,7 @@ subscribers, and acts as the coordination point between the engine and the route
       <h1 class="signature" translate="no">register_question(server, id, question)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L41" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L55" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -556,6 +567,30 @@ subscribers, and acts as the coordination point between the engine and the route
   <section class="docstring">
 
 
+  </section>
+</section>
+<section class="detail" id="replay_events/3">
+
+    <span id="replay_events/2"></span>
+
+  <div class="detail-header">
+    <a href="#replay_events/3" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">replay_events(server, id, opts \\ [])</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L44" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>Returns persisted events after the given sequence number.</p>
   </section>
 </section>
 <section class="detail" id="snapshot/2">
@@ -568,7 +603,7 @@ subscribers, and acts as the coordination point between the engine and the route
       <h1 class="signature" translate="no">snapshot(server, id)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L32" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L41" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -592,7 +627,7 @@ subscribers, and acts as the coordination point between the engine and the route
       <h1 class="signature" translate="no">start_link(opts \\ [])</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L16" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L25" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -614,7 +649,7 @@ subscribers, and acts as the coordination point between the engine and the route
       <h1 class="signature" translate="no">submit_answer(server, id, qid, answer)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L34" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L48" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -636,7 +671,7 @@ subscribers, and acts as the coordination point between the engine and the route
       <h1 class="signature" translate="no">subscribe(server, id, pid)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L37" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L51" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -658,7 +693,7 @@ subscribers, and acts as the coordination point between the engine and the route
       <h1 class="signature" translate="no">timeout_question(server, id, qid)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L44" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L58" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 

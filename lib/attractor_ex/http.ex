@@ -13,7 +13,12 @@ defmodule AttractorEx.HTTP do
     manager_name = Keyword.get(opts, :manager, Manager)
     registry_name = Keyword.get(opts, :registry, Module.concat(manager_name, Registry))
 
-    with {:ok, _pid} <- ensure_genserver_started(Manager, name: manager_name),
+    manager_opts =
+      opts
+      |> Keyword.take([:store, :store_root])
+      |> Keyword.put(:name, manager_name)
+
+    with {:ok, _pid} <- ensure_genserver_started(Manager, manager_opts),
          {:ok, _pid} <- ensure_registry_started(keys: :duplicate, name: registry_name) do
       bandit_opts = [
         plug: {Router, manager: manager_name, registry: registry_name},

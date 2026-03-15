@@ -1,20 +1,30 @@
 defmodule AttractorEx.HTTP.Manager do
   @moduledoc """
-  GenServer that owns the in-memory state for HTTP-managed pipeline runs.
+  GenServer that owns durable runtime state for HTTP-managed pipeline runs.
 
-  It tracks pipeline status, events, checkpoints, pending human questions, and event
-  subscribers, and acts as the coordination point between the engine and the router.
+  Run metadata, event history, checkpoints, pending questions, and artifact indexes are
+  persisted through a pluggable run store so HTTP and Phoenix consumers can replay run
+  history after process restarts.
   """
 
   use GenServer
 
   alias AttractorEx
 
+  alias AttractorEx.HTTP.{
+    ArtifactRecord,
+    CheckpointRecord,
+    EventRecord,
+    FileRunStore,
+    QuestionRecord,
+    RunRecord
+  }
+
   @terminal_statuses MapSet.new([:success, :fail, :cancelled, "success", "fail", "cancelled"])
 
   @doc "Starts the HTTP pipeline manager."
   def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, %{}, opts)
+    GenServer.start_link(__MODULE__, opts, opts)
   end
 
   @doc "Creates and starts a pipeline run under HTTP management."
@@ -31,6 +41,11 @@ defmodule AttractorEx.HTTP.Manager do
   def pending_questions(server, id), do: GenServer.call(server, {:pending_questions, id})
   def snapshot(server, id), do: GenServer.call(server, {:snapshot, id})
 
+  @doc "Returns persisted events after the given sequence number."
+  def replay_events(server, id, opts \\ []) do
+    GenServer.call(server, {:replay_events, id, opts})
+  end
+
   def submit_answer(server, id, qid, answer),
     do: GenServer.call(server, {:submit_answer, id, qid, answer})
 
@@ -44,8 +59,20 @@ defmodule AttractorEx.HTTP.Manager do
   def timeout_question(server, id, qid), do: GenServer.cast(server, {:timeout_question, id, qid})
 
   @impl true
-  def init(_state) do
-    {:ok, %{pipelines: %{}}}
+  def init(opts) do
+    opts = if is_list(opts), do: opts, else: []
+    store = Keyword.get(opts, :store, FileRunStore)
+
+    with {:ok, store_config} <- store.init(opts),
+         {:ok, pipelines} <- load_pipelines(store, store_config) do
+      state = %{
+        store: store,
+        store_config: store_config,
+        pipelines: pipelines
+      }
+
+      {:ok, recover_incomplete_runs(state)}
+    end
   end
 
   @impl true
@@ -54,53 +81,36 @@ defmodule AttractorEx.HTTP.Manager do
       Keyword.get(opts, :pipeline_id, Integer.to_string(System.unique_integer([:positive])))
 
     logs_root = Keyword.get(opts, :logs_root, Path.join(["tmp", "pipeline_http_runs"]))
-    run_opts = Keyword.delete(opts, :pipeline_id)
+    execution_opts = Keyword.delete(opts, :pipeline_id)
 
-    pipeline = %{
+    run_record = %RunRecord{
       id: pipeline_id,
       dot: dot,
       status: :running,
       result: nil,
       error: nil,
       context: normalize_map(context),
+      initial_context: normalize_map(context),
+      execution_opts: execution_opts,
       checkpoint: nil,
-      events: [],
-      questions: %{},
-      subscribers: MapSet.new(),
-      task_pid: nil,
       logs_root: logs_root,
       inserted_at: now_iso8601(),
-      updated_at: now_iso8601()
+      updated_at: now_iso8601(),
+      artifacts: ArtifactRecord.index_run_artifacts(logs_root, pipeline_id)
     }
 
+    pipeline =
+      build_pipeline(run_record, [], [])
+      |> Map.put(:task_pid, nil)
+
     state = put_in(state, [:pipelines, pipeline_id], pipeline)
-    parent = self()
 
-    {:ok, task_pid} =
-      Task.start(fn ->
-        observer = fn event -> record_event(parent, pipeline_id, event) end
-
-        merged_interviewer_opts =
-          run_opts
-          |> Keyword.get(:interviewer_opts, [])
-          |> Keyword.put(:pipeline_id, pipeline_id)
-          |> Keyword.put(:manager, parent)
-          |> Keyword.put(:event_observer, observer)
-
-        result =
-          AttractorEx.run(dot, context,
-            run_id: pipeline_id,
-            logs_root: logs_root,
-            event_observer: observer,
-            interviewer: AttractorEx.Interviewers.Server,
-            interviewer_opts: merged_interviewer_opts
-          )
-
-        send(parent, {:pipeline_finished, pipeline_id, result})
-      end)
-
-    state = put_in(state, [:pipelines, pipeline_id, :task_pid], task_pid)
-    {:reply, {:ok, pipeline_id}, state}
+    with :ok <- persist_pipeline_record(state, pipeline_id) do
+      state = start_run_task(state, pipeline_id, :run)
+      {:reply, {:ok, pipeline_id}, state}
+    else
+      {:error, reason} -> {:reply, {:error, reason}, state}
+    end
   end
 
   def handle_call({:get_pipeline, id}, _from, state) do
@@ -158,11 +168,29 @@ defmodule AttractorEx.HTTP.Manager do
     {:reply, reply, state}
   end
 
+  def handle_call({:replay_events, id, opts}, _from, state) do
+    reply =
+      case fetch_pipeline(state, id) do
+        {:ok, _pipeline} ->
+          after_sequence = Keyword.get(opts, :after_sequence, 0)
+          {:ok, replay_from_memory(state, id, after_sequence)}
+
+        error ->
+          error
+      end
+
+    {:reply, reply, state}
+  end
+
   def handle_call({:pending_questions, id}, _from, state) do
     reply =
       case fetch_pipeline(state, id) do
         {:ok, pipeline} ->
-          {:ok, pipeline.questions |> Map.values() |> Enum.sort_by(& &1.id)}
+          {:ok,
+           pipeline.questions
+           |> Map.values()
+           |> Enum.sort_by(& &1.id)
+           |> Enum.map(&public_question/1)}
 
         error ->
           error
@@ -184,11 +212,14 @@ defmodule AttractorEx.HTTP.Manager do
   def handle_call({:submit_answer, id, qid, answer}, _from, state) do
     with {:ok, pipeline} <- fetch_pipeline(state, id),
          {:ok, question} <- fetch_question(pipeline, qid) do
-      send(question.waiter, {:pipeline_answer, question.ref, answer})
+      if is_pid(question.waiter) and is_reference(question.ref) do
+        send(question.waiter, {:pipeline_answer, question.ref, answer})
+      end
 
       state =
         state
         |> update_in([:pipelines, id, :questions], &Map.delete(&1, qid))
+        |> persist_pipeline_questions(id)
         |> notify_question_state(id)
 
       {:reply, :ok, state}
@@ -231,9 +262,12 @@ defmodule AttractorEx.HTTP.Manager do
 
   def handle_call({:register_question, id, question}, _from, state) do
     with {:ok, _pipeline} <- fetch_pipeline(state, id) do
+      question_record = QuestionRecord.from_map(question)
+
       state =
         state
-        |> put_in([:pipelines, id, :questions, question.id], question)
+        |> put_in([:pipelines, id, :questions, question_record.id], question_record)
+        |> persist_pipeline_questions(id)
         |> notify_question_state(id)
 
       {:reply, :ok, state}
@@ -253,6 +287,7 @@ defmodule AttractorEx.HTTP.Manager do
       |> update_in([:pipelines, id, :questions], fn questions ->
         Map.delete(questions || %{}, qid)
       end)
+      |> persist_pipeline_questions(id)
       |> notify_question_state(id)
 
     {:noreply, state}
@@ -265,10 +300,14 @@ defmodule AttractorEx.HTTP.Manager do
     state =
       state
       |> put_in([:pipelines, id, :status], status)
-      |> put_in([:pipelines, id, :result], result)
+      |> put_in([:pipelines, id, :result], normalize_map(result))
+      |> put_in([:pipelines, id, :error], nil)
       |> put_in([:pipelines, id, :context], normalize_map(result.context))
       |> put_in([:pipelines, id, :checkpoint], build_checkpoint(result))
       |> touch_pipeline(id)
+      |> refresh_artifacts(id)
+
+    :ok = persist_pipeline_record(state, id)
 
     {:noreply, state}
   end
@@ -277,8 +316,11 @@ defmodule AttractorEx.HTTP.Manager do
     state =
       state
       |> put_in([:pipelines, id, :status], :fail)
-      |> put_in([:pipelines, id, :error], error)
+      |> put_in([:pipelines, id, :error], normalize_map(error))
       |> touch_pipeline(id)
+      |> refresh_artifacts(id)
+
+    :ok = persist_pipeline_record(state, id)
 
     {:noreply, state}
   end
@@ -294,41 +336,105 @@ defmodule AttractorEx.HTTP.Manager do
     {:noreply, %{state | pipelines: pipelines}}
   end
 
+  defp recover_incomplete_runs(state) do
+    Enum.reduce(state.pipelines, state, fn {pipeline_id, pipeline}, acc ->
+      if terminal?(pipeline.status) do
+        acc
+      else
+        start_run_task(acc, pipeline_id, recovery_mode(pipeline))
+      end
+    end)
+  end
+
+  defp recovery_mode(%{checkpoint: checkpoint}) when is_map(checkpoint), do: :resume
+  defp recovery_mode(_pipeline), do: :run
+
+  defp start_run_task(state, pipeline_id, mode) do
+    parent = self()
+
+    {:ok, task_pid} =
+      Task.start(fn ->
+        observer = fn event -> record_event(parent, pipeline_id, event) end
+        pipeline = get_in(state, [:pipelines, pipeline_id])
+
+        run_opts =
+          pipeline.execution_opts ++
+            [
+              run_id: pipeline_id,
+              logs_root: pipeline.logs_root,
+              event_observer: observer,
+              interviewer: AttractorEx.Interviewers.Server,
+              interviewer_opts: [
+                pipeline_id: pipeline_id,
+                manager: parent,
+                event_observer: observer
+              ]
+            ]
+
+        result =
+          case mode do
+            :resume when is_map(pipeline.checkpoint) ->
+              AttractorEx.resume(pipeline.dot, pipeline.checkpoint, run_opts)
+
+            _ ->
+              AttractorEx.run(pipeline.dot, pipeline.initial_context, run_opts)
+          end
+
+        send(parent, {:pipeline_finished, pipeline_id, result})
+      end)
+
+    put_in(state, [:pipelines, pipeline_id, :task_pid], task_pid)
+  end
+
   defp append_event(state, id, event) do
     case get_in(state, [:pipelines, id]) do
       nil ->
         state
 
       pipeline ->
-        normalized_event = normalize_event(id, event)
+        sequence = pipeline.next_event_sequence
+        normalized_event = normalize_event(id, event, sequence)
+
+        :ok =
+          state.store.append_event(state.store_config, id, EventRecord.from_map(normalized_event))
+
         notify_subscribers(pipeline.subscribers, normalized_event)
 
         state
         |> touch_pipeline(id)
         |> update_in([:pipelines, id, :events], &(&1 ++ [normalized_event]))
+        |> update_in([:pipelines, id, :next_event_sequence], &(&1 + 1))
         |> maybe_update_checkpoint(id, normalized_event)
         |> maybe_update_context(id, normalized_event)
         |> maybe_update_status(id, normalized_event)
+        |> refresh_artifacts(id)
+        |> then(fn next_state ->
+          :ok = persist_pipeline_record(next_state, id)
+          next_state
+        end)
     end
   end
 
-  defp maybe_update_checkpoint(state, id, %{type: "CheckpointSaved", checkpoint: checkpoint}) do
+  defp maybe_update_checkpoint(state, id, %{
+         "type" => "CheckpointSaved",
+         "checkpoint" => checkpoint
+       }) do
     put_in(state, [:pipelines, id, :checkpoint], checkpoint)
   end
 
   defp maybe_update_checkpoint(state, _id, _event), do: state
 
-  defp maybe_update_context(state, id, %{context: context}) when is_map(context) do
+  defp maybe_update_context(state, id, %{"context" => context}) when is_map(context) do
     put_in(state, [:pipelines, id, :context], normalize_map(context))
   end
 
   defp maybe_update_context(state, _id, _event), do: state
 
-  defp maybe_update_status(state, id, %{type: "PipelineCompleted"}) do
+  defp maybe_update_status(state, id, %{"type" => "PipelineCompleted"}) do
     put_in(state, [:pipelines, id, :status], :success)
   end
 
-  defp maybe_update_status(state, id, %{type: "PipelineFailed", status: status}) do
+  defp maybe_update_status(state, id, %{"type" => "PipelineFailed", "status" => status}) do
     put_in(state, [:pipelines, id, :status], normalize_status(status))
   end
 
@@ -345,13 +451,26 @@ defmodule AttractorEx.HTTP.Manager do
 
       pipeline ->
         event =
-          normalize_event(id, %{
-            type: "PipelineQuestionsUpdated",
-            questions: public_questions(pipeline.questions)
-          })
+          normalize_event(
+            id,
+            %{
+              type: "PipelineQuestionsUpdated",
+              questions: public_question_payloads(Map.values(pipeline.questions))
+            },
+            pipeline.next_event_sequence
+          )
 
+        :ok = state.store.append_event(state.store_config, id, EventRecord.from_map(event))
         notify_subscribers(pipeline.subscribers, event)
+
         state
+        |> update_in([:pipelines, id, :events], &(&1 ++ [event]))
+        |> update_in([:pipelines, id, :next_event_sequence], &(&1 + 1))
+        |> touch_pipeline(id)
+        |> then(fn next_state ->
+          :ok = persist_pipeline_record(next_state, id)
+          next_state
+        end)
     end
   end
 
@@ -364,18 +483,14 @@ defmodule AttractorEx.HTTP.Manager do
           _ -> nil
         end,
       "completed_nodes" => Map.keys(result.outcomes || %{}),
-      "context" => normalize_map(result.context)
+      "context" => normalize_map(result.context),
+      "timestamp" => now_iso8601()
     }
   end
 
-  defp normalize_event(id, event) do
-    event
-    |> normalize_map()
-    |> Map.put_new("pipeline_id", id)
-    |> Map.put_new(
-      "timestamp",
-      DateTime.utc_now() |> DateTime.truncate(:second) |> DateTime.to_iso8601()
-    )
+  defp normalize_event(id, event, sequence) do
+    EventRecord.new(id, sequence, normalize_map(event))
+    |> EventRecord.to_map()
   end
 
   defp fetch_pipeline(state, id) do
@@ -393,9 +508,12 @@ defmodule AttractorEx.HTTP.Manager do
   end
 
   defp normalize_status(status) do
-    if MapSet.member?(@terminal_statuses, status), do: status, else: do_normalize_status(status)
+    do_normalize_status(status)
   end
 
+  defp do_normalize_status(:cancelled), do: :cancelled
+  defp do_normalize_status(:fail), do: :fail
+  defp do_normalize_status(:success), do: :success
   defp do_normalize_status("cancelled"), do: :cancelled
   defp do_normalize_status("fail"), do: :fail
   defp do_normalize_status("success"), do: :success
@@ -419,30 +537,182 @@ defmodule AttractorEx.HTTP.Manager do
       "logs_root" => pipeline.logs_root,
       "inserted_at" => pipeline.inserted_at,
       "updated_at" => pipeline.updated_at,
-      "has_checkpoint" => is_map(pipeline.checkpoint)
+      "has_checkpoint" => is_map(pipeline.checkpoint),
+      "artifacts" => Enum.map(pipeline.artifacts, &ArtifactRecord.to_map/1)
     }
   end
 
   defp pipeline_snapshot(pipeline) do
     pipeline_summary(pipeline)
     |> Map.merge(%{
+      "pipeline_id" => pipeline.id,
       "context" => pipeline.context,
       "checkpoint" => pipeline.checkpoint,
-      "questions" => public_questions(pipeline.questions),
+      "questions" => public_questions(Map.values(pipeline.questions)),
       "events" => pipeline.events
     })
   end
 
   defp public_questions(questions) do
     questions
-    |> Map.values()
     |> Enum.sort_by(& &1.id)
-    |> Enum.map(&Map.drop(&1, [:waiter, :ref]))
+    |> Enum.map(&public_question/1)
+  end
+
+  defp public_question_payloads(questions) do
+    questions
+    |> Enum.sort_by(& &1.id)
+    |> Enum.map(&public_question_payload/1)
+  end
+
+  defp public_question(question) do
+    record = QuestionRecord.from_map(question)
+
+    %{
+      id: record.id,
+      text: record.text,
+      type: record.type,
+      multiple: record.multiple,
+      required: record.required,
+      options: record.options,
+      timeout_seconds: record.timeout_seconds,
+      metadata: record.metadata,
+      inserted_at: record.inserted_at
+    }
+    |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+    |> Map.new()
+  end
+
+  defp public_question_payload(question) do
+    question
+    |> QuestionRecord.from_map()
+    |> QuestionRecord.to_public_map()
   end
 
   defp touch_pipeline(state, id) do
     put_in(state, [:pipelines, id, :updated_at], now_iso8601())
   end
+
+  defp refresh_artifacts(state, id) do
+    case get_in(state, [:pipelines, id]) do
+      nil ->
+        state
+
+      pipeline ->
+        put_in(
+          state,
+          [:pipelines, id, :artifacts],
+          ArtifactRecord.index_run_artifacts(pipeline.logs_root, id)
+        )
+    end
+  end
+
+  defp persist_pipeline_record(state, pipeline_id) do
+    case get_in(state, [:pipelines, pipeline_id]) do
+      nil ->
+        :ok
+
+      pipeline ->
+        run_record = %RunRecord{
+          id: pipeline.id,
+          dot: pipeline.dot,
+          status: pipeline.status,
+          result: pipeline.result,
+          error: pipeline.error,
+          context: pipeline.context,
+          initial_context: pipeline.initial_context,
+          execution_opts: pipeline.execution_opts,
+          checkpoint: pipeline.checkpoint && CheckpointRecord.from_map(pipeline.checkpoint),
+          logs_root: pipeline.logs_root,
+          inserted_at: pipeline.inserted_at,
+          updated_at: pipeline.updated_at,
+          artifacts: pipeline.artifacts
+        }
+
+        :ok = state.store.put_run(state.store_config, run_record)
+
+        :ok =
+          state.store.put_questions(
+            state.store_config,
+            pipeline_id,
+            Map.values(pipeline.questions)
+          )
+
+        :ok
+    end
+  end
+
+  defp persist_pipeline_questions(state, id) do
+    case get_in(state, [:pipelines, id, :questions]) do
+      nil ->
+        state
+
+      questions ->
+        :ok = state.store.put_questions(state.store_config, id, Map.values(questions))
+        state
+    end
+  end
+
+  defp load_pipelines(store, store_config) do
+    with {:ok, loaded_runs} <- store.list_runs(store_config) do
+      pipelines =
+        loaded_runs
+        |> Enum.map(fn %{run: run, events: events, questions: questions} ->
+          pipeline = build_pipeline(run, events, questions)
+          {pipeline.id, pipeline}
+        end)
+        |> Map.new()
+
+      {:ok, pipelines}
+    end
+  end
+
+  defp build_pipeline(run, events, questions) do
+    checkpoint = run.checkpoint && CheckpointRecord.to_map(run.checkpoint)
+    event_maps = Enum.map(events, &EventRecord.to_map/1)
+
+    %{
+      id: run.id,
+      dot: run.dot,
+      status: normalize_status(run.status),
+      result: normalize_map(run.result),
+      error: normalize_map(run.error),
+      context: normalize_map(run.context),
+      initial_context: normalize_map(run.initial_context),
+      execution_opts: run.execution_opts || [],
+      checkpoint: checkpoint,
+      events: event_maps,
+      questions: Map.new(questions, &{&1.id, &1}),
+      subscribers: MapSet.new(),
+      task_pid: nil,
+      logs_root: run.logs_root,
+      inserted_at: run.inserted_at,
+      updated_at: run.updated_at,
+      next_event_sequence: next_sequence(event_maps),
+      artifacts:
+        if(run.artifacts == [] || is_nil(run.artifacts),
+          do: ArtifactRecord.index_run_artifacts(run.logs_root, run.id),
+          else: run.artifacts
+        )
+    }
+  end
+
+  defp next_sequence([]), do: 1
+
+  defp next_sequence(events) do
+    events
+    |> List.last()
+    |> Map.get("sequence", 0)
+    |> Kernel.+(1)
+  end
+
+  defp replay_from_memory(state, id, after_sequence) do
+    state
+    |> get_in([:pipelines, id, :events])
+    |> Enum.filter(&(Map.get(&1, "sequence", 0) > after_sequence))
+  end
+
+  defp terminal?(status), do: MapSet.member?(@terminal_statuses, status)
 
   defp now_iso8601 do
     DateTime.utc_now()

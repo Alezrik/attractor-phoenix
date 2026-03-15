@@ -22,9 +22,16 @@ AttractorEx.Condition.md
 AttractorEx.Edge.md
 AttractorEx.Engine.md
 AttractorEx.Graph.md
+AttractorEx.HTTP.ArtifactRecord.md
+AttractorEx.HTTP.CheckpointRecord.md
+AttractorEx.HTTP.EventRecord.md
+AttractorEx.HTTP.FileRunStore.md
 AttractorEx.HTTP.GraphRenderer.md
 AttractorEx.HTTP.Manager.md
+AttractorEx.HTTP.QuestionRecord.md
 AttractorEx.HTTP.Router.md
+AttractorEx.HTTP.RunRecord.md
+AttractorEx.HTTP.RunStore.md
 AttractorEx.HTTP.md
 AttractorEx.Handler.md
 AttractorEx.HandlerRegistry.md
@@ -68,6 +75,7 @@ AttractorExPhx.Client.md
 AttractorExPhx.HTTPServer.md
 AttractorExPhx.PubSub.md
 AttractorExPhx.md
+AttractorPhoenix.Benchmark.md
 AttractorPhoenix.DotGenerator.md
 AttractorPhoenix.LLMProviderDiscovery.md
 AttractorPhoenix.LLMSetup.md
@@ -75,6 +83,7 @@ AttractorPhoenix.Mailer.md
 AttractorPhoenix.PipelineLibrary.md
 AttractorPhoenix.md
 AttractorPhoenixWeb.AttractorChannel.md
+AttractorPhoenixWeb.BenchmarkLive.md
 AttractorPhoenixWeb.CoreComponents.md
 AttractorPhoenixWeb.DashboardLive.md
 AttractorPhoenixWeb.Endpoint.md

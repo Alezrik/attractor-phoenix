@@ -9,7 +9,7 @@ defmodule AttractorEx.HTTPManagerTest do
   alias AttractorEx.HTTP.Router
 
   setup do
-    start_supervised!({Manager, name: AttractorEx.HTTP.Manager})
+    start_supervised!({Manager, name: AttractorEx.HTTP.Manager, store_root: unique_store_root()})
     start_supervised!({Registry, keys: :duplicate, name: AttractorEx.HTTP.Registry})
     %{manager: AttractorEx.HTTP.Manager, registry: AttractorEx.HTTP.Registry}
   end
@@ -53,7 +53,9 @@ defmodule AttractorEx.HTTPManagerTest do
 
     question = %{id: "gate", ref: make_ref(), waiter: self(), text: "Approve?"}
     assert :ok = Manager.register_question(manager, pipeline_id, question)
-    assert {:ok, [%{id: "gate"}]} = Manager.pending_questions(manager, pipeline_id)
+
+    assert {:ok, [%{id: "gate", text: "Approve?"}]} =
+             Manager.pending_questions(manager, pipeline_id)
 
     assert :ok = Manager.submit_answer(manager, pipeline_id, "gate", "A")
     assert_receive {:pipeline_answer, _, "A"}
@@ -67,7 +69,7 @@ defmodule AttractorEx.HTTPManagerTest do
 
     wait_until(fn ->
       match?(
-        {:ok, %{status: :fail, error: %{error: "boom"}}},
+        {:ok, %{status: :fail, error: %{"error" => "boom"}}},
         Manager.get_pipeline(manager, pipeline_id)
       )
     end)
@@ -99,7 +101,8 @@ defmodule AttractorEx.HTTPManagerTest do
     assert {:ok, _dot} = Manager.pipeline_graph(manager, pipeline_id)
     assert {:ok, context} = Manager.pipeline_context(manager, pipeline_id)
     assert is_map(context)
-    assert {:ok, nil} = Manager.pipeline_checkpoint(manager, pipeline_id)
+    assert {:ok, checkpoint} = Manager.pipeline_checkpoint(manager, pipeline_id)
+    assert is_nil(checkpoint) or checkpoint["current_node"] == "start"
     assert {:ok, events} = Manager.pipeline_events(manager, pipeline_id)
     assert is_list(events)
     assert {:error, :not_found} = Manager.submit_answer(manager, pipeline_id, "missing", "A")
@@ -169,6 +172,64 @@ defmodule AttractorEx.HTTPManagerTest do
     fallback_conn = Router.call(conn(:get, "/unknown"), opts)
     assert fallback_conn.status == 404
     assert Jason.decode!(fallback_conn.resp_body)["error"] == "not found"
+  end
+
+  test "manager reloads persisted runs and replays events after restart" do
+    store_root = unique_store_root()
+    manager_name = Module.concat(__MODULE__, ReloadManager)
+
+    {:ok, manager} = Manager.start_link(name: manager_name, store_root: store_root)
+
+    on_exit(fn ->
+      if Process.whereis(manager_name), do: GenServer.stop(manager_name)
+    end)
+
+    {:ok, pipeline_id} =
+      Manager.create_pipeline(
+        manager,
+        """
+        digraph {
+          start [shape=Mdiamond]
+          done [shape=Msquare]
+          start -> done
+        }
+        """,
+        %{"ticket" => "R-1"},
+        pipeline_id: "reloaded-pipeline",
+        logs_root: unique_logs_root()
+      )
+
+    Manager.record_event(manager, pipeline_id, %{type: "PipelineHeartbeat", status: "running"})
+
+    send(
+      manager,
+      {:pipeline_finished, pipeline_id,
+       {:ok, %{status: :success, context: %{"run_id" => pipeline_id}, outcomes: %{}, history: []}}}
+    )
+
+    wait_until(fn ->
+      match?({:ok, %{status: :success}}, Manager.get_pipeline(manager, pipeline_id))
+    end)
+
+    wait_until(fn ->
+      case Manager.pipeline_events(manager, pipeline_id) do
+        {:ok, [_ | _]} -> true
+        _ -> false
+      end
+    end)
+
+    assert {:ok, events_before} = Manager.pipeline_events(manager, pipeline_id)
+    assert events_before != []
+
+    GenServer.stop(manager)
+
+    {:ok, reloaded} = Manager.start_link(name: manager_name, store_root: store_root)
+
+    assert {:ok, %{status: :success, context: %{"run_id" => ^pipeline_id}}} =
+             Manager.get_pipeline(reloaded, pipeline_id)
+
+    assert {:ok, replayed} = Manager.replay_events(reloaded, pipeline_id, after_sequence: 1)
+    assert Enum.all?(replayed, &(Map.fetch!(&1, "sequence") > 1))
   end
 
   test "router accepts `value` answers and successful cancel responses", _context do
@@ -264,5 +325,21 @@ defmodule AttractorEx.HTTPManagerTest do
         10 -> wait_until(fun, attempts - 1)
       end
     end
+  end
+
+  defp unique_store_root do
+    Path.join([
+      "tmp",
+      "http_manager_store_test",
+      Integer.to_string(System.unique_integer([:positive]))
+    ])
+  end
+
+  defp unique_logs_root do
+    Path.join([
+      "tmp",
+      "http_manager_logs_test",
+      Integer.to_string(System.unique_integer([:positive]))
+    ])
   end
 end

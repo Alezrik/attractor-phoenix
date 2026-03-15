@@ -4,6 +4,8 @@
 
 - [AttractorPhoenix](AttractorPhoenix.md): AttractorPhoenix keeps the contexts that define your domain
 and business logic.
+- [AttractorPhoenix.Benchmark](AttractorPhoenix.Benchmark.md): Canonical benchmark contract and current leadership posture for the product surface.
+
 - [AttractorPhoenix.DotGenerator](AttractorPhoenix.DotGenerator.md): Generates AttractorEx DOT graphs from natural-language prompts using the unified LLM client.
 
 - [AttractorPhoenix.LLMProviderDiscovery](AttractorPhoenix.LLMProviderDiscovery.md): Fetches available models for supported providers using provider-native model listing APIs.
@@ -16,6 +18,7 @@ and business logic.
 as controllers, components, channels, and so on.
 - [AttractorPhoenixWeb.AttractorChannel](AttractorPhoenixWeb.AttractorChannel.md): Phoenix Channel that streams `AttractorEx` pipeline snapshots and live updates.
 
+- [AttractorPhoenixWeb.BenchmarkLive](AttractorPhoenixWeb.BenchmarkLive.md)
 - [AttractorPhoenixWeb.CoreComponents](AttractorPhoenixWeb.CoreComponents.md): Provides core UI components.
 - [AttractorPhoenixWeb.DashboardLive](AttractorPhoenixWeb.DashboardLive.md)
 - [AttractorPhoenixWeb.Endpoint](AttractorPhoenixWeb.Endpoint.md)
@@ -84,9 +87,21 @@ used by your application.
 
 - HTTPService
   - [AttractorEx.HTTP](AttractorEx.HTTP.md): Convenience entry point for starting and stopping the AttractorEx HTTP service.
+  - [AttractorEx.HTTP.ArtifactRecord](AttractorEx.HTTP.ArtifactRecord.md): Typed artifact metadata for persisted HTTP-managed pipeline runs.
+
+  - [AttractorEx.HTTP.CheckpointRecord](AttractorEx.HTTP.CheckpointRecord.md): Typed checkpoint snapshot persisted by the HTTP runtime manager.
+
+  - [AttractorEx.HTTP.EventRecord](AttractorEx.HTTP.EventRecord.md): Typed persisted event entry for HTTP-managed pipeline runs.
+
+  - [AttractorEx.HTTP.FileRunStore](AttractorEx.HTTP.FileRunStore.md): File-backed durable runtime store for HTTP-managed pipeline runs.
   - [AttractorEx.HTTP.GraphRenderer](AttractorEx.HTTP.GraphRenderer.md): Renders parsed graphs into presentation-friendly HTTP formats.
-  - [AttractorEx.HTTP.Manager](AttractorEx.HTTP.Manager.md): GenServer that owns the in-memory state for HTTP-managed pipeline runs.
+  - [AttractorEx.HTTP.Manager](AttractorEx.HTTP.Manager.md): GenServer that owns durable runtime state for HTTP-managed pipeline runs.
+  - [AttractorEx.HTTP.QuestionRecord](AttractorEx.HTTP.QuestionRecord.md): Typed persisted question metadata for HTTP-managed human gates.
+
   - [AttractorEx.HTTP.Router](AttractorEx.HTTP.Router.md): Plug router exposing the AttractorEx HTTP API.
+  - [AttractorEx.HTTP.RunRecord](AttractorEx.HTTP.RunRecord.md): Typed persisted pipeline run metadata for the HTTP runtime.
+
+  - [AttractorEx.HTTP.RunStore](AttractorEx.HTTP.RunStore.md): Behaviour for durable HTTP runtime storage.
 
 - PhoenixAdapter
   - [AttractorExPhx](AttractorExPhx.md): Phoenix-facing adapter layer for `AttractorEx`.

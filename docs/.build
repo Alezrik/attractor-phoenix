@@ -23,9 +23,16 @@ AttractorEx.Condition.html
 AttractorEx.Edge.html
 AttractorEx.Engine.html
 AttractorEx.Graph.html
+AttractorEx.HTTP.ArtifactRecord.html
+AttractorEx.HTTP.CheckpointRecord.html
+AttractorEx.HTTP.EventRecord.html
+AttractorEx.HTTP.FileRunStore.html
 AttractorEx.HTTP.GraphRenderer.html
 AttractorEx.HTTP.Manager.html
+AttractorEx.HTTP.QuestionRecord.html
 AttractorEx.HTTP.Router.html
+AttractorEx.HTTP.RunRecord.html
+AttractorEx.HTTP.RunStore.html
 AttractorEx.HTTP.html
 AttractorEx.Handler.html
 AttractorEx.HandlerRegistry.html
@@ -69,6 +76,7 @@ AttractorExPhx.Client.html
 AttractorExPhx.HTTPServer.html
 AttractorExPhx.PubSub.html
 AttractorExPhx.html
+AttractorPhoenix.Benchmark.html
 AttractorPhoenix.DotGenerator.html
 AttractorPhoenix.LLMProviderDiscovery.html
 AttractorPhoenix.LLMSetup.html
@@ -76,6 +84,7 @@ AttractorPhoenix.Mailer.html
 AttractorPhoenix.PipelineLibrary.html
 AttractorPhoenix.html
 AttractorPhoenixWeb.AttractorChannel.html
+AttractorPhoenixWeb.BenchmarkLive.html
 AttractorPhoenixWeb.CoreComponents.html
 AttractorPhoenixWeb.DashboardLive.html
 AttractorPhoenixWeb.Endpoint.html
@@ -105,8 +114,8 @@ dist/lato-latin-700-normal-2XVSBPG4.woff2
 dist/lato-latin-ext-400-normal-N27NCBWW.woff2
 dist/lato-latin-ext-700-normal-Q2L5DVMW.woff2
 dist/remixicon-ZWU5GQ4X.woff2
-dist/search_data-3B089D0C.js
-dist/sidebar_items-40D862AA.js
+dist/search_data-ED92271E.js
+dist/sidebar_items-4D12FA9A.js
 http-api.html
 human-in-the-loop.html
 index.html

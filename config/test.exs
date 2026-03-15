@@ -36,7 +36,8 @@ config :junit_formatter,
 config :attractor_phoenix, :attractor_http,
   port: 4101,
   ip: {127, 0, 0, 1},
-  base_url: "http://127.0.0.1:4101"
+  base_url: "http://127.0.0.1:4101",
+  store_root: Path.expand("../tmp/attractor_http_store_test", __DIR__)
 
 config :attractor_phoenix,
   pipeline_library_path: Path.expand("../tmp/pipeline_library_test.json", __DIR__)
