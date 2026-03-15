@@ -12,6 +12,7 @@ defmodule AttractorEx.LLM.StreamEvent do
           :stream_start
           | :text_delta
           | :reasoning_delta
+          | :object_delta
           | :tool_call
           | :tool_result
           | :response
@@ -21,6 +22,7 @@ defmodule AttractorEx.LLM.StreamEvent do
   defstruct type: :stream_start,
             text: nil,
             reasoning: nil,
+            object: nil,
             tool_call: nil,
             tool_result: nil,
             usage: nil,
@@ -32,6 +34,7 @@ defmodule AttractorEx.LLM.StreamEvent do
           type: event_type() | String.t(),
           text: String.t() | nil,
           reasoning: String.t() | nil,
+          object: map() | list() | nil,
           tool_call: map() | nil,
           tool_result: map() | nil,
           usage: Usage.t() | nil,

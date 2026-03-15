@@ -10,6 +10,7 @@ codergen nodes and the agent session layer.
 
 ```elixir
 @type t() :: %AttractorEx.LLM.Request{
+  cache: map() | nil,
   max_tokens: integer() | nil,
   messages: [AttractorEx.LLM.Message.t()],
   metadata: map(),
@@ -18,6 +19,7 @@ codergen nodes and the agent session layer.
   provider_options: map(),
   reasoning_effort: String.t(),
   response_format: :text | :json | %{type: :json_schema, schema: map()} | nil,
+  retry_policy: keyword() | map() | nil,
   stop_sequences: [String.t()],
   temperature: float() | nil,
   tool_choice: String.t() | map() | nil,

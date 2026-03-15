@@ -113,12 +113,15 @@ used by your application.
 
 - UnifiedLLM
   - [AttractorEx.LLM.Client](AttractorEx.LLM.Client.md): Provider-agnostic LLM client used by codergen nodes and agent sessions.
+  - [AttractorEx.LLM.Error](AttractorEx.LLM.Error.md): Typed error returned by unified LLM adapters and client retries.
   - [AttractorEx.LLM.Message](AttractorEx.LLM.Message.md): Unified chat message struct used in LLM requests.
   - [AttractorEx.LLM.MessagePart](AttractorEx.LLM.MessagePart.md): Tagged content part used by `AttractorEx.LLM.Message`.
+  - [AttractorEx.LLM.ObjectStream](AttractorEx.LLM.ObjectStream.md): Incremental JSON object streaming helpers for normalized LLM event streams.
   - [AttractorEx.LLM.ProviderAdapter](AttractorEx.LLM.ProviderAdapter.md): Behaviour implemented by unified LLM provider adapters.
   - [AttractorEx.LLM.Request](AttractorEx.LLM.Request.md): Unified request struct for provider-agnostic LLM completions.
   - [AttractorEx.LLM.Response](AttractorEx.LLM.Response.md): Unified response struct returned by provider adapters.
 
+  - [AttractorEx.LLM.RetryPolicy](AttractorEx.LLM.RetryPolicy.md): Configures client-side retry behavior for adapter failures.
   - [AttractorEx.LLM.StreamEvent](AttractorEx.LLM.StreamEvent.md): Event struct used by streaming LLM adapters.
   - [AttractorEx.LLM.Usage](AttractorEx.LLM.Usage.md): Normalized token-usage counters returned by LLM responses and streams.
 

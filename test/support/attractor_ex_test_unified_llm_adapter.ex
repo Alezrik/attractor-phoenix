@@ -28,15 +28,24 @@ defmodule AttractorExTest.UnifiedLLMAdapter do
 
   def stream(%Request{} = request) do
     response_text =
-      if request.metadata["json_mode"] do
-        Jason.encode!(%{"provider" => request.provider, "streamed" => true})
-      else
-        "final"
+      cond do
+        request.metadata["json_lines_mode"] ->
+          Jason.encode!(%{"provider" => request.provider, "step" => 1}) <>
+            "\n" <> Jason.encode!(%{"provider" => request.provider, "step" => 2})
+
+        request.metadata["json_mode"] ->
+          Jason.encode!(%{"provider" => request.provider, "streamed" => true})
+
+        true ->
+          "final"
       end
 
     [
       %StreamEvent{type: :stream_start},
-      %StreamEvent{type: :text_delta, text: "chunk"},
+      %StreamEvent{
+        type: :text_delta,
+        text: if(request.metadata["json_lines_mode"], do: response_text, else: "chunk")
+      },
       %StreamEvent{type: :reasoning_delta, reasoning: "thinking"},
       %StreamEvent{type: :tool_call, tool_call: %{"id" => "call-1", "name" => "echo"}},
       %StreamEvent{type: :tool_result, tool_result: %{"id" => "call-1", "output" => "done"}},

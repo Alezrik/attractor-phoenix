@@ -13,6 +13,7 @@ final response, and error cases.
   :stream_start
   | :text_delta
   | :reasoning_delta
+  | :object_delta
   | :tool_call
   | :tool_result
   | :response
@@ -25,6 +26,7 @@ final response, and error cases.
 ```elixir
 @type t() :: %AttractorEx.LLM.StreamEvent{
   error: term() | nil,
+  object: map() | list() | nil,
   raw: map(),
   reasoning: String.t() | nil,
   response: AttractorEx.LLM.Response.t() | nil,

@@ -19,6 +19,8 @@ defmodule AttractorEx.LLM.Request do
             tools: [],
             tool_choice: nil,
             response_format: nil,
+            cache: nil,
+            retry_policy: nil,
             provider_options: %{},
             metadata: %{}
 
@@ -34,6 +36,8 @@ defmodule AttractorEx.LLM.Request do
           tools: list(),
           tool_choice: String.t() | map() | nil,
           response_format: :text | :json | %{type: :json_schema, schema: map()} | nil,
+          cache: map() | nil,
+          retry_policy: keyword() | map() | nil,
           provider_options: map(),
           metadata: map()
         }

@@ -39,6 +39,14 @@ Reduce the major `partial` and `not implemented` areas in the unified-LLM and co
 4. Expanded provider conformance coverage
 5. Reduced partial and not-implemented status in compliance docs
 
+## Implemented In This Repo
+
+1. Native OpenAI, Anthropic, and Gemini adapters now translate normalized requests for both `complete` and `stream`.
+2. `AttractorEx.LLM.Error` and `AttractorEx.LLM.RetryPolicy` now provide typed retryable failures, backoff, and retry-after support.
+3. Request-level cache hooks are translated where provider APIs expose compatible prompt/cache controls.
+4. `AttractorEx.LLM.Client.stream_object_deltas/2` now emits incremental typed `:object_delta` events for newline-delimited and full-document JSON streams.
+5. Provider adapter tests and unified-LLM client tests now cover native adapter translation, retry behavior, and object streaming.
+
 ## Success Criteria
 
 This workstream is done when:

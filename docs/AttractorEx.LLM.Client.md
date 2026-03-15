@@ -28,6 +28,7 @@ Beyond the low-level `complete/2` and `stream/2` APIs, the module also exposes:
   default_provider: String.t() | nil,
   middleware: [middleware()],
   providers: %{optional(String.t()) =&gt; module()},
+  retry_policy: AttractorEx.LLM.RetryPolicy.t() | nil,
   streaming_middleware: [middleware()]
 }
 ```
@@ -214,6 +215,34 @@ Generates a JSON object from a streamed response via the default client.
 ```
 
 Generates a JSON object by first accumulating a streamed response.
+
+# `stream_object_deltas`
+
+```elixir
+@spec stream_object_deltas(AttractorEx.LLM.Request.t()) ::
+  Enumerable.t() | {:error, term()}
+```
+
+Streams normalized events with inserted `:object_delta` JSON events.
+
+# `stream_object_deltas`
+
+```elixir
+@spec stream_object_deltas(t(), AttractorEx.LLM.Request.t()) ::
+  Enumerable.t() | {:error, term()}
+```
+
+Streams normalized events with inserted `:object_delta` JSON events.
+
+# `stream_object_deltas_with_request`
+
+```elixir
+@spec stream_object_deltas_with_request(t(), AttractorEx.LLM.Request.t()) ::
+  {:ok, Enumerable.t(), AttractorEx.LLM.Request.t()} | {:error, term()}
+```
+
+Streams normalized events with inserted `:object_delta` JSON events and returns the
+resolved request.
 
 # `stream_object_with_request`
 

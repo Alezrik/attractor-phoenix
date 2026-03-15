@@ -57,11 +57,14 @@ AttractorEx.Interviewers.Queue.html
 AttractorEx.Interviewers.Recording.html
 AttractorEx.Interviewers.Server.html
 AttractorEx.LLM.Client.html
+AttractorEx.LLM.Error.html
 AttractorEx.LLM.Message.html
 AttractorEx.LLM.MessagePart.html
+AttractorEx.LLM.ObjectStream.html
 AttractorEx.LLM.ProviderAdapter.html
 AttractorEx.LLM.Request.html
 AttractorEx.LLM.Response.html
+AttractorEx.LLM.RetryPolicy.html
 AttractorEx.LLM.StreamEvent.html
 AttractorEx.LLM.Usage.html
 AttractorEx.ModelStylesheet.html
@@ -116,8 +119,8 @@ dist/lato-latin-700-normal-2XVSBPG4.woff2
 dist/lato-latin-ext-400-normal-N27NCBWW.woff2
 dist/lato-latin-ext-700-normal-Q2L5DVMW.woff2
 dist/remixicon-ZWU5GQ4X.woff2
-dist/search_data-37E7AE91.js
-dist/sidebar_items-97981017.js
+dist/search_data-7B2897F0.js
+dist/sidebar_items-BB61F687.js
 http-api.html
 human-in-the-loop.html
 index.html
