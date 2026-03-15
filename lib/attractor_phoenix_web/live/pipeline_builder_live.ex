@@ -339,10 +339,10 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
     end
   end
 
-  defp model_options(provider) do
+  defp model_options(provider) when is_binary(provider) do
     LLMSetup.available_models()
     |> Enum.filter(fn model ->
-      is_nil(provider) or provider == "" or model.provider == provider
+      provider == "" or model.provider == provider
     end)
     |> Enum.map(fn model ->
       {"#{String.capitalize(model.provider)} / #{model.id}", model.id}

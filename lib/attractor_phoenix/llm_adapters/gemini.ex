@@ -101,8 +101,6 @@ defmodule AttractorPhoenix.LLMAdapters.Gemini do
   defp empty_to_nil([]), do: nil
   defp empty_to_nil(value), do: value
 
-  defp blank_to_nil(nil), do: nil
-
   defp blank_to_nil(value) do
     trimmed = value |> to_string() |> String.trim()
     if trimmed == "", do: nil, else: trimmed
