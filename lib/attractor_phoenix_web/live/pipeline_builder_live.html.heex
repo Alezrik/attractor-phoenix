@@ -966,6 +966,11 @@
         <p class="text-sm">Logs: <code>{@result.logs_root}</code></p>
         <p class="text-sm">Events: <strong>{@result.event_count}</strong></p>
         <p class="text-sm">Pending Questions: <strong>{length(@questions)}</strong></p>
+        <div class="flex flex-wrap gap-2">
+          <.link navigate={~p"/runs/#{@result.run_id}"} id="open-run-detail" class="builder-btn">
+            Open Run Detail
+          </.link>
+        </div>
 
         <%= if @checkpoint do %>
           <div class="rounded-lg border border-base-300 bg-base-100 p-3 text-sm">

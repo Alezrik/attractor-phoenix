@@ -85,11 +85,29 @@ const CreateProgressTimer = {
   },
 }
 
+const OperatorConnection = {
+  mounted() {
+    this.pushState("live")
+  },
+
+  disconnected() {
+    this.pushState("reconnecting")
+  },
+
+  reconnected() {
+    this.pushState("live")
+  },
+
+  pushState(state) {
+    this.pushEvent("operator_connection_state", {state})
+  },
+}
+
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, PipelineBuilder, CreateProgressTimer},
+  hooks: {...colocatedHooks, PipelineBuilder, CreateProgressTimer, OperatorConnection},
 })
 
 // Show progress bar on live navigation and form submits

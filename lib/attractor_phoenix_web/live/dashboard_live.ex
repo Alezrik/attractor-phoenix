@@ -1,390 +1,230 @@
 defmodule AttractorPhoenixWeb.DashboardLive do
   use AttractorPhoenixWeb, :live_view
 
-  alias AttractorExPhx.Client, as: AttractorAPI
-  alias Phoenix.HTML
+  alias AttractorExPhx
+  alias AttractorPhoenixWeb.OperatorRunData
 
   @refresh_interval_ms 3_000
 
   @impl true
   def mount(_params, _session, socket) do
     socket =
-      assign(socket,
-        page_title: "Dashboard",
+      socket
+      |> stream_configure(:pipelines, dom_id: &"pipeline-#{&1["pipeline_id"]}")
+      |> assign(
+        page_title: "Operator Dashboard",
         pipelines: [],
-        selected_pipeline_id: nil,
-        selected_pipeline: nil,
-        selected_status_alias: nil,
-        selected_context: %{},
-        selected_checkpoint: nil,
-        selected_questions: [],
-        answer_forms: %{},
-        selected_events: [],
-        selected_graphs: %{},
-        error: nil
+        filters: default_filters(),
+        filter_form: to_form(default_filters(), as: :filters),
+        filtered_total: 0,
+        total_pipelines: 0,
+        running_pipelines: 0,
+        successful_pipelines: 0,
+        failed_pipelines: 0,
+        cancelled_pipelines: 0,
+        total_questions: 0,
+        connection_state: if(connected?(socket), do: :live, else: :idle),
+        update_mode: :subscription,
+        error: nil,
+        subscribed_pipeline_ids: MapSet.new(),
+        last_updated_at: nil
       )
-
-    socket =
-      case refresh_dashboard(socket, nil) do
-        {:ok, refreshed} -> refreshed
-        {:error, refreshed} -> refreshed
-      end
-
-    if connected?(socket) do
-      Process.send_after(self(), :refresh_dashboard, @refresh_interval_ms)
-    end
+      |> stream(:pipelines, [], reset: true)
 
     {:ok, socket}
   end
 
   @impl true
   def handle_params(params, _uri, socket) do
-    selected_pipeline_id = params["pipeline"]
+    filters = filters_from_params(params)
 
-    case refresh_dashboard(socket, selected_pipeline_id) do
-      {:ok, socket} -> {:noreply, socket}
-      {:error, socket} -> {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_info(:refresh_dashboard, socket) do
     socket =
-      case refresh_dashboard(socket, socket.assigns.selected_pipeline_id) do
-        {:ok, refreshed} -> refreshed
-        {:error, refreshed} -> refreshed
-      end
+      socket
+      |> assign(filters: filters, filter_form: to_form(filters, as: :filters))
+      |> refresh_dashboard()
 
-    Process.send_after(self(), :refresh_dashboard, @refresh_interval_ms)
     {:noreply, socket}
   end
 
-  defp refresh_dashboard(socket, selected_pipeline_id) do
-    with {:ok, %{"pipelines" => pipelines}} <- AttractorAPI.list_pipelines() do
-      selected_pipeline_id = resolve_selected_pipeline_id(pipelines, selected_pipeline_id)
+  @impl true
+  def handle_event("filter_runs", %{"filters" => params}, socket) do
+    {:noreply, push_patch(socket, to: ~p"/?#{filter_query_params(params)}")}
+  end
 
-      socket =
+  def handle_event("clear_filters", _params, socket) do
+    {:noreply, push_patch(socket, to: ~p"/")}
+  end
+
+  def handle_event("operator_connection_state", %{"state" => state}, socket) do
+    socket =
+      case state do
+        "live" ->
+          socket
+          |> assign(connection_state: live_connection_state(socket.assigns.update_mode))
+          |> maybe_restore_live_updates()
+
+        "reconnecting" ->
+          assign(socket, connection_state: :reconnecting)
+
+        _ ->
+          socket
+      end
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info(
+        {:attractor_ex_event, _event},
+        %{assigns: %{update_mode: :subscription}} = socket
+      ) do
+    {:noreply, refresh_dashboard(socket)}
+  end
+
+  def handle_info({:attractor_ex_event, _event}, socket), do: {:noreply, socket}
+
+  def handle_info(:poll_dashboard, %{assigns: %{update_mode: :polling}} = socket) do
+    socket =
+      socket
+      |> refresh_dashboard()
+      |> schedule_poll()
+
+    {:noreply, socket}
+  end
+
+  def handle_info(:poll_dashboard, socket), do: {:noreply, socket}
+
+  defp refresh_dashboard(socket) do
+    case OperatorRunData.list_pipelines() do
+      {:ok, %{"pipelines" => pipelines}} ->
+        filtered = filter_pipelines(pipelines, socket.assigns.filters)
+        stats = OperatorRunData.summarize_pipelines(pipelines)
+
         socket
+        |> assign(stats)
         |> assign(
           pipelines: pipelines,
-          selected_pipeline_id: selected_pipeline_id,
-          error: nil
+          filtered_total: length(filtered),
+          error: nil,
+          last_updated_at: DateTime.utc_now()
         )
-        |> assign_overview_stats(pipelines)
+        |> stream(:pipelines, filtered, reset: true)
+        |> sync_pipeline_subscriptions(pipelines)
 
-      if selected_pipeline_id do
-        refresh_selected_pipeline(socket, selected_pipeline_id)
-      else
-        {:ok,
-         assign(socket,
-           selected_pipeline: nil,
-           selected_status_alias: nil,
-           selected_context: %{},
-           selected_checkpoint: nil,
-           selected_questions: [],
-           answer_forms: %{},
-           selected_events: [],
-           selected_graphs: %{}
-         )}
-      end
-    else
       {:error, message} ->
-        {:error, assign(socket, error: message)}
+        assign(socket, error: message)
     end
   end
 
-  @impl true
-  def handle_event("cancel_pipeline", _params, %{assigns: %{selected_pipeline_id: nil}} = socket) do
-    {:noreply, socket}
-  end
+  defp sync_pipeline_subscriptions(socket, pipelines) do
+    if connected?(socket) and socket.assigns.update_mode == :subscription do
+      pipeline_ids = MapSet.new(Enum.map(pipelines, & &1["pipeline_id"]))
+      current = socket.assigns.subscribed_pipeline_ids
 
-  def handle_event("cancel_pipeline", _params, socket) do
-    socket =
-      case AttractorAPI.cancel_pipeline(socket.assigns.selected_pipeline_id) do
-        {:ok, _payload} ->
-          refresh_now(socket)
+      added_ids = MapSet.difference(pipeline_ids, current)
 
-        {:error, message} ->
-          assign(socket, error: message)
-      end
+      case subscribe_pipeline_ids(added_ids) do
+        :ok ->
+          removed_ids = MapSet.difference(current, pipeline_ids)
+          unsubscribe_pipeline_ids(removed_ids)
 
-    {:noreply, socket}
-  end
-
-  def handle_event(
-        "answer_question",
-        %{"question_id" => question_id, "response" => response},
-        socket
-      ) do
-    question = Enum.find(socket.assigns.selected_questions, &(&1["id"] == question_id))
-    answer = build_question_answer(question, response || %{})
-
-    socket =
-      case AttractorAPI.answer_question(socket.assigns.selected_pipeline_id, question_id, answer) do
-        {:ok, _payload} ->
-          refresh_now(socket)
-
-        {:error, message} ->
-          assign(socket, error: message)
-      end
-
-    {:noreply, socket}
-  end
-
-  defp refresh_selected_pipeline(socket, pipeline_id) do
-    with {:ok, summary} <- AttractorAPI.get_pipeline(pipeline_id),
-         {:ok, status_alias} <- AttractorAPI.get_status(pipeline_id),
-         {:ok, context_payload} <- AttractorAPI.get_pipeline_context(pipeline_id),
-         {:ok, checkpoint_payload} <- AttractorAPI.get_pipeline_checkpoint(pipeline_id),
-         {:ok, questions_payload} <- AttractorAPI.get_pipeline_questions(pipeline_id),
-         {:ok, events_payload} <- AttractorAPI.get_pipeline_events(pipeline_id),
-         {:ok, graph_svg} <- AttractorAPI.get_pipeline_graph_svg(pipeline_id),
-         {:ok, graph_json} <- AttractorAPI.get_pipeline_graph_json(pipeline_id),
-         {:ok, graph_dot} <- AttractorAPI.get_pipeline_graph_dot(pipeline_id),
-         {:ok, graph_mermaid} <- AttractorAPI.get_pipeline_graph_mermaid(pipeline_id),
-         {:ok, graph_text} <- AttractorAPI.get_pipeline_graph_text(pipeline_id) do
-      questions = questions_payload["questions"] || []
-
-      {:ok,
-       assign(socket,
-         selected_pipeline: summary,
-         selected_status_alias: status_alias,
-         selected_context: context_payload["context"] || %{},
-         selected_checkpoint: checkpoint_payload["checkpoint"],
-         selected_questions: questions,
-         answer_forms: build_answer_forms(questions),
-         selected_events: events_payload["events"] || [],
-         selected_graphs: %{
-           "svg" => graph_svg,
-           "json" => graph_json["graph"] || %{},
-           "dot" => graph_dot,
-           "mermaid" => graph_mermaid,
-           "text" => graph_text
-         }
-       )}
-    else
-      {:error, message} ->
-        {:error, assign(socket, error: message)}
-    end
-  end
-
-  defp resolve_selected_pipeline_id(pipelines, selected_pipeline_id) do
-    pipeline_ids = MapSet.new(Enum.map(pipelines, & &1["pipeline_id"]))
-
-    cond do
-      is_binary(selected_pipeline_id) and MapSet.member?(pipeline_ids, selected_pipeline_id) ->
-        selected_pipeline_id
-
-      match?([%{} | _], pipelines) ->
-        hd(pipelines)["pipeline_id"]
-
-      true ->
-        nil
-    end
-  end
-
-  defp assign_overview_stats(socket, pipelines) do
-    counts =
-      Enum.reduce(
-        pipelines,
-        %{running: 0, success: 0, fail: 0, cancelled: 0, questions: 0},
-        fn pipeline, acc ->
-          status = normalize_status(pipeline["status"])
-
-          acc
-          |> Map.update(status, 1, &(&1 + 1))
-          |> Map.update(
-            :questions,
-            pipeline["pending_questions"] || 0,
-            &(&1 + (pipeline["pending_questions"] || 0))
+          assign(socket,
+            subscribed_pipeline_ids: pipeline_ids,
+            connection_state: :live
           )
-        end
-      )
 
-    assign(socket,
-      total_pipelines: length(pipelines),
-      running_pipelines: counts.running,
-      successful_pipelines: counts.success,
-      failed_pipelines: counts.fail,
-      cancelled_pipelines: counts.cancelled,
-      total_questions: counts.questions
-    )
+        {:error, _reason} ->
+          socket
+          |> assign(
+            update_mode: :polling,
+            connection_state: :stale
+          )
+          |> schedule_poll()
+      end
+    else
+      socket
+    end
   end
 
-  defp normalize_status(status) when status in [:success, "success"], do: :success
-  defp normalize_status(status) when status in [:fail, "fail"], do: :fail
-  defp normalize_status(status) when status in [:cancelled, "cancelled"], do: :cancelled
-  defp normalize_status(_status), do: :running
-
-  defp graph_markup(nil), do: nil
-  defp graph_markup(svg), do: HTML.raw(svg)
-
-  defp endpoint_catalog do
-    [
-      %{method: "GET", path: "/pipelines", label: "List runs"},
-      %{method: "POST", path: "/pipelines", label: "Submit pipeline"},
-      %{method: "POST", path: "/run", label: "Submit alias"},
-      %{method: "GET", path: "/pipelines/:id", label: "Run status"},
-      %{method: "GET", path: "/status?pipeline_id=:id", label: "Status alias"},
-      %{method: "GET", path: "/pipelines/:id/context", label: "Context"},
-      %{method: "GET", path: "/pipelines/:id/checkpoint", label: "Checkpoint"},
-      %{method: "GET", path: "/pipelines/:id/events", label: "Events / SSE"},
-      %{method: "GET", path: "/pipelines/:id/questions", label: "Pending questions"},
-      %{method: "POST", path: "/pipelines/:id/questions/:qid/answer", label: "Answer question"},
-      %{method: "POST", path: "/answer", label: "Answer alias"},
-      %{method: "POST", path: "/pipelines/:id/cancel", label: "Cancel run"},
-      %{
-        method: "GET",
-        path: "/pipelines/:id/graph?format=svg|json|dot|mermaid|text",
-        label: "Graph formats"
-      }
-    ]
-  end
-
-  defp bar_width(whole, count) when whole > 0,
-    do: "width: #{Float.round(count / whole * 100, 1)}%"
-
-  defp bar_width(_whole, _count), do: "width: 0%"
-
-  defp build_answer_forms(questions) do
-    questions
-    |> Enum.map(fn question ->
-      initial_params = %{
-        "answer" => "",
-        "choice" => default_single_choice(question),
-        "choices" => [],
-        "boolean" => "",
-        "confirmation" => ""
-      }
-
-      {question["id"], to_form(initial_params, as: :response)}
+  defp subscribe_pipeline_ids(pipeline_ids) do
+    Enum.reduce_while(pipeline_ids, :ok, fn pipeline_id, :ok ->
+      case AttractorExPhx.subscribe_pipeline(pipeline_id) do
+        {:ok, _snapshot} -> {:cont, :ok}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
     end)
+  end
+
+  defp unsubscribe_pipeline_ids(pipeline_ids) do
+    Enum.each(pipeline_ids, &AttractorExPhx.unsubscribe_pipeline/1)
+  end
+
+  defp maybe_restore_live_updates(%{assigns: %{update_mode: :subscription}} = socket), do: socket
+
+  defp maybe_restore_live_updates(socket) do
+    socket
+    |> assign(update_mode: :subscription, error: nil)
+    |> refresh_dashboard()
+  end
+
+  defp schedule_poll(socket) do
+    Process.send_after(self(), :poll_dashboard, @refresh_interval_ms)
+    socket
+  end
+
+  defp default_filters do
+    %{"status" => "all", "questions" => "all", "search" => ""}
+  end
+
+  defp filters_from_params(params) do
+    %{
+      "status" => blank_to_default(params["status"], "all"),
+      "questions" => blank_to_default(params["questions"], "all"),
+      "search" => String.trim(params["search"] || "")
+    }
+  end
+
+  defp filter_query_params(params) do
+    params
+    |> Map.take(["status", "questions", "search"])
+    |> Enum.reject(fn {_key, value} -> value in [nil, "", "all"] end)
     |> Map.new()
   end
 
-  defp normalize_answer(answer) do
-    trimmed = String.trim(to_string(answer || ""))
-    if trimmed == "", do: nil, else: trimmed
-  end
-
-  defp normalize_answers(values) do
-    values
-    |> List.wrap()
-    |> Enum.map(&normalize_answer/1)
-    |> Enum.reject(&is_nil/1)
-  end
-
-  defp refresh_now(socket) do
-    case refresh_dashboard(socket, socket.assigns.selected_pipeline_id) do
-      {:ok, refreshed} -> refreshed
-      {:error, refreshed} -> refreshed
-    end
-  end
-
-  defp question_prompt(question) do
-    question["prompt"] || question["question"] || "Question"
-  end
-
-  defp question_options(question) do
-    question["options"] || []
-  end
-
-  defp question_type(question) do
-    question["type"] || get_in(question, ["metadata", "question_type"]) || "QUESTION"
-  end
-
-  defp question_input_mode(question) do
-    question
-    |> raw_question_input_mode()
-    |> normalize_question_input_mode(question)
-  end
-
-  defp question_multiple?(question), do: question["multiple"] == true
-
-  defp question_required?(question) do
-    case question["required"] do
-      false -> false
-      _ -> true
-    end
-  end
-
-  defp question_timeout_label(question) do
-    case question["timeout_seconds"] do
-      value when is_integer(value) -> "#{value}s timeout"
-      value when is_float(value) -> "#{trunc(value)}s timeout"
-      _ -> nil
-    end
-  end
-
-  defp question_default_label(question) do
-    case question["default"] do
-      value when is_binary(value) and value != "" -> "default #{value}"
-      _ -> nil
-    end
-  end
-
-  defp question_choice_options(question) do
-    Enum.map(question_options(question), fn option ->
-      {option["label"] || option["key"] || option["to"], option["key"] || option["to"]}
+  defp filter_pipelines(pipelines, filters) do
+    Enum.filter(pipelines, fn pipeline ->
+      status_match?(pipeline, filters["status"]) and
+        question_match?(pipeline, filters["questions"]) and
+        search_match?(pipeline, filters["search"])
     end)
   end
 
-  defp default_single_choice(question) do
-    case question_choice_options(question) do
-      [] -> ""
-      [{_label, value} | _] -> value || ""
-    end
+  defp status_match?(_pipeline, "all"), do: true
+
+  defp status_match?(pipeline, status) do
+    to_string(pipeline["status"]) == status
   end
 
-  defp default_input_mode(question) do
-    cond do
-      question_multiple?(question) -> "multi_select"
-      question_options(question) == [] -> "text"
-      true -> "single_select"
-    end
+  defp question_match?(_pipeline, "all"), do: true
+  defp question_match?(pipeline, "open"), do: (pipeline["pending_questions"] || 0) > 0
+  defp question_match?(pipeline, "clear"), do: (pipeline["pending_questions"] || 0) == 0
+  defp question_match?(_pipeline, _filter), do: true
+
+  defp search_match?(_pipeline, ""), do: true
+
+  defp search_match?(pipeline, search) do
+    pipeline["pipeline_id"]
+    |> to_string()
+    |> String.downcase()
+    |> String.contains?(String.downcase(search))
   end
 
-  defp raw_question_input_mode(question) do
-    get_in(question, ["metadata", "input_mode"]) || default_input_mode(question)
+  defp blank_to_default(nil, default), do: default
+
+  defp blank_to_default(value, default) do
+    if String.trim(to_string(value)) == "", do: default, else: value
   end
 
-  defp normalize_question_input_mode(mode, question) when mode in ["multi_select", "checkbox"] do
-    if question_multiple?(question), do: mode, else: "single_select"
-  end
-
-  defp normalize_question_input_mode(mode, _question) when mode in ["select", "dropdown"],
-    do: "single_select"
-
-  defp normalize_question_input_mode(mode, _question), do: mode
-
-  defp build_question_answer(nil, response), do: normalize_answer(response["answer"])
-
-  defp build_question_answer(question, response) do
-    case question_input_mode(question) do
-      mode when mode in ["boolean", "confirmation"] ->
-        normalize_answer(response[mode])
-
-      mode when mode in ["multi_select", "checkbox"] ->
-        normalize_answers(response["choices"])
-
-      "single_select" ->
-        normalize_answer(response["choice"])
-
-      "textarea" ->
-        normalize_answer(response["answer"])
-
-      _ ->
-        cond do
-          question_multiple?(question) -> normalize_answers(response["choices"])
-          question_options(question) != [] -> normalize_answer(response["choice"])
-          true -> normalize_answer(response["answer"])
-        end
-    end
-  end
-
-  defp response_field(form, field), do: form[field]
-
-  defp preview_json(value) do
-    Jason.encode_to_iodata!(value, pretty: true)
-  end
+  defp live_connection_state(:subscription), do: :live
+  defp live_connection_state(:polling), do: :stale
 end
