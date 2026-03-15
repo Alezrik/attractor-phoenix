@@ -22,4 +22,17 @@ defmodule AttractorPhoenixWeb.BenchmarkLive do
   defp score_tone(score) when score >= 3.0, do: "bg-info"
   defp score_tone(score) when score >= 2.0, do: "bg-warning"
   defp score_tone(_score), do: "bg-error"
+
+  defp completion_ratio(completed, total), do: "#{completed}/#{total}"
+
+  defp premium_feature_tone(status) when status in ["Foundation exists", "Partially enabled"],
+    do: "bg-info/12 text-info"
+
+  defp premium_feature_tone(status) when status in ["Design-ready"],
+    do: "bg-warning/12 text-warning"
+
+  defp premium_feature_tone(_status), do: "bg-base-200 text-base-content/70"
+
+  defp leadership_status_tone(true), do: "bg-success/12 text-success"
+  defp leadership_status_tone(false), do: "bg-warning/12 text-warning"
 end

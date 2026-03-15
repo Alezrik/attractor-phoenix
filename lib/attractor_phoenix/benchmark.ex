@@ -186,6 +186,201 @@ defmodule AttractorPhoenix.Benchmark do
     "Unified LLM or agent-loop claims are broader than current implemented behavior."
   ]
 
+  @premium_features [
+    %{
+      id: :breakpoints,
+      label: "Breakpoints and pause-on-stage debugging",
+      status: "Blocked on debugger MVP",
+      summary:
+        "Needs a dedicated debugger timeline and replay-aware operator controls before pause semantics are trustworthy.",
+      dependency: "Debugger MVP and replay-aware transport"
+    },
+    %{
+      id: :step_through,
+      label: "Step-through execution mode",
+      status: "Blocked on debugger MVP",
+      summary:
+        "Depends on durable run state plus stage-level replay so stepping is deterministic instead of inspect-only.",
+      dependency: "Typed run state and replay controls"
+    },
+    %{
+      id: :heatmaps,
+      label: "Stage heatmaps and graph overlays",
+      status: "Design-ready",
+      summary:
+        "The graph and event surfaces exist, but the operator UI still needs debugger-grade event aggregation and visual overlays.",
+      dependency: "Debugger timeline and richer event aggregation"
+    },
+    %{
+      id: :search,
+      label: "Artifact and run search",
+      status: "Foundation exists",
+      summary:
+        "Persisted run artifacts are indexed by the run store, but there is no operator-grade search surface yet.",
+      dependency: "Persistent run metadata and operator search UI"
+    },
+    %{
+      id: :saved_views,
+      label: "Saved debugger views",
+      status: "Not started",
+      summary:
+        "Requires a debugger surface worth saving plus stable filter/view state to persist.",
+      dependency: "Debugger MVP and user-facing filter state"
+    },
+    %{
+      id: :share_links,
+      label: "Shareable run links",
+      status: "Partially enabled",
+      summary:
+        "Routes and run identifiers already exist, but sharable debugger deep links are still missing.",
+      dependency: "Dedicated run/debugger routes and view state encoding"
+    },
+    %{
+      id: :annotations,
+      label: "Operator annotations on runs and events",
+      status: "Not started",
+      summary:
+        "Needs persistent operator-authored metadata on top of the current runtime event ledger.",
+      dependency: "Persistent run store schema for operator notes"
+    },
+    %{
+      id: :quality_scoring,
+      label: "Pipeline quality scoring and readiness checks before execution",
+      status: "Foundation exists",
+      summary:
+        "Canonical parser/validator work is in place, but the product still lacks a preflight scorecard in the builder.",
+      dependency: "Builder canonicalization and pre-execution checks"
+    }
+  ]
+
+  @leadership_criteria [
+    %{
+      id: :restart_survival,
+      criterion: "Runs, events, checkpoints, and question state survive process restarts.",
+      met?: true,
+      evidence:
+        "HTTP manager reload and replay tests plus file-backed run store support restart recovery.",
+      blocker: nil
+    },
+    %{
+      id: :resume_replay_tests,
+      criterion: "Resume and replay behavior are proven by focused regression tests.",
+      met?: true,
+      evidence:
+        "Engine, HTTP manager, transport, and Phoenix PubSub tests exercise checkpoint resume and replay windows.",
+      blocker: nil
+    },
+    %{
+      id: :subscription_driven_views,
+      criterion:
+        "The main dashboard and run views are subscription-driven, not primarily poll-driven.",
+      met?: false,
+      evidence:
+        "Phoenix PubSub replay-filtered subscriptions exist for LiveViews and other OTP consumers.",
+      blocker:
+        "Dashboard LiveView still reads from the HTTP surface rather than subscribing as the primary transport."
+    },
+    %{
+      id: :canonical_builder,
+      criterion: "The builder uses the canonical Elixir parser and validator model.",
+      met?: false,
+      evidence:
+        "Authoring APIs already expose canonical parse, normalize, transform, and validation results from Elixir.",
+      blocker:
+        "The browser builder still keeps its own DOT interpretation path instead of fully delegating to the canonical model."
+    },
+    %{
+      id: :dedicated_debugger,
+      criterion:
+        "A dedicated debugger exists with timeline, diffs, artifacts, and replay controls.",
+      met?: false,
+      evidence:
+        "The dashboard can inspect runs, events, checkpoints, questions, and graph variants.",
+      blocker:
+        "There is no dedicated debugger workflow with timeline navigation, diffs, or replay controls."
+    },
+    %{
+      id: :published_scoreboard,
+      criterion:
+        "Public docs include a benchmark or conformance scoreboard tied to executable tests.",
+      met?: true,
+      evidence:
+        "The benchmark page and published docs surface the conformance scoreboard, gap ledger, and runnable test commands.",
+      blocker: nil
+    },
+    %{
+      id: :llm_agent_completion,
+      criterion:
+        "The unified LLM and coding-agent surfaces materially reduce current partial and not-implemented areas.",
+      met?: false,
+      evidence:
+        "Unified LLM and coding-agent primitives are implemented with maintained compliance docs and conformance suites.",
+      blocker:
+        "The compliance docs still publish meaningful partial and not-implemented areas that need to shrink further."
+    },
+    %{
+      id: :operator_ux_lead,
+      criterion:
+        "The overall UX is clearly more useful for operators than the best dashboard-oriented reference.",
+      met?: false,
+      evidence: "The product already has dashboard, builder, setup, and benchmark LiveViews.",
+      blocker:
+        "Operator workflows are still more inspector-oriented than debugger-grade or premium-feature complete."
+    }
+  ]
+
+  @suggested_execution_order [
+    "Runtime persistence and typed run state",
+    "Replay-aware transport and live operator views",
+    "Debugger MVP",
+    "Builder canonicalization",
+    "Conformance harness and published scoreboard",
+    "Unified LLM and coding-agent completion",
+    "Premium features such as breakpoints and step-through debugging"
+  ]
+
+  @premium_risks [
+    "Adding more UI without fixing the runtime model underneath it",
+    "Keeping multiple incompatible graph interpretations between JS and Elixir",
+    "Chasing obscure parser parity before operational depth",
+    "Over-claiming completeness without benchmark-grade conformance evidence",
+    "Adding premium features that are hard to trust because persistence and replay are weak"
+  ]
+
+  @anti_goals [
+    "Turning the project into a generic workflow product unrelated to Attractor semantics",
+    "Prioritizing cosmetic redesign over runtime depth",
+    "Hiding partial areas instead of documenting them",
+    "Adding speculative AI features before the unified-LLM foundation is stronger"
+  ]
+
+  @immediate_next_steps [
+    %{
+      id: "02A",
+      label: "Persistent run store",
+      summary:
+        "Finish the durable runtime model so premium operator features sit on restart-safe state."
+    },
+    %{
+      id: "03A",
+      label: "Debugger MVP timeline",
+      summary:
+        "Turn the current inspector surface into a dedicated timeline with replay controls and artifact navigation."
+    },
+    %{
+      id: "04A",
+      label: "Canonical parser-backed builder API",
+      summary:
+        "Remove the split between the browser graph model and the canonical Elixir parser/validator path."
+    },
+    %{
+      id: "05A",
+      label: "Black-box conformance fixture harness",
+      summary:
+        "Keep the leadership claim tied to executable evidence instead of static documentation."
+    }
+  ]
+
   def summary do
     composite = composite_score(@dimensions)
 
@@ -204,9 +399,16 @@ defmodule AttractorPhoenix.Benchmark do
       required_evidence: @required_evidence,
       scoring_rubric: @scoring_rubric,
       leadership_gate: @leadership_gate,
+      premium_features: @premium_features,
+      leadership_criteria: @leadership_criteria,
+      leadership_criteria_complete: Enum.count(@leadership_criteria, & &1.met?),
       strategic_priorities: @strategic_priorities,
+      suggested_execution_order: @suggested_execution_order,
       review_cadence: @review_cadence,
-      anti_claim_rules: @anti_claim_rules
+      anti_claim_rules: @anti_claim_rules,
+      premium_risks: @premium_risks,
+      anti_goals: @anti_goals,
+      immediate_next_steps: @immediate_next_steps
     }
   end
 

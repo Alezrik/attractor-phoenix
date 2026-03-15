@@ -8,9 +8,10 @@
             Mission and competitive benchmark, implemented as a live product scorecard.
           </h1>
           <p class="max-w-3xl text-sm leading-6 text-base-content/70 sm:text-base">
-            This page turns `docs/01-mission-and-competitive-benchmark.md` into an operator-facing
-            benchmark contract: what leadership means, where the repo stands now, and which gaps
-            still block a credible claim.
+            This page turns `docs/01-mission-and-competitive-benchmark.md` and
+            `docs/07-premium-features-and-leadership-criteria.md` into an operator-facing benchmark
+            contract: what leadership means, where the repo stands now, which premium features are
+            still gated, and which gaps still block a credible claim.
           </p>
         </div>
 
@@ -278,6 +279,118 @@
       </article>
     </section>
 
+    <section class="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+      <article class="dashboard-panel" id="premium-features">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <p class="dashboard-card-label">Premium features</p>
+            <p class="mt-2 text-sm text-base-content/70">
+              These are the operator-facing differentiators that only become credible after the
+              runtime and debugger foundations are solid.
+            </p>
+          </div>
+          <span class="text-xs text-base-content/60">
+            {length(@benchmark.premium_features)} tracked features
+          </span>
+        </div>
+
+        <div class="mt-5 grid gap-3 sm:grid-cols-2">
+          <%= for feature <- @benchmark.premium_features do %>
+            <div class="benchmark-tile" id={"premium-feature-#{feature.id}"}>
+              <div class="space-y-3">
+                <div class="flex flex-wrap items-center gap-2">
+                  <p class="text-sm font-semibold">{feature.label}</p>
+                  <span class={[
+                    "rounded-full px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.16em]",
+                    premium_feature_tone(feature.status)
+                  ]}>
+                    {feature.status}
+                  </span>
+                </div>
+                <p class="text-sm leading-6 text-base-content/75">{feature.summary}</p>
+                <p class="text-xs uppercase tracking-[0.16em] text-base-content/55">
+                  Depends on: {feature.dependency}
+                </p>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </article>
+
+      <article class="dashboard-panel" id="leadership-criteria-summary">
+        <p class="dashboard-card-label">Leadership criteria</p>
+        <div class="mt-4 rounded-3xl border border-base-300 bg-base-200/35 px-5 py-4">
+          <p class="text-4xl font-black tracking-tight">
+            {completion_ratio(
+              @benchmark.leadership_criteria_complete,
+              length(@benchmark.leadership_criteria)
+            )}
+          </p>
+          <p class="mt-2 text-sm text-base-content/70">
+            definition-of-done criteria are currently satisfied
+          </p>
+        </div>
+
+        <div class="mt-4 space-y-3">
+          <%= for criterion <- @benchmark.leadership_criteria do %>
+            <div class="benchmark-rule-row" id={"leadership-summary-#{criterion.id}"}>
+              <span class={[
+                "rounded-full px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.16em]",
+                leadership_status_tone(criterion.met?)
+              ]}>
+                {if criterion.met?, do: "met", else: "blocked"}
+              </span>
+              <p class="text-sm leading-6">{criterion.criterion}</p>
+            </div>
+          <% end %>
+        </div>
+      </article>
+    </section>
+
+    <section class="dashboard-panel" id="leadership-criteria">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <p class="dashboard-card-label">Definition of done for leadership</p>
+          <p class="mt-2 text-sm text-base-content/70">
+            Each criterion is tied to current repo evidence and, when still blocked, a concrete
+            gap rather than a vague aspiration.
+          </p>
+        </div>
+        <span class="text-xs text-base-content/60">
+          {length(@benchmark.leadership_criteria)} criteria
+        </span>
+      </div>
+
+      <div class="mt-5 grid gap-4 xl:grid-cols-2">
+        <%= for criterion <- @benchmark.leadership_criteria do %>
+          <article
+            class="rounded-3xl border border-base-300 bg-base-200/35 px-5 py-4"
+            id={"leadership-criterion-#{criterion.id}"}
+          >
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <p class="text-sm font-semibold leading-6">{criterion.criterion}</p>
+              <span class={[
+                "rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]",
+                leadership_status_tone(criterion.met?)
+              ]}>
+                {if criterion.met?, do: "met", else: "blocked"}
+              </span>
+            </div>
+            <p class="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-base-content/55">
+              Evidence
+            </p>
+            <p class="mt-2 text-sm leading-6 text-base-content/75">{criterion.evidence}</p>
+            <%= if criterion.blocker do %>
+              <p class="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-base-content/55">
+                Blocking gap
+              </p>
+              <p class="mt-2 text-sm leading-6 text-base-content/75">{criterion.blocker}</p>
+            <% end %>
+          </article>
+        <% end %>
+      </div>
+    </section>
+
     <section class="grid gap-4 xl:grid-cols-2">
       <article class="dashboard-panel" id="conformance-scoreboard">
         <div class="flex items-center justify-between gap-3">
@@ -325,6 +438,37 @@
     </section>
 
     <section class="grid gap-4 xl:grid-cols-2">
+      <article class="dashboard-panel" id="suggested-execution-order">
+        <p class="dashboard-card-label">Suggested execution order</p>
+        <div class="mt-4 space-y-3">
+          <%= for {step, index} <- Enum.with_index(@benchmark.suggested_execution_order, 1) do %>
+            <div class="benchmark-priority-row" id={"execution-step-#{index}"}>
+              <span class="benchmark-priority-index">{index}</span>
+              <p class="text-sm font-medium leading-6">{step}</p>
+            </div>
+          <% end %>
+        </div>
+      </article>
+
+      <article class="dashboard-panel" id="immediate-next-steps">
+        <p class="dashboard-card-label">Immediate next steps</p>
+        <div class="mt-4 space-y-3">
+          <%= for step <- @benchmark.immediate_next_steps do %>
+            <div class="benchmark-rule-row" id={"next-step-#{step.id}"}>
+              <span class="rounded-full bg-primary/12 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                {step.id}
+              </span>
+              <div>
+                <p class="text-sm font-semibold">{step.label}</p>
+                <p class="mt-1 text-sm leading-6 text-base-content/75">{step.summary}</p>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </article>
+    </section>
+
+    <section class="grid gap-4 xl:grid-cols-2">
       <article class="dashboard-panel">
         <p class="dashboard-card-label">Strategic priorities</p>
         <div class="mt-4 space-y-3" id="strategic-priorities">
@@ -346,6 +490,36 @@
                 <.icon name="hero-clock-mini" class="size-4" />
               </span>
               <p class="text-sm leading-6">{cadence}</p>
+            </div>
+          <% end %>
+        </div>
+      </article>
+    </section>
+
+    <section class="grid gap-4 xl:grid-cols-2">
+      <article class="dashboard-panel" id="premium-risks">
+        <p class="dashboard-card-label">Risks</p>
+        <div class="mt-4 space-y-3">
+          <%= for risk <- @benchmark.premium_risks do %>
+            <div class="benchmark-rule-row">
+              <span class="rounded-full bg-warning/12 p-1.5 text-warning">
+                <.icon name="hero-shield-exclamation-mini" class="size-4" />
+              </span>
+              <p class="text-sm leading-6">{risk}</p>
+            </div>
+          <% end %>
+        </div>
+      </article>
+
+      <article class="dashboard-panel" id="anti-goals">
+        <p class="dashboard-card-label">Anti-goals</p>
+        <div class="mt-4 space-y-3">
+          <%= for goal <- @benchmark.anti_goals do %>
+            <div class="benchmark-rule-row">
+              <span class="rounded-full bg-base-200 p-1.5 text-base-content/70">
+                <.icon name="hero-minus-circle-mini" class="size-4" />
+              </span>
+              <p class="text-sm leading-6">{goal}</p>
             </div>
           <% end %>
         </div>

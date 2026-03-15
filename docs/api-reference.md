@@ -9,6 +9,8 @@ and business logic.
 - [AttractorPhoenix.Conformance](AttractorPhoenix.Conformance.md): Maintained black-box conformance scoreboard for the public proof surface.
 - [AttractorPhoenix.DotGenerator](AttractorPhoenix.DotGenerator.md): Generates AttractorEx DOT graphs from natural-language prompts using the unified LLM client.
 
+- [AttractorPhoenix.LLMAdapters.HTTP](AttractorPhoenix.LLMAdapters.HTTP.md): Shared HTTP helpers for native LLM provider adapters.
+
 - [AttractorPhoenix.LLMProviderDiscovery](AttractorPhoenix.LLMProviderDiscovery.md): Fetches available models for supported providers using provider-native model listing APIs.
 
 - [AttractorPhoenix.LLMSetup](AttractorPhoenix.LLMSetup.md): File-backed storage for provider API keys, discovered models, and default model selection.
