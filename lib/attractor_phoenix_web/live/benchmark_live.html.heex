@@ -1,0 +1,309 @@
+<Layouts.app flash={@flash} current_scope={assigns[:current_scope]} current_path={~p"/benchmark"}>
+  <section class="space-y-8" id="benchmark-page">
+    <div class="benchmark-hero">
+      <div class="space-y-4">
+        <div class="space-y-3">
+          <p class="dashboard-kicker">Leadership Contract</p>
+          <h1 class="max-w-4xl text-4xl font-black tracking-tight sm:text-5xl">
+            Mission and competitive benchmark, implemented as a live product scorecard.
+          </h1>
+          <p class="max-w-3xl text-sm leading-6 text-base-content/70 sm:text-base">
+            This page turns `docs/01-mission-and-competitive-benchmark.md` into an operator-facing
+            benchmark contract: what leadership means, where the repo stands now, and which gaps
+            still block a credible claim.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <%= for dimension <- @benchmark.mission_dimensions do %>
+            <div class="rounded-full border border-base-300 bg-base-100/80 px-3 py-1.5 text-xs">
+              {dimension}
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <article class="benchmark-score-panel" id="benchmark-score-panel">
+        <p class="dashboard-card-label">Current posture</p>
+        <div class="mt-3 flex items-end justify-between gap-4">
+          <div>
+            <p class="text-5xl font-black tracking-tight">{@benchmark.composite_score}</p>
+            <p class="mt-2 text-sm text-base-content/65">weighted composite score out of 5.0</p>
+          </div>
+          <span class={[
+            "rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]",
+            if(@benchmark.leadership_ready?,
+              do: "bg-success/15 text-success",
+              else: "bg-warning/15 text-warning"
+            )
+          ]}>
+            {if @benchmark.leadership_ready?, do: "leadership-ready", else: "not claimable yet"}
+          </span>
+        </div>
+
+        <div class="mt-5 space-y-3">
+          <%= for gate <- @benchmark.leadership_gate do %>
+            <div class="flex items-start gap-3 text-sm">
+              <span class="mt-0.5 rounded-full bg-base-200 p-1 text-base-content/70">
+                <.icon name="hero-check-mini" class="size-4" />
+              </span>
+              <span>{gate}</span>
+            </div>
+          <% end %>
+        </div>
+      </article>
+    </div>
+
+    <section class="grid gap-4 xl:grid-cols-4">
+      <%= for dimension <- @benchmark.dimensions do %>
+        <article class="dashboard-card" id={"dimension-#{dimension.id}"}>
+          <div class="flex items-center justify-between gap-3">
+            <p class="dashboard-card-label">{dimension.short_label}</p>
+            <span class="text-xs font-semibold text-base-content/60">
+              {weight_percent(dimension.weight)}
+            </span>
+          </div>
+          <p class="mt-3 text-4xl font-black tracking-tight">{dimension.score}</p>
+          <p class="mt-2 text-sm text-base-content/70">{dimension.status}</p>
+          <div class="benchmark-meter mt-4">
+            <div
+              class={["benchmark-meter-fill", score_tone(dimension.score)]}
+              style={score_width(dimension.score)}
+            >
+            </div>
+          </div>
+        </article>
+      <% end %>
+    </section>
+
+    <div class="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+      <section class="dashboard-panel space-y-5">
+        <div>
+          <p class="dashboard-card-label">Target capabilities</p>
+          <div class="mt-4 grid gap-3 sm:grid-cols-2">
+            <%= for capability <- @benchmark.target_capabilities do %>
+              <div class="benchmark-tile">
+                <span class="rounded-full bg-primary/10 p-2 text-primary">
+                  <.icon name="hero-sparkles-mini" class="size-4" />
+                </span>
+                <p class="text-sm font-medium leading-6">{capability}</p>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <div>
+          <p class="dashboard-card-label">Competitive claim rules</p>
+          <div class="mt-4 space-y-3" id="competitive-claim-rules">
+            <%= for rule <- @benchmark.competitive_claim_rules do %>
+              <div class="benchmark-rule-row">
+                <span class="rounded-full bg-base-200 p-1.5 text-base-content/70">
+                  <.icon name="hero-scale-mini" class="size-4" />
+                </span>
+                <p class="text-sm leading-6">{rule}</p>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <div>
+          <p class="dashboard-card-label">Benchmark standard</p>
+          <div class="mt-4 space-y-3">
+            <%= for standard <- @benchmark.benchmark_standard do %>
+              <div class="benchmark-rule-row">
+                <span class="rounded-full bg-base-200 p-1.5 text-base-content/70">
+                  <.icon name="hero-flag-mini" class="size-4" />
+                </span>
+                <p class="text-sm leading-6">{standard}</p>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </section>
+
+      <section class="space-y-4">
+        <article class="dashboard-panel">
+          <div class="flex items-center justify-between gap-3">
+            <p class="dashboard-card-label">Reference set</p>
+            <span class="text-xs text-base-content/60">
+              {length(@benchmark.reference_set)} repos
+            </span>
+          </div>
+          <div class="mt-4 flex flex-wrap gap-2" id="reference-set">
+            <%= for reference <- @benchmark.reference_set do %>
+              <span class="rounded-full border border-base-300 bg-base-200/40 px-3 py-1.5 text-xs font-medium">
+                {reference}
+              </span>
+            <% end %>
+          </div>
+        </article>
+
+        <article class="dashboard-panel">
+          <p class="dashboard-card-label">Scoring rubric</p>
+          <div class="mt-4 space-y-3">
+            <%= for entry <- @benchmark.scoring_rubric do %>
+              <div class="benchmark-rule-row">
+                <span class="rounded-full bg-base-200 p-1.5 text-base-content/70">
+                  <.icon name="hero-chart-bar-square-mini" class="size-4" />
+                </span>
+                <p class="text-sm leading-6">{entry}</p>
+              </div>
+            <% end %>
+          </div>
+        </article>
+      </section>
+    </div>
+
+    <section class="grid gap-4 xl:grid-cols-2" id="benchmark-dimensions">
+      <%= for dimension <- @benchmark.dimensions do %>
+        <article class="dashboard-panel space-y-5">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="dashboard-card-label">{dimension.label}</p>
+              <h2 class="mt-2 text-xl font-bold">{dimension.short_label}</h2>
+            </div>
+            <span class={[
+              "rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]",
+              if(dimension.score >= 4.0,
+                do: "bg-success/15 text-success",
+                else: "bg-warning/15 text-warning"
+              )
+            ]}>
+              {dimension.status}
+            </span>
+          </div>
+
+          <div>
+            <p class="benchmark-section-title">Current strengths</p>
+            <div class="mt-3 space-y-3">
+              <%= for strength <- dimension.strengths do %>
+                <div class="benchmark-rule-row">
+                  <span class="rounded-full bg-success/12 p-1.5 text-success">
+                    <.icon name="hero-check-circle-mini" class="size-4" />
+                  </span>
+                  <p class="text-sm leading-6">{strength}</p>
+                </div>
+              <% end %>
+            </div>
+          </div>
+
+          <div>
+            <p class="benchmark-section-title">Blocking gaps</p>
+            <div class="mt-3 space-y-3">
+              <%= for gap <- dimension.gaps do %>
+                <div class="benchmark-rule-row">
+                  <span class="rounded-full bg-warning/12 p-1.5 text-warning">
+                    <.icon name="hero-exclamation-triangle-mini" class="size-4" />
+                  </span>
+                  <p class="text-sm leading-6">{gap}</p>
+                </div>
+              <% end %>
+            </div>
+          </div>
+
+          <div>
+            <p class="benchmark-section-title">Evidence sources</p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <%= for evidence <- dimension.evidence do %>
+                <span class="rounded-full bg-base-200/70 px-3 py-1.5 text-xs">
+                  {evidence}
+                </span>
+              <% end %>
+            </div>
+          </div>
+        </article>
+      <% end %>
+    </section>
+
+    <section class="grid gap-4 xl:grid-cols-3">
+      <article class="dashboard-panel">
+        <p class="dashboard-card-label">Current position</p>
+        <div class="mt-4 space-y-5">
+          <div>
+            <p class="benchmark-section-title">Strong base</p>
+            <div class="mt-3 space-y-3">
+              <%= for strength <- @benchmark.current_position.strengths do %>
+                <div class="benchmark-rule-row">
+                  <span class="rounded-full bg-success/12 p-1.5 text-success">
+                    <.icon name="hero-bolt-mini" class="size-4" />
+                  </span>
+                  <p class="text-sm leading-6">{strength}</p>
+                </div>
+              <% end %>
+            </div>
+          </div>
+
+          <div>
+            <p class="benchmark-section-title">Structural gaps</p>
+            <div class="mt-3 space-y-3">
+              <%= for gap <- @benchmark.current_position.gaps do %>
+                <div class="benchmark-rule-row">
+                  <span class="rounded-full bg-warning/12 p-1.5 text-warning">
+                    <.icon name="hero-wrench-screwdriver-mini" class="size-4" />
+                  </span>
+                  <p class="text-sm leading-6">{gap}</p>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="dashboard-panel">
+        <p class="dashboard-card-label">Required evidence</p>
+        <div class="mt-4 space-y-3" id="required-evidence">
+          <%= for evidence <- @benchmark.required_evidence do %>
+            <div class="benchmark-rule-row">
+              <span class="rounded-full bg-info/12 p-1.5 text-info">
+                <.icon name="hero-document-check-mini" class="size-4" />
+              </span>
+              <p class="text-sm leading-6">{evidence}</p>
+            </div>
+          <% end %>
+        </div>
+      </article>
+
+      <article class="dashboard-panel">
+        <p class="dashboard-card-label">Anti-claim rules</p>
+        <div class="mt-4 space-y-3" id="anti-claim-rules">
+          <%= for rule <- @benchmark.anti_claim_rules do %>
+            <div class="benchmark-rule-row">
+              <span class="rounded-full bg-error/12 p-1.5 text-error">
+                <.icon name="hero-no-symbol-mini" class="size-4" />
+              </span>
+              <p class="text-sm leading-6">{rule}</p>
+            </div>
+          <% end %>
+        </div>
+      </article>
+    </section>
+
+    <section class="grid gap-4 xl:grid-cols-2">
+      <article class="dashboard-panel">
+        <p class="dashboard-card-label">Strategic priorities</p>
+        <div class="mt-4 space-y-3" id="strategic-priorities">
+          <%= for {priority, index} <- Enum.with_index(@benchmark.strategic_priorities, 1) do %>
+            <div class="benchmark-priority-row">
+              <span class="benchmark-priority-index">{index}</span>
+              <p class="text-sm font-medium leading-6">{priority}</p>
+            </div>
+          <% end %>
+        </div>
+      </article>
+
+      <article class="dashboard-panel">
+        <p class="dashboard-card-label">Review cadence</p>
+        <div class="mt-4 space-y-3" id="review-cadence">
+          <%= for cadence <- @benchmark.review_cadence do %>
+            <div class="benchmark-rule-row">
+              <span class="rounded-full bg-base-200 p-1.5 text-base-content/70">
+                <.icon name="hero-clock-mini" class="size-4" />
+              </span>
+              <p class="text-sm leading-6">{cadence}</p>
+            </div>
+          <% end %>
+        </div>
+      </article>
+    </section>
+  </section>
+</Layouts.app>
