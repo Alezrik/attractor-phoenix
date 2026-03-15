@@ -19,6 +19,9 @@ defmodule AttractorEx.LLMErrorTest do
 
     assert %Error{type: :server, retryable: true} =
              Error.from_http_response("gemini", 503, %{"message" => "unavailable"})
+
+    assert %Error{type: :timeout, retryable: true} =
+             Error.from_http_response("openai", 408, %{"message" => "request timeout"})
   end
 
   test "normalizes invalid request and generic api statuses" do
@@ -30,6 +33,14 @@ defmodule AttractorEx.LLMErrorTest do
 
     assert %Error{type: :api, message: "HTTP 409"} =
              Error.from_http_response("openai", 409, %{})
+
+    assert %Error{type: :api, retry_after_ms: nil} =
+             Error.from_http_response(
+               "openai",
+               400,
+               %{"error" => %{"message" => "bad"}},
+               %{"retry-after" => ["not-a-number"]}
+             )
   end
 
   test "normalizes transport and timeout reasons" do
@@ -50,6 +61,17 @@ defmodule AttractorEx.LLMErrorTest do
              Error.normalize({:unsupported, "no stream"}, provider: "openai")
 
     assert %Error{type: :unknown, raw: :mystery} = Error.normalize(:mystery, provider: "openai")
+
+    assert %Error{provider: "anthropic"} =
+             Error.normalize({:error, "wrapped"}, provider: "anthropic")
+  end
+
+  test "new and retryable helpers expose struct defaults" do
+    assert %Error{type: :api, message: "bad", provider: "openai"} =
+             Error.new(type: :api, message: "bad", provider: "openai")
+
+    assert Error.retryable?(%Error{retryable: true})
+    refute Error.retryable?(:nope)
   end
 
   test "retry policy normalization and retry decisions" do
@@ -82,9 +104,33 @@ defmodule AttractorEx.LLMErrorTest do
     assert RetryPolicy.delay_ms(policy, error, 1) == 7
   end
 
+  test "retry policy returns existing structs and applies jitter within bounds" do
+    policy =
+      %RetryPolicy{
+        max_attempts: 2,
+        base_delay_ms: 100,
+        max_delay_ms: 100,
+        jitter_ratio: 0.5
+      }
+
+    error = %Error{type: :transport, retryable: true}
+
+    assert RetryPolicy.new(policy) == policy
+    assert RetryPolicy.retry?(policy, error, 1)
+
+    delay = RetryPolicy.delay_ms(policy, error, 1)
+    assert delay >= 50
+    assert delay <= 150
+  end
+
   test "retry policy handles nil and malformed input" do
     assert RetryPolicy.new(nil) == nil
     assert %RetryPolicy{max_attempts: 1} = RetryPolicy.new(%{"max_attempts" => -1})
+
+    assert %RetryPolicy{base_delay_ms: 200, max_delay_ms: 2_000, jitter_ratio: 0.1} =
+             RetryPolicy.new(%{"base_delay_ms" => -1, "max_delay_ms" => -1, "jitter_ratio" => -1})
+
+    assert %RetryPolicy{} = RetryPolicy.new(:invalid)
     refute RetryPolicy.enabled?(RetryPolicy.new(%{}))
   end
 end
