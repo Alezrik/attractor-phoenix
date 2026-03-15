@@ -27,6 +27,14 @@ defmodule AttractorPhoenixWeb.Router do
     live "/library/:id/edit", PipelineLibraryLive, :edit
   end
 
+  scope "/api", AttractorPhoenixWeb do
+    pipe_through :api
+
+    get "/authoring/templates", AuthoringController, :templates
+    post "/authoring/analyze", AuthoringController, :analyze
+    post "/authoring/transform", AuthoringController, :transform
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", AttractorPhoenixWeb do
   #   pipe_through :api

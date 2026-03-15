@@ -18,6 +18,7 @@ AttractorEx.Agent.Tool.html
 AttractorEx.Agent.ToolCall.html
 AttractorEx.Agent.ToolRegistry.html
 AttractorEx.Agent.ToolResult.html
+AttractorEx.Authoring.html
 AttractorEx.Checkpoint.html
 AttractorEx.Condition.html
 AttractorEx.Edge.html
@@ -84,6 +85,7 @@ AttractorPhoenix.Mailer.html
 AttractorPhoenix.PipelineLibrary.html
 AttractorPhoenix.html
 AttractorPhoenixWeb.AttractorChannel.html
+AttractorPhoenixWeb.AuthoringController.html
 AttractorPhoenixWeb.BenchmarkLive.html
 AttractorPhoenixWeb.CoreComponents.html
 AttractorPhoenixWeb.DashboardLive.html
@@ -114,8 +116,8 @@ dist/lato-latin-700-normal-2XVSBPG4.woff2
 dist/lato-latin-ext-400-normal-N27NCBWW.woff2
 dist/lato-latin-ext-700-normal-Q2L5DVMW.woff2
 dist/remixicon-ZWU5GQ4X.woff2
-dist/search_data-ED92271E.js
-dist/sidebar_items-4D12FA9A.js
+dist/search_data-37E7AE91.js
+dist/sidebar_items-97981017.js
 http-api.html
 human-in-the-loop.html
 index.html

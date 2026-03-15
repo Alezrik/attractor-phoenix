@@ -14,18 +14,20 @@ This document tracks current compliance against the upstream Attractor specifica
 
 1. `lib/attractor_ex/parser.ex`
 2. `lib/attractor_ex/validator.ex`
-3. `lib/attractor_ex/engine.ex`
-4. `lib/attractor_ex/condition.ex`
-5. `lib/attractor_ex/handlers/*.ex`
+3. `lib/attractor_ex/authoring.ex`
+4. `lib/attractor_ex/engine.ex`
+5. `lib/attractor_ex/condition.ex`
+6. `lib/attractor_ex/handlers/*.ex`
 
 ### Primary Tests
 
 1. `test/attractor_ex/dot_schema_test.exs`
 2. `test/attractor_ex/parser_test.exs`
 3. `test/attractor_ex/validator_test.exs`
-4. `test/attractor_ex/condition_test.exs`
-5. `test/attractor_ex/handlers_test.exs`
-6. `test/attractor_ex/engine_test.exs`
+4. `test/attractor_ex/authoring_test.exs`
+5. `test/attractor_ex/condition_test.exs`
+6. `test/attractor_ex/handlers_test.exs`
+7. `test/attractor_ex/engine_test.exs`
 
 ## Status Summary
 
@@ -247,6 +249,9 @@ Lint diagnostics cover:
 Implemented:
 
 - Extensibility via handlers, backends, and runtime options
+- Canonical authoring fidelity helpers through `AttractorEx.Authoring`
+- Stable DOT serialization from normalized graph structs
+- Canonical builder graph JSON, validator diagnostics, autofix suggestions, and template-backed transform actions
 - Graph transform pipeline through:
   - `graph_transforms`
   - legacy `graph_transform`
@@ -343,6 +348,7 @@ Not yet complete:
 7. CSS and JSON stylesheet parsing plus parser handling of quoted separators, escaped strings, quoted comment markers, CSS comments, shape selectors, `model=` aliasing, single-quoted selector values, dotted handler-type selectors, operational CSS attrs, and invalid selector diagnostics: `model_stylesheet_test.exs` and `parser_test.exs`
 8. Human interviewer adapters, recording wrapper, optional multi-select/inform callbacks, end-to-end `wait.human` multi-select routing, console prompt metadata, first-choice fallback, and server-side question inference and metadata: `handlers_test.exs`, `interviewers_test.exs`, and `interviewer_server_test.exs`
 9. HTTP server mode, persisted and replayable SSE events, pending question flow, answer submission, SVG/DOT/JSON/Mermaid/plain-text graph variants, compatibility aliases, invalid-request handling, pending-question metadata exposure, and restart-safe runtime reload: `http_test.exs`, `http_manager_test.exs`, and `attractor_ex_phx/pub_sub_test.exs`
+10. Builder authoring fidelity, canonical DOT formatting, autofix coverage, and template-backed transforms: `authoring_test.exs` and `authoring_controller_test.exs`
 
 ## Known Gaps vs Spec
 
