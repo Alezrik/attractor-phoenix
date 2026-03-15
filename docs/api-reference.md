@@ -4,6 +4,12 @@
 
 - [AttractorPhoenix](AttractorPhoenix.md): AttractorPhoenix keeps the contexts that define your domain
 and business logic.
+- [AttractorPhoenix.DotGenerator](AttractorPhoenix.DotGenerator.md): Generates AttractorEx DOT graphs from natural-language prompts using the unified LLM client.
+
+- [AttractorPhoenix.LLMProviderDiscovery](AttractorPhoenix.LLMProviderDiscovery.md): Fetches available models for supported providers using provider-native model listing APIs.
+
+- [AttractorPhoenix.LLMSetup](AttractorPhoenix.LLMSetup.md): File-backed storage for provider API keys, discovered models, and default model selection.
+
 - [AttractorPhoenix.Mailer](AttractorPhoenix.Mailer.md)
 - [AttractorPhoenix.PipelineLibrary](AttractorPhoenix.PipelineLibrary.md): File-backed storage for reusable builder pipelines.
 - [AttractorPhoenixWeb](AttractorPhoenixWeb.md): The entrypoint for defining your web interface, such
@@ -24,6 +30,7 @@ used by your application.
 - [AttractorPhoenixWeb.PipelineBuilderLive](AttractorPhoenixWeb.PipelineBuilderLive.md)
 - [AttractorPhoenixWeb.PipelineLibraryLive](AttractorPhoenixWeb.PipelineLibraryLive.md)
 - [AttractorPhoenixWeb.Router](AttractorPhoenixWeb.Router.md)
+- [AttractorPhoenixWeb.SetupLive](AttractorPhoenixWeb.SetupLive.md)
 - [AttractorPhoenixWeb.Telemetry](AttractorPhoenixWeb.Telemetry.md)
 - [AttractorPhoenixWeb.UserSocket](AttractorPhoenixWeb.UserSocket.md)
 - [AttractorEx.SimulationBackend](AttractorEx.SimulationBackend.md): Minimal fallback backend used by `AttractorEx.Handlers.Codergen` in tests and demos.

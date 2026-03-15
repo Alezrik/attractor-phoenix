@@ -16,6 +16,7 @@ defmodule AttractorPhoenix.Application do
       {DNSCluster, query: Application.get_env(:attractor_phoenix, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: AttractorPhoenix.PubSub},
       AttractorPhoenix.PipelineLibrary,
+      AttractorPhoenix.LLMSetup,
       {AttractorExPhx.PubSub,
        name: AttractorPhoenix.AttractorPubSubBridge,
        pubsub_server: AttractorPhoenix.PubSub,

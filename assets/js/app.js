@@ -26,11 +26,70 @@ import {hooks as colocatedHooks} from "phoenix-colocated/attractor_phoenix"
 import {PipelineBuilder} from "./pipeline_builder"
 import topbar from "../vendor/topbar"
 
+const CreateProgressTimer = {
+  mounted() {
+    this.secondsEl = this.el.querySelector("[data-create-elapsed]")
+    this.statusEl = this.el.querySelector("[data-create-status]")
+    this.interval = null
+    this.startedAt = null
+
+    this.onPageLoadingStart = event => {
+      if (!this.isCreateFormEvent(event)) return
+      this.startTimer()
+    }
+
+    this.onPageLoadingStop = event => {
+      if (!this.isCreateFormEvent(event)) return
+      this.stopTimer()
+    }
+
+    window.addEventListener("phx:page-loading-start", this.onPageLoadingStart)
+    window.addEventListener("phx:page-loading-stop", this.onPageLoadingStop)
+  },
+
+  destroyed() {
+    this.stopTimer()
+    window.removeEventListener("phx:page-loading-start", this.onPageLoadingStart)
+    window.removeEventListener("phx:page-loading-stop", this.onPageLoadingStop)
+  },
+
+  isCreateFormEvent(event) {
+    const target = event.detail?.target
+    if (!target) return false
+    if (target.id === "create-pipeline-form") return true
+    return typeof target.closest === "function" && !!target.closest("#create-pipeline-form")
+  },
+
+  startTimer() {
+    if (this.interval) return
+    this.startedAt = Date.now()
+    this.updateTimer()
+    this.interval = window.setInterval(() => this.updateTimer(), 1000)
+    if (this.statusEl) this.statusEl.textContent = "Generating DOT"
+  },
+
+  stopTimer() {
+    if (this.interval) {
+      window.clearInterval(this.interval)
+      this.interval = null
+    }
+    this.startedAt = null
+    if (this.secondsEl) this.secondsEl.textContent = "0s"
+    if (this.statusEl) this.statusEl.textContent = "Ready"
+  },
+
+  updateTimer() {
+    if (!this.secondsEl || !this.startedAt) return
+    const elapsedSeconds = Math.max(0, Math.floor((Date.now() - this.startedAt) / 1000))
+    this.secondsEl.textContent = `${elapsedSeconds}s`
+  },
+}
+
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, PipelineBuilder},
+  hooks: {...colocatedHooks, PipelineBuilder, CreateProgressTimer},
 })
 
 // Show progress bar on live navigation and form submits

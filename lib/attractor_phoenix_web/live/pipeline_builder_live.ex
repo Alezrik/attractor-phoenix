@@ -2,6 +2,8 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
   use AttractorPhoenixWeb, :live_view
 
   alias AttractorExPhx.Client, as: AttractorAPI
+  alias AttractorPhoenix.DotGenerator
+  alias AttractorPhoenix.LLMSetup
   alias AttractorPhoenix.PipelineLibrary
 
   @refresh_interval_ms 1_500
@@ -28,8 +30,13 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
         graph_json: nil,
         loaded_library_entry: nil
       )
+      |> assign_create_state()
 
     {:ok, socket}
+  end
+
+  def handle_params(_params, _uri, %{assigns: %{live_action: :create}} = socket) do
+    {:noreply, assign_create_state(socket)}
   end
 
   @impl true
@@ -45,6 +52,7 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
             loaded_library_entry: entry,
             error: nil
           )
+          |> assign_create_state()
 
         {:error, :not_found} ->
           socket
@@ -57,6 +65,42 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
 
   def handle_params(_params, _uri, socket) do
     {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("change_create", %{"create" => params}, socket) do
+    {:noreply,
+     assign_create_state(
+       socket,
+       Map.get(params, "prompt", ""),
+       Map.get(params, "provider", ""),
+       Map.get(params, "model", "")
+     )}
+  end
+
+  @impl true
+  def handle_event("generate_dot", %{"create" => params}, socket) do
+    prompt = Map.get(params, "prompt", "")
+    provider = Map.get(params, "provider", "")
+    model = Map.get(params, "model", "")
+
+    case DotGenerator.generate(prompt, provider: provider, model: model) do
+      {:ok, dot} ->
+        {:noreply,
+         socket
+         |> assign(
+           dot: dot,
+           form:
+             build_form(dot, socket.assigns.context_json, socket.assigns.loaded_library_entry),
+           error: nil
+         )
+         |> assign_create_state()
+         |> put_flash(:info, "Generated DOT loaded into the builder.")
+         |> push_patch(to: ~p"/builder")}
+
+      {:error, message} ->
+        {:noreply, assign_create_state(socket, prompt, provider, model, message)}
+    end
   end
 
   @impl true
@@ -247,6 +291,64 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
     build_form(dot, context_json, nil)
   end
 
+  defp assign_create_state(socket, prompt \\ "", provider \\ nil, model \\ nil, error \\ nil) do
+    create_form = build_create_form(prompt, provider, model)
+    selected_provider = create_form[:provider].value |> blank_to_nil()
+
+    assign(socket,
+      create_form: create_form,
+      create_provider_options: provider_options(),
+      create_model_options: model_options(selected_provider),
+      create_error: error
+    )
+  end
+
+  defp build_create_form(prompt, provider, model) do
+    defaults = LLMSetup.default_selection()
+    provider = blank_to_nil(provider) || defaults.provider || ""
+
+    model =
+      blank_to_nil(model) ||
+        if provider != "" do
+          provider_default_model(provider, defaults.model)
+        else
+          defaults.model || ""
+        end
+
+    to_form(
+      %{"prompt" => prompt, "provider" => provider, "model" => model || ""},
+      as: :create
+    )
+  end
+
+  defp provider_options do
+    LLMSetup.available_models()
+    |> Enum.map(& &1.provider)
+    |> Enum.uniq()
+    |> Enum.sort()
+    |> Enum.map(&{String.capitalize(&1), &1})
+  end
+
+  defp model_options(nil) do
+    case LLMSetup.default_selection().provider do
+      nil ->
+        model_options("")
+
+      provider ->
+        model_options(provider)
+    end
+  end
+
+  defp model_options(provider) do
+    LLMSetup.available_models()
+    |> Enum.filter(fn model ->
+      is_nil(provider) or provider == "" or model.provider == provider
+    end)
+    |> Enum.map(fn model ->
+      {"#{String.capitalize(model.provider)} / #{model.id}", model.id}
+    end)
+  end
+
   defp build_form(dot, context_json, library_entry) do
     library_entry = library_form_attrs(library_entry)
 
@@ -271,6 +373,30 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
 
   defp library_form_attrs(_entry) do
     %{name: "", description: ""}
+  end
+
+  defp provider_default_model(provider, default_model) do
+    provider_models =
+      LLMSetup.available_models()
+      |> Enum.filter(&(&1.provider == provider))
+
+    cond do
+      default_model && Enum.any?(provider_models, &(&1.id == default_model)) ->
+        default_model
+
+      provider_models != [] ->
+        hd(provider_models).id
+
+      true ->
+        ""
+    end
+  end
+
+  defp blank_to_nil(nil), do: nil
+
+  defp blank_to_nil(value) do
+    trimmed = value |> to_string() |> String.trim()
+    if trimmed == "", do: nil, else: trimmed
   end
 
   defp submit_pipeline(dot, context, "pipelines") do

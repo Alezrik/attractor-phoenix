@@ -333,10 +333,7 @@ const PipelineBuilder = {
       this.sync(false)
     })
 
-    this.propType?.addEventListener("change", () => this.applyNodeTypeVisibility())
-    this.propSave?.addEventListener("click", () => this.saveNodeProperties())
-    this.propDelete?.addEventListener("click", () => this.deleteCurrentNode())
-    this.propAddEdge?.addEventListener("click", () => this.startEdgeFromNodeDialog())
+    this.bindNodePropertyControls()
     this.edgePropSource?.addEventListener("change", () => this.populateEdgeTargetOptions())
     this.edgePropMode?.addEventListener("change", () => this.updateEdgeDialogValueVisibility())
     this.edgePropSave?.addEventListener("click", () => this.saveEdgeProperties())
@@ -357,6 +354,7 @@ const PipelineBuilder = {
     this.dotEl = document.getElementById("pipeline-dot")
     if (!this.dotEl) return
     this.bindDotInput()
+    this.bindNodePropertyControls()
 
     const nextDot = this.dotEl.value
     if (nextDot === this.lastExternalDotValue) return
@@ -373,6 +371,34 @@ const PipelineBuilder = {
       window.clearTimeout(this.dotInputTimer)
       this.dotInputTimer = window.setTimeout(() => this.syncFromDotInput(), 180)
     })
+  },
+
+  bindNodePropertyControls() {
+    this.propsDialog = document.getElementById("node-properties-dialog")
+    this.propType = document.getElementById("node-prop-type")
+    this.propSave = document.getElementById("node-prop-save")
+    this.propDelete = document.getElementById("node-prop-delete")
+    this.propAddEdge = document.getElementById("node-prop-add-edge")
+
+    if (this.propType && this.propType.dataset.builderBound !== "true") {
+      this.propType.dataset.builderBound = "true"
+      this.propType.addEventListener("change", () => this.applyNodeTypeVisibility())
+    }
+
+    if (this.propSave && this.propSave.dataset.builderBound !== "true") {
+      this.propSave.dataset.builderBound = "true"
+      this.propSave.addEventListener("click", () => this.saveNodeProperties())
+    }
+
+    if (this.propDelete && this.propDelete.dataset.builderBound !== "true") {
+      this.propDelete.dataset.builderBound = "true"
+      this.propDelete.addEventListener("click", () => this.deleteCurrentNode())
+    }
+
+    if (this.propAddEdge && this.propAddEdge.dataset.builderBound !== "true") {
+      this.propAddEdge.dataset.builderBound = "true"
+      this.propAddEdge.addEventListener("click", () => this.startEdgeFromNodeDialog())
+    }
   },
 
   parseDot(dotText, options = {}) {
@@ -858,6 +884,14 @@ const PipelineBuilder = {
         event.preventDefault()
         event.stopPropagation()
         this.deleteNode(node.id)
+      })
+      deleteBtn.addEventListener("mousedown", (event) => {
+        event.preventDefault()
+        event.stopPropagation()
+      })
+      deleteBtn.addEventListener("mouseup", (event) => {
+        event.preventDefault()
+        event.stopPropagation()
       })
 
       el.appendChild(label)

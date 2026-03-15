@@ -1,3 +1,10 @@
+01-mission-and-competitive-benchmark.html
+02-runtime-foundation.html
+03-operator-surface-and-debugger.html
+04-builder-and-authoring-fidelity.html
+05-conformance-and-proof.html
+06-unified-llm-and-agent-platform.html
+07-premium-features-and-leadership-criteria.html
 404.html
 AttractorEx.Agent.ApplyPatch.html
 AttractorEx.Agent.BuiltinTools.html
@@ -62,6 +69,9 @@ AttractorExPhx.Client.html
 AttractorExPhx.HTTPServer.html
 AttractorExPhx.PubSub.html
 AttractorExPhx.html
+AttractorPhoenix.DotGenerator.html
+AttractorPhoenix.LLMProviderDiscovery.html
+AttractorPhoenix.LLMSetup.html
 AttractorPhoenix.Mailer.html
 AttractorPhoenix.PipelineLibrary.html
 AttractorPhoenix.html
@@ -78,6 +88,7 @@ AttractorPhoenixWeb.PageHTML.html
 AttractorPhoenixWeb.PipelineBuilderLive.html
 AttractorPhoenixWeb.PipelineLibraryLive.html
 AttractorPhoenixWeb.Router.html
+AttractorPhoenixWeb.SetupLive.html
 AttractorPhoenixWeb.Telemetry.html
 AttractorPhoenixWeb.UserSocket.html
 AttractorPhoenixWeb.html
@@ -94,14 +105,15 @@ dist/lato-latin-700-normal-2XVSBPG4.woff2
 dist/lato-latin-ext-400-normal-N27NCBWW.woff2
 dist/lato-latin-ext-700-normal-Q2L5DVMW.woff2
 dist/remixicon-ZWU5GQ4X.woff2
-dist/search_data-8254E82F.js
-dist/sidebar_items-BA105227.js
+dist/search_data-3B089D0C.js
+dist/sidebar_items-40D862AA.js
 http-api.html
 human-in-the-loop.html
 index.html
 overview.html
 phoenix-adapter.html
 pipeline-engine.html
+plan.html
 readme.html
 search.html
 spec-alignment.html

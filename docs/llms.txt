@@ -9,6 +9,14 @@
   - [Human-in-the-Loop](human-in-the-loop.md)
   - [HTTP API](http-api.md)
   - [Agent Loop](agent-loop.md)
+  - [Implementation Plan](plan.md)
+  - [01. Mission And Competitive Benchmark](01-mission-and-competitive-benchmark.md)
+  - [02. Runtime Foundation](02-runtime-foundation.md)
+  - [03. Operator Surface And Debugger](03-operator-surface-and-debugger.md)
+  - [04. Builder And Authoring Fidelity](04-builder-and-authoring-fidelity.md)
+  - [05. Conformance And Proof](05-conformance-and-proof.md)
+  - [06. Unified LLM And Agent Platform](06-unified-llm-and-agent-platform.md)
+  - [07. Premium Features And Leadership Criteria](07-premium-features-and-leadership-criteria.md)
   - [Spec Alignment](spec-alignment.md)
 
 - References
@@ -21,6 +29,12 @@
 
 - [AttractorPhoenix](AttractorPhoenix.md): AttractorPhoenix keeps the contexts that define your domain
 and business logic.
+- [AttractorPhoenix.DotGenerator](AttractorPhoenix.DotGenerator.md): Generates AttractorEx DOT graphs from natural-language prompts using the unified LLM client.
+
+- [AttractorPhoenix.LLMProviderDiscovery](AttractorPhoenix.LLMProviderDiscovery.md): Fetches available models for supported providers using provider-native model listing APIs.
+
+- [AttractorPhoenix.LLMSetup](AttractorPhoenix.LLMSetup.md): File-backed storage for provider API keys, discovered models, and default model selection.
+
 - [AttractorPhoenix.Mailer](AttractorPhoenix.Mailer.md)
 - [AttractorPhoenix.PipelineLibrary](AttractorPhoenix.PipelineLibrary.md): File-backed storage for reusable builder pipelines.
 - [AttractorPhoenixWeb](AttractorPhoenixWeb.md): The entrypoint for defining your web interface, such
@@ -41,6 +55,7 @@ used by your application.
 - [AttractorPhoenixWeb.PipelineBuilderLive](AttractorPhoenixWeb.PipelineBuilderLive.md)
 - [AttractorPhoenixWeb.PipelineLibraryLive](AttractorPhoenixWeb.PipelineLibraryLive.md)
 - [AttractorPhoenixWeb.Router](AttractorPhoenixWeb.Router.md)
+- [AttractorPhoenixWeb.SetupLive](AttractorPhoenixWeb.SetupLive.md)
 - [AttractorPhoenixWeb.Telemetry](AttractorPhoenixWeb.Telemetry.md)
 - [AttractorPhoenixWeb.UserSocket](AttractorPhoenixWeb.UserSocket.md)
 - [AttractorEx.SimulationBackend](AttractorEx.SimulationBackend.md): Minimal fallback backend used by `AttractorEx.Handlers.Codergen` in tests and demos.
