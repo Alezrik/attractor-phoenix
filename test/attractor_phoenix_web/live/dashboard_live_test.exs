@@ -101,6 +101,62 @@ defmodule AttractorPhoenixWeb.DashboardLiveTest do
     assert render(view) =~ "optional"
   end
 
+  test "debugger route renders URL-backed filters and the event inspector", %{conn: conn} do
+    pipeline_id = "run_debugger_filters_#{System.unique_integer([:positive])}"
+
+    assert {:ok, %{"pipeline_id" => ^pipeline_id}} =
+             AttractorAPI.create_pipeline(wait_human_dot(), %{}, pipeline_id: pipeline_id)
+
+    wait_for_questions(pipeline_id)
+
+    {:ok, view, _html} =
+      live(conn, ~p"/runs/#{pipeline_id}/debugger?focus=questions&search=Approve")
+
+    assert has_element?(view, "#run-debugger-page")
+    assert has_element?(view, "#debugger-filter-form")
+    assert has_element?(view, "#debugger-search[value='Approve']")
+    assert has_element?(view, "#debugger-focus-filter option[selected][value='questions']")
+    assert has_element?(view, "#debugger-timeline")
+    assert has_element?(view, "#debugger-event-inspector")
+    assert has_element?(view, "#debugger-question-inbox")
+
+    view
+    |> element("#debugger-filter-form")
+    |> render_change(%{
+      "filters" => %{
+        "type" => "all",
+        "status" => "all",
+        "node" => "gate",
+        "search" => "",
+        "focus" => "questions"
+      }
+    })
+
+    assert_patch(view, ~p"/runs/#{pipeline_id}/debugger?focus=questions&node=gate")
+  end
+
+  test "debugger answers wait.human questions from the inbox", %{conn: conn} do
+    pipeline_id = "run_debugger_answer_#{System.unique_integer([:positive])}"
+
+    assert {:ok, %{"pipeline_id" => ^pipeline_id}} =
+             AttractorAPI.create_pipeline(wait_human_dot(), %{}, pipeline_id: pipeline_id)
+
+    wait_for_questions(pipeline_id)
+
+    {:ok, view, _html} = live(conn, ~p"/runs/#{pipeline_id}/debugger")
+
+    assert has_element?(view, "#debugger-answer-form-gate")
+    assert has_element?(view, "#debugger-context-diff")
+
+    view
+    |> element("#debugger-answer-form-gate")
+    |> render_submit(%{"question_id" => "gate", "response" => %{"choice" => "A"}})
+
+    wait_for_pipeline_status(pipeline_id, "success")
+
+    refute has_element?(view, "#debugger-answer-form-gate")
+  end
+
   defp success_dot do
     """
     digraph attractor {
