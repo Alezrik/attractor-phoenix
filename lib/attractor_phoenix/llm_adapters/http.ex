@@ -1,5 +1,7 @@
 defmodule AttractorPhoenix.LLMAdapters.HTTP do
-  @moduledoc false
+  @moduledoc """
+  Shared HTTP helpers for native LLM provider adapters.
+  """
 
   alias AttractorEx.LLM.Error
   alias Req.Response
@@ -35,12 +37,7 @@ defmodule AttractorPhoenix.LLMAdapters.HTTP do
       {:cont, {request, response}}
     end
 
-    result =
-      try do
-        req.post(url, headers: headers, json: payload, into: into)
-      after
-        :ok
-      end
+    result = req.post(url, headers: headers, json: payload, into: into)
 
     chunks =
       collector
@@ -52,12 +49,7 @@ defmodule AttractorPhoenix.LLMAdapters.HTTP do
     case result do
       {:ok, %Response{status: status, body: body, headers: response_headers}}
       when status in 200..299 ->
-        streamed_body =
-          cond do
-            is_binary(chunks) and chunks != "" -> chunks
-            is_binary(body) -> body
-            true -> ""
-          end
+        streamed_body = if(chunks != "", do: chunks, else: response_body_text(body))
 
         {:ok,
          %{
@@ -92,4 +84,7 @@ defmodule AttractorPhoenix.LLMAdapters.HTTP do
   end
 
   defp headers_to_map(_headers), do: %{}
+
+  defp response_body_text(body) when is_binary(body), do: body
+  defp response_body_text(_body), do: ""
 end

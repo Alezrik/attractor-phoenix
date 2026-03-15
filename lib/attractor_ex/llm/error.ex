@@ -230,8 +230,6 @@ defmodule AttractorEx.LLM.Error do
     |> Map.new()
   end
 
-  defp normalize_error_details(_other), do: %{}
-
   defp default_message(type, provider) do
     label =
       provider
