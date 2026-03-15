@@ -28,6 +28,7 @@ That means Phoenix code should depend on `AttractorExPhx`, not reach directly in
 3. `AttractorExPhx.PubSub`
    - Phoenix PubSub bridge for push-style pipeline updates.
    - Gives LiveViews and other OTP processes a native subscription interface without polling the HTTP API.
+   - Supports replay-filtered snapshots through `after_sequence:` on subscribe calls.
 
 4. `AttractorExPhx.HTTPServer`
    - Supervision-friendly wrapper around `AttractorEx.start_http_server/1`.
@@ -71,7 +72,8 @@ children = [
 {:ok, snapshot} =
   AttractorExPhx.subscribe_pipeline(pipeline_id,
     pubsub_server: MyApp.PubSub,
-    bridge: MyApp.AttractorPubSubBridge
+    bridge: MyApp.AttractorPubSubBridge,
+    after_sequence: 10
   )
 
 receive do

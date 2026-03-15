@@ -276,6 +276,16 @@ Implemented:
   - oversized request bodies rejected with explicit `413`
   - `no-store` and `nosniff` response headers
   - 1 MB JSON body limit by default
+- Durable HTTP runtime state:
+  - persistent run metadata
+  - append-only persisted event history
+  - persisted pending questions
+  - persisted checkpoint snapshots
+  - artifact indexing for run directories
+- Replay and recovery:
+  - `GET /pipelines/:id/events?after=<sequence>` replay windows
+  - Phoenix PubSub replay-filtered snapshots via `after_sequence`
+  - boot-time reload and recovery of incomplete HTTP-managed runs
 
 ### `10. Condition Expression Language` — `implemented`
 
@@ -332,7 +342,7 @@ Not yet complete:
 6. Graph transform pipeline, spec-style `apply/1` compatibility, built-in variable expansion, runtime preamble synthesis, and transform error handling: `engine_test.exs`
 7. CSS and JSON stylesheet parsing plus parser handling of quoted separators, escaped strings, quoted comment markers, CSS comments, shape selectors, `model=` aliasing, single-quoted selector values, dotted handler-type selectors, operational CSS attrs, and invalid selector diagnostics: `model_stylesheet_test.exs` and `parser_test.exs`
 8. Human interviewer adapters, recording wrapper, optional multi-select/inform callbacks, end-to-end `wait.human` multi-select routing, console prompt metadata, first-choice fallback, and server-side question inference and metadata: `handlers_test.exs`, `interviewers_test.exs`, and `interviewer_server_test.exs`
-9. HTTP server mode, SSE events, pending question flow, answer submission, SVG/DOT/JSON/Mermaid/plain-text graph variants, compatibility aliases, invalid-request handling, and pending-question metadata exposure: `http_test.exs`
+9. HTTP server mode, persisted and replayable SSE events, pending question flow, answer submission, SVG/DOT/JSON/Mermaid/plain-text graph variants, compatibility aliases, invalid-request handling, pending-question metadata exposure, and restart-safe runtime reload: `http_test.exs`, `http_manager_test.exs`, and `attractor_ex_phx/pub_sub_test.exs`
 
 ## Known Gaps vs Spec
 

@@ -37,10 +37,15 @@ defmodule AttractorExPhx.PubSub do
   def subscribe_pipeline(pipeline_id, opts \\ []) when is_binary(pipeline_id) do
     pubsub_server = Keyword.get(opts, :pubsub_server, configured_pubsub_server())
     bridge = Keyword.get(opts, :bridge, configured_bridge())
+    after_sequence = Keyword.get(opts, :after_sequence, 0)
 
     :ok = Phoenix.PubSub.subscribe(pubsub_server, topic(pipeline_id))
 
-    case GenServer.call(bridge, {:ensure_pipeline_subscription, pipeline_id}, :infinity) do
+    case GenServer.call(
+           bridge,
+           {:ensure_pipeline_subscription, pipeline_id, after_sequence},
+           :infinity
+         ) do
       {:ok, _snapshot} = ok ->
         ok
 
@@ -72,10 +77,15 @@ defmodule AttractorExPhx.PubSub do
   end
 
   @impl true
-  def handle_call({:ensure_pipeline_subscription, pipeline_id}, _from, state) do
+  def handle_call({:ensure_pipeline_subscription, pipeline_id, after_sequence}, _from, state) do
     with :ok <- maybe_subscribe_manager(state, pipeline_id),
          {:ok, snapshot} <- Manager.snapshot(state.manager, pipeline_id) do
-      {:reply, {:ok, snapshot}, remember_subscription(state, pipeline_id)}
+      replayed_snapshot =
+        Map.update!(snapshot, "events", fn events ->
+          Enum.filter(events, &(Map.get(&1, "sequence", 0) > after_sequence))
+        end)
+
+      {:reply, {:ok, replayed_snapshot}, remember_subscription(state, pipeline_id)}
     else
       {:error, reason} -> {:reply, {:error, reason}, state}
     end

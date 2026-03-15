@@ -5,7 +5,7 @@ defmodule AttractorExPhx.PubSubTest do
   alias AttractorExPhx.PubSub
 
   setup do
-    manager = start_supervised!({AttractorEx.HTTP.Manager, []})
+    manager = start_supervised!({AttractorEx.HTTP.Manager, store_root: unique_store_root()})
     _pubsub = start_supervised!({Phoenix.PubSub, name: __MODULE__.PubSub})
 
     bridge =
@@ -58,6 +58,20 @@ defmodule AttractorExPhx.PubSubTest do
                     }}
   end
 
+  test "supports replay-filtered subscription snapshots", %{
+    bridge: bridge,
+    pipeline_id: pipeline_id
+  } do
+    assert {:ok, snapshot} =
+             PubSub.subscribe_pipeline(pipeline_id,
+               bridge: bridge,
+               pubsub_server: __MODULE__.PubSub,
+               after_sequence: 1
+             )
+
+    assert Enum.all?(snapshot["events"], &(Map.fetch!(&1, "sequence") > 1))
+  end
+
   defp simple_dot do
     """
     digraph attractor {
@@ -78,6 +92,14 @@ defmodule AttractorExPhx.PubSubTest do
     Path.join([
       "tmp",
       "attractor_ex_phx_pubsub_test",
+      Integer.to_string(System.unique_integer([:positive]))
+    ])
+  end
+
+  defp unique_store_root do
+    Path.join([
+      "tmp",
+      "attractor_ex_phx_store_test",
       Integer.to_string(System.unique_integer([:positive]))
     ])
   end

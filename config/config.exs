@@ -16,6 +16,7 @@ config :attractor_phoenix,
     port: 4041,
     ip: {127, 0, 0, 1},
     base_url: "http://127.0.0.1:4041",
+    store_root: Path.expand("../tmp/attractor_http_store", __DIR__),
     manager: AttractorPhoenix.AttractorHTTP.Manager,
     registry: AttractorPhoenix.AttractorHTTP.Registry
   ]

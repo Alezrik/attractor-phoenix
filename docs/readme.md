@@ -26,7 +26,7 @@ Dependency boundary:
 ```elixir
 AttractorEx.run(dot_source, context_map, opts)
 AttractorEx.resume(dot_source, checkpoint_or_path, opts)
-AttractorEx.start_http_server(port: 4041)
+AttractorEx.start_http_server(port: 4041, store_root: "tmp/attractor_http_store")
 ```
 
 Example:
@@ -47,12 +47,17 @@ digraph attractor {
 checkpoint_path = Path.join(result.logs_root, "checkpoint.json")
 {:ok, resumed} = AttractorEx.resume(dot, checkpoint_path, codergen_backend: MyApp.LLMBackend)
 
-{:ok, server_pid} = AttractorEx.start_http_server(port: 4041)
+{:ok, server_pid} =
+  AttractorEx.start_http_server(port: 4041, store_root: "tmp/attractor_http_store")
 ```
 
 ## HTTP Server Mode
 
 `AttractorEx.start_http_server/1` starts a lightweight Bandit-backed HTTP service around the engine.
+
+The HTTP runtime is durable by default. Run metadata, pending questions, checkpoint
+snapshots, append-only event history, and artifact indexes are persisted under
+`store_root` so the manager can reload and recover runs after restarts.
 
 Implemented endpoints:
 
@@ -93,6 +98,12 @@ Human-in-the-loop web flow:
 2. Poll `GET /pipelines/:id/questions` for pending questions.
 3. Send a choice to `POST /pipelines/:id/questions/:qid/answer`.
 4. Subscribe to `GET /pipelines/:id/events` for SSE status updates.
+
+Replay and recovery details:
+
+1. `GET /pipelines/:id/events?after=<sequence>` replays persisted events after a known sequence number.
+2. Incomplete runs are reloaded on boot and resumed from their latest checkpoint when one exists.
+3. Persisted runs index artifacts discovered under each run directory so operators can inspect generated files alongside checkpoints and events.
 
 ## Configuring LLM Nodes (`codergen`)
 

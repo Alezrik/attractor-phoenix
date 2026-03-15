@@ -75,8 +75,9 @@ defmodule AttractorEx.HTTP.Router do
   get "/pipelines/:id/events" do
     manager = manager!(conn)
     registry = registry!(conn)
+    after_sequence = parse_after_sequence(conn.params["after"])
 
-    with {:ok, events} <- Manager.pipeline_events(manager, id),
+    with {:ok, events} <- Manager.replay_events(manager, id, after_sequence: after_sequence),
          {:ok, pipeline} <- Manager.get_pipeline(manager, id) do
       if events_stream?(conn) do
         conn =
@@ -316,6 +317,17 @@ defmodule AttractorEx.HTTP.Router do
   end
 
   defp events_stream?(conn), do: conn.params["stream"] not in ["false", "0"]
+
+  defp parse_after_sequence(nil), do: 0
+
+  defp parse_after_sequence(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {parsed, ""} when parsed >= 0 -> parsed
+      _ -> 0
+    end
+  end
+
+  defp parse_after_sequence(_value), do: 0
 
   defp sse_loop(conn, status) when status in [:success, :fail, :cancelled], do: conn
 

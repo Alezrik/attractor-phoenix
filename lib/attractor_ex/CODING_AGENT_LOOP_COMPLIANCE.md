@@ -2,6 +2,11 @@
 
 This file maps `AttractorEx.Agent.*` behavior to the upstream coding-agent-loop specification.
 
+The durable HTTP runtime introduced for the runtime-foundation workstream is shared
+execution infrastructure around this layer. It does not change agent-loop session
+semantics directly, but it does provide restart-safe persistence for outer runtime
+surfaces that host those sessions.
+
 ## Source Documents
 
 - Coding-agent loop spec: https://github.com/strongdm/attractor/blob/main/coding-agent-loop-spec.md

@@ -1,10 +1,11 @@
 # `AttractorEx.HTTP.Manager`
 [🔗](https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/http/manager.ex#L1)
 
-GenServer that owns the in-memory state for HTTP-managed pipeline runs.
+GenServer that owns durable runtime state for HTTP-managed pipeline runs.
 
-It tracks pipeline status, events, checkpoints, pending human questions, and event
-subscribers, and acts as the coordination point between the engine and the router.
+Run metadata, event history, checkpoints, pending questions, and artifact indexes are
+persisted through a pluggable run store so HTTP and Phoenix consumers can replay run
+history after process restarts.
 
 # `cancel`
 
@@ -35,6 +36,10 @@ Creates and starts a pipeline run under HTTP management.
 # `record_event`
 
 # `register_question`
+
+# `replay_events`
+
+Returns persisted events after the given sequence number.
 
 # `snapshot`
 

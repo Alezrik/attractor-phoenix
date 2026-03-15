@@ -24,6 +24,7 @@ defmodule AttractorPhoenix.Application do
       {AttractorExPhx.HTTPServer,
        port: Keyword.fetch!(attractor_http_opts, :port),
        ip: Keyword.fetch!(attractor_http_opts, :ip),
+       store_root: Keyword.fetch!(attractor_http_opts, :store_root),
        manager: manager,
        registry: registry,
        name: AttractorPhoenix.AttractorHTTPServer},
