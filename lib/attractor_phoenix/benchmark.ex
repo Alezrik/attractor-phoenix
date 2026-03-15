@@ -3,6 +3,10 @@ defmodule AttractorPhoenix.Benchmark do
   Canonical benchmark contract and current leadership posture for the product surface.
   """
 
+  alias AttractorPhoenix.Conformance
+
+  @conformance Conformance.summary()
+
   @mission_dimensions [
     "Runtime capability",
     "Conformance and implementation rigor",
@@ -68,19 +72,16 @@ defmodule AttractorPhoenix.Benchmark do
       label: "Conformance and proof quality",
       short_label: "Conformance",
       weight: 0.30,
-      score: 3.0,
-      status: "Production-credible baseline",
+      score: @conformance.score,
+      status: "Strong implementation with documented evidence",
       strengths: [
-        "Published compliance matrices and maintained docs exist today.",
-        "Parser, validator, runtime, HTTP, agent-loop, and unified-LLM behavior already have focused automated test coverage."
+        "Published benchmark suites now cover parsing, runtime, state, transport, agent loop, and unified LLM behavior.",
+        "#{@conformance.implemented_scenarios}/#{@conformance.total_scenarios} published conformance scenarios are implemented in a dedicated black-box harness."
       ],
-      gaps: [
-        "The repo does not yet expose a benchmark-grade black-box fixture harness and public scoreboard.",
-        "Evidence is strong, but not yet packaged as a visible competitive benchmark suite."
-      ],
+      gaps: Enum.map(@conformance.gap_ledger, & &1.summary),
       evidence: [
-        "Compliance documentation in docs and lib/attractor_ex",
-        "Automated tests across parser, validator, engine, HTTP, agent, and LLM layers"
+        "Black-box conformance suites under test/attractor_ex/conformance",
+        "Published scoreboard and gap ledger on the benchmark page and docs"
       ]
     },
     %{
@@ -196,6 +197,7 @@ defmodule AttractorPhoenix.Benchmark do
       reference_set: @reference_set,
       benchmark_standard: @benchmark_standard,
       dimensions: @dimensions,
+      conformance: @conformance,
       composite_score: composite,
       leadership_ready?: leadership_ready?(@dimensions),
       current_position: @current_position,
