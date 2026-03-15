@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.40.1">
+    <meta name="project" content="attractor_phoenix v0.1.0">
+
+
+    <title>03. Operator Surface And Debugger — attractor_phoenix v0.1.0</title>
+
+    <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
+
+    <script defer src="dist/sidebar_items-40D862AA.js"></script>
+    <script defer src="docs_config.js"></script>
+    <script defer src="dist/html-YU4BZFVS.js"></script>
+
+  </head>
+  <body>
+    <script>(()=>{var t="ex_doc:settings",e="dark";var o="dark",s="light";var E="sidebar_state",n="closed";var r="sidebar_width";var a="sidebar-open";var i=new URLSearchParams(window.location.search),S=i.get("theme")||JSON.parse(localStorage.getItem(t)||"{}").theme;(S===o||S!==s&&window.matchMedia("(prefers-color-scheme: dark)").matches)&&document.body.classList.add(e);var d=sessionStorage.getItem(E),A=d!==n&&!window.matchMedia(`screen and (max-width: ${768}px)`).matches;document.body.classList.toggle(a,A);var c=sessionStorage.getItem(r);c&&document.body.style.setProperty("--sidebarWidth",`${c}px`);var p=/(Macintosh|iPhone|iPad|iPod)/.test(window.navigator.userAgent);document.documentElement.classList.toggle("apple-os",p);})();
+</script>
+
+<div class="body-wrapper">
+
+<button id="sidebar-menu" class="sidebar-button sidebar-toggle" aria-label="toggle sidebar" aria-controls="sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<nav id="sidebar" class="sidebar">
+
+  <div class="sidebar-header">
+    <div class="sidebar-projectInfo">
+
+        <a href="https://github.com/Alezrik/attractor-phoenix" class="sidebar-projectImage">
+          <img src="assets/logo.svg" alt="attractor_phoenix" />
+        </a>
+
+      <div>
+        <a href="https://github.com/Alezrik/attractor-phoenix" class="sidebar-projectName" translate="no">
+attractor_phoenix
+        </a>
+        <div class="sidebar-projectVersion" translate="no">
+          v0.1.0
+        </div>
+      </div>
+    </div>
+    <ul id="sidebar-list-nav" class="sidebar-list-nav" role="tablist" data-extras="Pages"></ul>
+  </div>
+</nav>
+
+<output role="status" id="toast"></output>
+
+<main class="content page-extra" id="main" data-type="extras">
+  <div id="content" class="content-inner">
+    <div class="top-search">
+      <div class="search-settings">
+        <form class="search-bar" action="search.html">
+          <label class="search-label">
+            <span class="sr-only">Search documentation of attractor_phoenix</span>
+            <div class="search-input-wrapper">
+              <input name="q" type="text" class="search-input" placeholder="Press / to search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <button type="button" tabindex="-1" class="search-close-button" aria-hidden="true">
+                <i class="ri-close-line ri-lg" title="Cancel search"></i>
+              </button>
+            </div>
+          </label>
+        </form>
+        <div class="autocomplete">
+        </div>
+        <div class="engine-selector" data-multiple="false">
+          <button type="button" class="engine-button" aria-label="Select search engine" aria-haspopup="true" aria-expanded="false">
+            <i class="ri-search-2-line" aria-hidden="true"></i>
+            <span class="engine-name">Default</span>
+            <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+          </button>
+          <div class="engine-dropdown" hidden role="menu">
+
+              <button type="button"
+                      class="engine-option"
+                      data-engine-url="search.html?q="
+                      role="menuitemradio"
+                      aria-checked="true">
+                <span class="name">Default</span>
+                <span class="help">In-browser search</span>
+              </button>
+
+          </div>
+        </div>
+        <button class="icon-settings display-settings">
+          <i class="ri-settings-3-line"></i>
+          <span class="sr-only">Settings</span>
+        </button>
+      </div>
+    </div>
+
+<div id="top-content">
+  <div class="heading-with-actions top-heading">
+    <h1>03. Operator Surface And Debugger</h1>
+
+<a href="03-operator-surface-and-debugger.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+  <i class="ri-markdown-line" aria-hidden="true"></i>
+  <span class="sr-only">Copy Markdown</span>
+</a>
+
+
+      <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/docs/plan/03-operator-surface-and-debugger.md#L1" title="View Source" class="icon-action" rel="help">
+        <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        <span class="sr-only">View Source</span>
+      </a>
+
+  </div>
+
+
+<p>This workstream turns the Phoenix app from a useful demo shell into a real operations console.</p><p>Primary inspiration:</p><ol><li><code class="inline">attractor</code> for dashboard and operator-surface thinking</li><li><code class="inline">samueljklee-attractor</code> for core server and event-stream behavior</li><li><code class="inline">kilroy</code> for runtime state that can support richer introspection</li></ol><h2 id="goal" class="section-heading"><a href="#goal" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Goal</span></h2><p>Ship a first-class live operator surface and debugger that materially exceeds the comparison set.</p><h2 id="operator-surface-priorities" class="section-heading"><a href="#operator-surface-priorities" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Operator Surface Priorities</span></h2><ol><li>Subscription-driven updates instead of polling as the primary mechanism</li><li>Deep-linkable run views</li><li>Live pending-question handling</li><li>Searchable and filterable event histories</li><li>Artifact and checkpoint inspection</li></ol><h2 id="debugger-priorities" class="section-heading"><a href="#debugger-priorities" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Debugger Priorities</span></h2><ol><li>Event timeline with typed filtering</li><li>Stage-by-stage execution trace</li><li>Context diff between events and checkpoints</li><li>Retry-chain visualization</li><li>Edge-decision explanation</li><li>Human-gate inbox with answer provenance</li><li>Replay from checkpoint or selected stage</li><li>Compare two runs of the same graph</li></ol><h2 id="work-items" class="section-heading"><a href="#work-items" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Work Items</span></h2><ol><li>Make the dashboard subscribe to pipeline updates instead of relying on refresh loops as the default path.</li><li>Add dedicated run detail routes with deep linking.</li><li>Surface event filtering, grouping, and search.</li><li>Add live pending-question updates and immediate answer feedback.</li><li>Add live artifact refresh and checkpoint refresh without full view reloads.</li><li>Add a debugger LiveView with timeline, diffs, and replay controls.</li><li>Add run comparison and repro export workflows.</li></ol><h2 id="deliverables" class="section-heading"><a href="#deliverables" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Deliverables</span></h2><ol><li>Channel-first dashboard updates</li><li>Run detail page</li><li>Debugger LiveView</li><li>Context and checkpoint diff tools</li><li>Replay controls</li><li>Repro export workflow</li></ol><h2 id="success-criteria" class="section-heading"><a href="#success-criteria" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Success Criteria</span></h2><p>This workstream is done when:</p><ol><li>the main operator experience is live by default</li><li>a run can be inspected at event, stage, context, and artifact level</li><li>replay and comparison are operator-visible features rather than internal concepts</li><li>the debugger clearly feels stronger than the operator surfaces in the reference set</li></ol>
+
+</div>
+
+<div class="bottom-actions" id="bottom-actions">
+  <div class="bottom-actions-item">
+
+      <a href="02-runtime-foundation.html" class="bottom-actions-button" rel="prev">
+        <span class="subheader">
+          ← Previous Page
+        </span>
+        <span class="title">
+02. Runtime Foundation
+        </span>
+      </a>
+
+  </div>
+  <div class="bottom-actions-item">
+
+      <a href="04-builder-and-authoring-fidelity.html" class="bottom-actions-button" rel="next">
+        <span class="subheader">
+          Next Page →
+        </span>
+        <span class="title">
+04. Builder And Authoring Fidelity
+        </span>
+      </a>
+
+  </div>
+</div>
+    <footer class="footer">
+
+        <p>
+
+          <span class="line">
+            <button class="a-main footer-button display-quick-switch" title="Go to package docs">
+              Go to package docs
+            </button>
+
+              <a href="llms.txt" target="_blank">
+                View llms.txt
+              </a>
+
+
+              <a href="attractor_phoenix.epub">
+                Download ePub version
+              </a>
+
+          </span>
+        </p>
+
+        <p class="built-using">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.40.1) for the
+
+            <a href="https://elixir-lang.org" title="Elixir" target="_blank" translate="no">Elixir programming language</a>
+
+        </p>
+
+
+    </footer>
+  </div>
+</main>
+</div>
+
+  </body>
+</html>

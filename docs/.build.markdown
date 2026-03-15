@@ -1,3 +1,10 @@
+01-mission-and-competitive-benchmark.md
+02-runtime-foundation.md
+03-operator-surface-and-debugger.md
+04-builder-and-authoring-fidelity.md
+05-conformance-and-proof.md
+06-unified-llm-and-agent-platform.md
+07-premium-features-and-leadership-criteria.md
 AttractorEx.Agent.ApplyPatch.md
 AttractorEx.Agent.BuiltinTools.md
 AttractorEx.Agent.Event.md
@@ -61,6 +68,9 @@ AttractorExPhx.Client.md
 AttractorExPhx.HTTPServer.md
 AttractorExPhx.PubSub.md
 AttractorExPhx.md
+AttractorPhoenix.DotGenerator.md
+AttractorPhoenix.LLMProviderDiscovery.md
+AttractorPhoenix.LLMSetup.md
 AttractorPhoenix.Mailer.md
 AttractorPhoenix.PipelineLibrary.md
 AttractorPhoenix.md
@@ -77,6 +87,7 @@ AttractorPhoenixWeb.PageHTML.md
 AttractorPhoenixWeb.PipelineBuilderLive.md
 AttractorPhoenixWeb.PipelineLibraryLive.md
 AttractorPhoenixWeb.Router.md
+AttractorPhoenixWeb.SetupLive.md
 AttractorPhoenixWeb.Telemetry.md
 AttractorPhoenixWeb.UserSocket.md
 AttractorPhoenixWeb.md
@@ -91,6 +102,7 @@ llms.txt
 overview.md
 phoenix-adapter.md
 pipeline-engine.md
+plan.md
 readme.md
 spec-alignment.md
 unified_llm_spec_compliance.md

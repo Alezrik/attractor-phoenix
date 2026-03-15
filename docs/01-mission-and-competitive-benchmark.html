@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.40.1">
+    <meta name="project" content="attractor_phoenix v0.1.0">
+
+
+    <title>01. Mission And Competitive Benchmark — attractor_phoenix v0.1.0</title>
+
+    <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
+
+    <script defer src="dist/sidebar_items-40D862AA.js"></script>
+    <script defer src="docs_config.js"></script>
+    <script defer src="dist/html-YU4BZFVS.js"></script>
+
+  </head>
+  <body>
+    <script>(()=>{var t="ex_doc:settings",e="dark";var o="dark",s="light";var E="sidebar_state",n="closed";var r="sidebar_width";var a="sidebar-open";var i=new URLSearchParams(window.location.search),S=i.get("theme")||JSON.parse(localStorage.getItem(t)||"{}").theme;(S===o||S!==s&&window.matchMedia("(prefers-color-scheme: dark)").matches)&&document.body.classList.add(e);var d=sessionStorage.getItem(E),A=d!==n&&!window.matchMedia(`screen and (max-width: ${768}px)`).matches;document.body.classList.toggle(a,A);var c=sessionStorage.getItem(r);c&&document.body.style.setProperty("--sidebarWidth",`${c}px`);var p=/(Macintosh|iPhone|iPad|iPod)/.test(window.navigator.userAgent);document.documentElement.classList.toggle("apple-os",p);})();
+</script>
+
+<div class="body-wrapper">
+
+<button id="sidebar-menu" class="sidebar-button sidebar-toggle" aria-label="toggle sidebar" aria-controls="sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<nav id="sidebar" class="sidebar">
+
+  <div class="sidebar-header">
+    <div class="sidebar-projectInfo">
+
+        <a href="https://github.com/Alezrik/attractor-phoenix" class="sidebar-projectImage">
+          <img src="assets/logo.svg" alt="attractor_phoenix" />
+        </a>
+
+      <div>
+        <a href="https://github.com/Alezrik/attractor-phoenix" class="sidebar-projectName" translate="no">
+attractor_phoenix
+        </a>
+        <div class="sidebar-projectVersion" translate="no">
+          v0.1.0
+        </div>
+      </div>
+    </div>
+    <ul id="sidebar-list-nav" class="sidebar-list-nav" role="tablist" data-extras="Pages"></ul>
+  </div>
+</nav>
+
+<output role="status" id="toast"></output>
+
+<main class="content page-extra" id="main" data-type="extras">
+  <div id="content" class="content-inner">
+    <div class="top-search">
+      <div class="search-settings">
+        <form class="search-bar" action="search.html">
+          <label class="search-label">
+            <span class="sr-only">Search documentation of attractor_phoenix</span>
+            <div class="search-input-wrapper">
+              <input name="q" type="text" class="search-input" placeholder="Press / to search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <button type="button" tabindex="-1" class="search-close-button" aria-hidden="true">
+                <i class="ri-close-line ri-lg" title="Cancel search"></i>
+              </button>
+            </div>
+          </label>
+        </form>
+        <div class="autocomplete">
+        </div>
+        <div class="engine-selector" data-multiple="false">
+          <button type="button" class="engine-button" aria-label="Select search engine" aria-haspopup="true" aria-expanded="false">
+            <i class="ri-search-2-line" aria-hidden="true"></i>
+            <span class="engine-name">Default</span>
+            <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+          </button>
+          <div class="engine-dropdown" hidden role="menu">
+
+              <button type="button"
+                      class="engine-option"
+                      data-engine-url="search.html?q="
+                      role="menuitemradio"
+                      aria-checked="true">
+                <span class="name">Default</span>
+                <span class="help">In-browser search</span>
+              </button>
+
+          </div>
+        </div>
+        <button class="icon-settings display-settings">
+          <i class="ri-settings-3-line"></i>
+          <span class="sr-only">Settings</span>
+        </button>
+      </div>
+    </div>
+
+<div id="top-content">
+  <div class="heading-with-actions top-heading">
+    <h1>01. Mission And Competitive Benchmark</h1>
+
+<a href="01-mission-and-competitive-benchmark.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+  <i class="ri-markdown-line" aria-hidden="true"></i>
+  <span class="sr-only">Copy Markdown</span>
+</a>
+
+
+      <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/docs/plan/01-mission-and-competitive-benchmark.md#L1" title="View Source" class="icon-action" rel="help">
+        <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        <span class="sr-only">View Source</span>
+      </a>
+
+  </div>
+
+
+<p>This document defines the benchmark contract used to judge whether <code class="inline">attractor-phoenix</code> is actually ahead of the strongest reference implementations.</p><p>Primary inspiration source:</p><ul><li><code class="inline">../examples/FOCUSED-RESEARCH.md</code></li></ul><h2 id="mission" class="section-heading"><a href="#mission" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Mission</span></h2><p><code class="inline">attractor-phoenix</code> should become the strongest overall implementation in the reference set across three dimensions at the same time:</p><ol><li>Runtime capability</li><li>Conformance and implementation rigor</li><li>Operator experience and premium product features</li></ol><p>The target is not merely a broader feature list. The target is a system that combines:</p><ol><li>durable execution and resume semantics</li><li>stronger black-box proof of behavior</li><li>a first-class debugger and operator control plane</li><li>a cohesive Attractor + coding-agent + unified-LLM story</li></ol><h2 id="competitive-claim" class="section-heading"><a href="#competitive-claim" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Competitive Claim</span></h2><p>The project should only claim leadership when all of the following are true at the same time:</p><ol><li>Runtime depth is stronger than the best runtime-focused reference.</li><li>Conformance evidence quality is stronger than the best conformance-focused reference.</li><li>Operator experience is stronger than the best dashboard-focused reference.</li><li>Public documentation accurately states both strengths and known gaps.</li></ol><h2 id="reference-set" class="section-heading"><a href="#reference-set" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Reference Set</span></h2><p>The focused research document identifies seven primary comparison points:</p><ol><li><code class="inline">samueljklee-attractor</code></li><li><code class="inline">TheFellow-fkyeah</code></li><li><code class="inline">kilroy</code></li><li><code class="inline">brynary-attractor</code></li><li><code class="inline">smartcomputer-ai-forge</code></li><li><code class="inline">attractor</code></li><li><code class="inline">aliciapaz-attractor-rb</code></li></ol><h2 id="benchmark-standard" class="section-heading"><a href="#benchmark-standard" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Benchmark Standard</span></h2><p>To claim leadership, <code class="inline">attractor-phoenix</code> should exceed the current set in the following way:</p><ol><li>Match or exceed <code class="inline">samueljklee-attractor</code> on execution and server surface.</li><li>Match or exceed <code class="inline">TheFellow-fkyeah</code> on conformance evidence quality.</li><li>Match or exceed <code class="inline">kilroy</code> on durable run state and resume fidelity.</li><li>Match or exceed <code class="inline">brynary-attractor</code> on integration coherence across runtime, agent loop, and unified-LLM abstractions.</li><li>Match or exceed <code class="inline">attractor</code> on dashboard and operator usability.</li><li>Keep explicit honesty like <code class="inline">aliciapaz-attractor-rb</code> and <code class="inline">smartcomputer-ai-forge</code> around what remains incomplete.</li></ol><h2 id="benchmark-dimensions-and-weights" class="section-heading"><a href="#benchmark-dimensions-and-weights" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Benchmark Dimensions And Weights</span></h2><p>Leadership should be scored as a weighted composite so trade-offs are explicit:</p><ol><li>Runtime capability and durability: <code class="inline">40%</code></li><li>Conformance and proof quality: <code class="inline">30%</code></li><li>Operator experience and product surface: <code class="inline">20%</code></li><li>Integration coherence across Attractor + coding-agent + unified LLM: <code class="inline">10%</code></li></ol><p>Each dimension should have:</p><ol><li>measurable criteria</li><li>executable evidence</li><li>explicit gap notes when not complete</li></ol><h2 id="current-position" class="section-heading"><a href="#current-position" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Current Position</span></h2><p>The repository already has a strong base:</p><ol><li>Broad <a href="AttractorEx.html"><code class="inline">AttractorEx</code></a> parser, validator, engine, handlers, HTTP service, SSE, and resume support.</li><li>Human-in-the-loop support, coding-agent loop primitives, and unified LLM foundations.</li><li>Published documentation and maintained compliance matrices.</li><li>Phoenix LiveView surfaces for dashboard, builder, setup, and pipeline library.</li></ol><p>The main gaps are structural:</p><ol><li>Runtime state is still in-memory in the HTTP manager.</li><li>The main UI is more inspector than operator console.</li><li>The builder has its own JavaScript DOT interpretation path.</li><li>Several unified-LLM and appendix-level spec areas remain partial or not implemented.</li><li>Conformance evidence is strong, but not yet packaged as a visible black-box benchmark suite against competing implementations.</li></ol><h2 id="required-evidence-for-leadership" class="section-heading"><a href="#required-evidence-for-leadership" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Required Evidence For Leadership</span></h2><p>The benchmark should treat claims as valid only with reproducible evidence:</p><ol><li>Runtime: restart-safe persistence and replay tests that pass from a clean boot.</li><li>Conformance: black-box fixtures and runners with published pass/fail output.</li><li>Operator surface: live run inspection and debugger workflows demonstrable without internal-only tooling.</li><li>Integration: end-to-end scenario proving runtime + human gate + agent loop + unified LLM behavior in one reproducible path.</li></ol><p>Evidence should be linked in docs and traceable to runnable code or test targets.</p><h2 id="scoring-rubric" class="section-heading"><a href="#scoring-rubric" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Scoring Rubric</span></h2><p>Use a 0-5 score per dimension:</p><ol><li><code class="inline">0</code>: not implemented</li><li><code class="inline">1</code>: partial prototype, not dependable</li><li><code class="inline">2</code>: functional but materially incomplete</li><li><code class="inline">3</code>: production-credible baseline</li><li><code class="inline">4</code>: strong implementation with documented evidence</li><li><code class="inline">5</code>: best-in-set quality with benchmark-grade proof</li></ol><p>Composite score formula:</p><ol><li><code class="inline">(runtime * 0.40) + (conformance * 0.30) + (operator * 0.20) + (integration * 0.10)</code></li></ol><p>Minimum bar to claim leadership:</p><ol><li>Composite score <code class="inline">&gt;= 4.2</code></li><li>No dimension below <code class="inline">4.0</code></li><li>No hidden known-gaps in public docs</li></ol><h2 id="strategic-priorities" class="section-heading"><a href="#strategic-priorities" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Strategic Priorities</span></h2><p>The roadmap should optimize for the following order of importance:</p><ol><li>Durable runtime and replayable state</li><li>First-class debugger</li><li>Canonical builder fidelity</li><li>Black-box conformance leadership</li><li>Completion of the LLM and agent-platform story</li><li>A cohesive operator-grade Phoenix product</li></ol><h2 id="review-cadence" class="section-heading"><a href="#review-cadence" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Review Cadence</span></h2><p>Benchmark reviews should run at a fixed cadence:</p><ol><li>Weekly internal score review against the rubric.</li><li>Milestone-based public docs refresh when a dimension score changes.</li><li>Pre-release leadership check requiring evidence links for all <code class="inline">&gt;= 4.0</code> claims.</li></ol><h2 id="anti-claim-rules" class="section-heading"><a href="#anti-claim-rules" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Anti-Claim Rules</span></h2><p>Do not claim &quot;ahead of the set&quot; if any of the following is true:</p><ol><li>durability or replay depends on in-memory-only state</li><li>conformance status is not backed by executable fixtures</li><li>debugger capabilities exist only as internal diagnostics</li><li>unified LLM or agent-loop claims are broader than current implemented behavior</li></ol>
+
+</div>
+
+<div class="bottom-actions" id="bottom-actions">
+  <div class="bottom-actions-item">
+
+      <a href="plan.html" class="bottom-actions-button" rel="prev">
+        <span class="subheader">
+          ← Previous Page
+        </span>
+        <span class="title">
+Implementation Plan
+        </span>
+      </a>
+
+  </div>
+  <div class="bottom-actions-item">
+
+      <a href="02-runtime-foundation.html" class="bottom-actions-button" rel="next">
+        <span class="subheader">
+          Next Page →
+        </span>
+        <span class="title">
+02. Runtime Foundation
+        </span>
+      </a>
+
+  </div>
+</div>
+    <footer class="footer">
+
+        <p>
+
+          <span class="line">
+            <button class="a-main footer-button display-quick-switch" title="Go to package docs">
+              Go to package docs
+            </button>
+
+              <a href="llms.txt" target="_blank">
+                View llms.txt
+              </a>
+
+
+              <a href="attractor_phoenix.epub">
+                Download ePub version
+              </a>
+
+          </span>
+        </p>
+
+        <p class="built-using">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.40.1) for the
+
+            <a href="https://elixir-lang.org" title="Elixir" target="_blank" translate="no">Elixir programming language</a>
+
+        </p>
+
+
+    </footer>
+  </div>
+</main>
+</div>
+
+  </body>
+</html>

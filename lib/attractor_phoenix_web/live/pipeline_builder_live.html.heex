@@ -1,4 +1,130 @@
-<Layouts.app flash={@flash} current_scope={assigns[:current_scope]} current_path={~p"/builder"}>
+<Layouts.app
+  flash={@flash}
+  current_scope={assigns[:current_scope]}
+  current_path={if @live_action == :create, do: ~p"/create", else: ~p"/builder"}
+>
+  <%= if @live_action == :create do %>
+    <dialog
+      id="create-dialog"
+      open
+      class="fixed inset-0 z-50 grid h-screen w-screen place-items-center bg-transparent p-0 backdrop:bg-black/55"
+    >
+      <div class="w-[min(96vw,48rem)] rounded-[1.75rem] border border-base-300 bg-base-100 p-6 shadow-[0_32px_100px_rgba(15,23,42,0.28)]">
+        <div class="flex items-start justify-between gap-4">
+          <div class="space-y-2">
+            <p class="builder-kicker">Create</p>
+            <h2 class="text-2xl font-bold tracking-tight">Describe the workflow in English</h2>
+            <p class="max-w-2xl text-sm leading-6 text-base-content/70">
+              The app will generate a DOT pipeline, validate it against the local AttractorEx
+              runtime, and load it into the builder for review.
+            </p>
+          </div>
+          <.link navigate={~p"/builder"} id="close-create-dialog" class="builder-btn">
+            Close
+          </.link>
+        </div>
+
+        <%= if @create_error do %>
+          <div
+            id="create-dialog-error"
+            class="mt-4 rounded-2xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
+          >
+            {@create_error}
+          </div>
+        <% end %>
+
+        <.form
+          for={@create_form}
+          id="create-pipeline-form"
+          phx-hook="CreateProgressTimer"
+          phx-change="change_create"
+          phx-submit="generate_dot"
+          class="mt-5 space-y-4 phx-submit-loading:pointer-events-none"
+        >
+          <.input
+            field={@create_form[:prompt]}
+            id="create-prompt"
+            type="textarea"
+            label="What should this pipeline do?"
+            rows="8"
+            placeholder="Example: Review a pull request, ask a human for approval if tests fail, then publish a release summary."
+          />
+
+          <div class="grid gap-4 md:grid-cols-2">
+            <.input
+              field={@create_form[:provider]}
+              id="create-provider"
+              type="select"
+              label="Provider"
+              prompt="Choose a provider"
+              options={@create_provider_options}
+            />
+
+            <.input
+              field={@create_form[:model]}
+              id="create-model"
+              type="select"
+              label="Model"
+              prompt="Choose a model"
+              options={@create_model_options}
+            />
+          </div>
+
+          <p class="text-xs leading-5 text-base-content/60">
+            Add or refresh provider models in <.link
+              navigate={~p"/setup"}
+              class="font-semibold text-sky-600 hover:text-sky-500"
+            >
+              Setup
+            </.link>.
+          </p>
+
+          <div
+            id="create-progress-panel"
+            class="create-progress hidden rounded-[1.25rem] border border-amber-300/45 bg-amber-50/80 p-4 text-slate-900 phx-submit-loading:block"
+          >
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-700/75">
+                  Generation
+                </p>
+                <p class="mt-1 text-sm font-semibold" data-create-status>Ready</p>
+              </div>
+              <div class="rounded-full border border-slate-900/10 bg-white/70 px-3 py-1 text-xs font-semibold">
+                <span data-create-elapsed>0s</span>
+              </div>
+            </div>
+
+            <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-900/8">
+              <div class="create-progress-bar h-full rounded-full"></div>
+            </div>
+
+            <p class="mt-3 text-xs leading-5 text-slate-700/75">
+              You will either return to Builder with the generated DOT loaded, or stay here with a validation error.
+            </p>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <button
+              id="generate-create-dot"
+              type="submit"
+              phx-disable-with="Generating DOT..."
+              class="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-400 disabled:cursor-wait disabled:opacity-75"
+            >
+              Generate DOT
+            </button>
+            <.link
+              navigate={~p"/builder"}
+              class="builder-btn phx-submit-loading:pointer-events-none phx-submit-loading:opacity-50"
+            >
+              Cancel
+            </.link>
+          </div>
+        </.form>
+      </div>
+    </dialog>
+  <% end %>
+
   <section class="space-y-6" id="pipeline-builder-page">
     <div class="rounded-[1.75rem] border border-base-300/70 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.18),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.94),rgba(248,250,252,0.92))] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.12),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.92),rgba(15,23,42,0.84))]">
       <p class="builder-kicker">Graph Studio</p>
@@ -10,6 +136,9 @@
           </p>
         </div>
         <div class="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em] text-base-content/55">
+          <.link navigate={~p"/create"} id="open-create-dialog" class="builder-btn">
+            Create with AI
+          </.link>
           <span class="rounded-full border border-base-300/80 px-3 py-1">
             visual graph editing
           </span>
