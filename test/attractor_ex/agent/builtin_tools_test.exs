@@ -95,8 +95,8 @@ defmodule AttractorEx.Agent.BuiltinToolsTest do
     assert_raise RuntimeError, ~r/shell_command failed: timeout/, fn ->
       run_tool(
         tools["shell_command"],
-        %{"command" => "Start-Sleep -Milliseconds 200", "timeout_ms" => 1},
-        env
+        %{"command" => shell_echo_command("hello")},
+        %AttractorExTest.ExecutionEnv{mode: :shell_timeout}
       )
     end
   end
