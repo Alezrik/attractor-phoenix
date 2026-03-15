@@ -174,12 +174,14 @@ const PipelineBuilder = {
 
     if (!this.dotEl || !this.canvas || !this.edgesSvg) return
 
-    this.state = this.parseDot(this.dotEl.value)
+    this.csrfToken = document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || ""
+    this.state = {graphAttrs: {}, nodes: [], edges: []}
     this.connectMode = false
     this.pendingSource = null
     this.edgeDragSource = null
     this.edgeDragLine = null
     this.nextId = 1
+    this.analysisRequestId = 0
     this.shellEl = document.getElementById("builder-shell")
     this.summaryEl = document.getElementById("workflow-summary")
     this.toggleLeftBtn = document.getElementById("toggle-left-panel")
@@ -266,6 +268,13 @@ const PipelineBuilder = {
     this.graphDefaultFidelity = document.getElementById("graph-default-fidelity")
     this.graphRetryTarget = document.getElementById("graph-retry-target")
     this.graphFallbackRetryTarget = document.getElementById("graph-fallback-retry-target")
+    this.authoringStatus = document.getElementById("builder-authoring-status")
+    this.diagnosticsSummary = document.getElementById("builder-diagnostics-summary")
+    this.diagnosticsList = document.getElementById("builder-diagnostics-list")
+    this.autofixActions = document.getElementById("builder-autofix-actions")
+    this.templateSelect = document.getElementById("builder-template-select")
+    this.loadTemplateBtn = document.getElementById("builder-load-template")
+    this.formatDotBtn = document.getElementById("builder-format-dot")
     this.nodeFieldWraps = {
       id: document.getElementById("node-prop-wrap-id"),
       label: document.getElementById("node-prop-wrap-label"),
@@ -315,7 +324,7 @@ const PipelineBuilder = {
     this.addEndBtn?.addEventListener("click", () => this.addNode("exit"))
     this.clearEdgesBtn?.addEventListener("click", () => {
       this.state.edges = []
-      this.sync()
+      this.sync({ writeDot: true, canonicalize: true })
     })
 
     this.connectBtn?.addEventListener("click", () => {
@@ -326,11 +335,7 @@ const PipelineBuilder = {
     })
 
     this.applyDotBtn?.addEventListener("click", () => {
-      const parsed = this.parseDot(this.dotEl.value)
-      this.state = parsed
-      this.fitNodesInViewport()
-      this.populateGraphFields()
-      this.sync(false)
+      this.analyzeDot(this.dotEl.value, { preservePositions: true, fit: true })
     })
 
     this.bindNodePropertyControls()
@@ -341,13 +346,14 @@ const PipelineBuilder = {
     this.edgeDialog?.addEventListener("close", () => this.handleEdgeDialogClose())
     this.bindGraphInputs()
     this.bindPanelToggles()
+    this.bindAuthoringControls()
 
     this.bindDotInput()
 
-    this.fitNodesInViewport()
-    this.populateGraphFields()
-    this.sync(false)
+    this.renderDiagnostics([], [])
+    this.loadTemplates()
     this.lastExternalDotValue = this.dotEl.value
+    this.analyzeDot(this.dotEl.value, { preservePositions: false, fit: true })
   },
 
   updated() {
@@ -369,8 +375,230 @@ const PipelineBuilder = {
     this.dotEl.dataset.builderBound = "true"
     this.dotEl.addEventListener("input", () => {
       window.clearTimeout(this.dotInputTimer)
-      this.dotInputTimer = window.setTimeout(() => this.syncFromDotInput(), 180)
+      this.dotInputTimer = window.setTimeout(() => this.syncFromDotInput(), 220)
     })
+  },
+
+  bindAuthoringControls() {
+    if (this.loadTemplateBtn && this.loadTemplateBtn.dataset.builderBound !== "true") {
+      this.loadTemplateBtn.dataset.builderBound = "true"
+      this.loadTemplateBtn.addEventListener("click", () => this.applyTemplate())
+    }
+
+    if (this.formatDotBtn && this.formatDotBtn.dataset.builderBound !== "true") {
+      this.formatDotBtn.dataset.builderBound = "true"
+      this.formatDotBtn.addEventListener("click", () => this.runTransform("format"))
+    }
+  },
+
+  async requestJson(url, payload) {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-csrf-token": this.csrfToken,
+      },
+      body: JSON.stringify(payload),
+    })
+
+    let body = {}
+
+    try {
+      body = await response.json()
+    } catch (_error) {
+      body = {}
+    }
+
+    return { ok: response.ok, body }
+  },
+
+  async loadTemplates() {
+    if (!this.templateSelect) return
+
+    try {
+      const response = await fetch("/api/authoring/templates", {
+        headers: { accept: "application/json" },
+      })
+      const body = await response.json()
+      const templates = body.templates || []
+
+      this.templateSelect.innerHTML = [
+        `<option value="">Choose a template</option>`,
+        ...templates.map((template) => (
+          `<option value="${this.escapeHtml(template.id)}">${this.escapeHtml(template.name)}</option>`
+        )),
+      ].join("")
+    } catch (_error) {
+      this.templateSelect.innerHTML = `<option value="">Template load failed</option>`
+    }
+  },
+
+  async applyTemplate() {
+    const templateId = this.templateSelect?.value || ""
+    if (templateId === "") return
+
+    this.setAuthoringStatus("Loading Template", false)
+    const response = await this.requestJson("/api/authoring/transform", {
+      action: "apply_template",
+      template_id: templateId,
+    })
+
+    if (response.ok && response.body.graph) {
+      this.applyCanonicalPayload(response.body, { preservePositions: false, fit: true })
+      return
+    }
+
+    this.handleAuthoringError(response.body)
+  },
+
+  async runTransform(action, extra = {}) {
+    this.setAuthoringStatus("Applying Transform", false)
+    const response = await this.requestJson("/api/authoring/transform", {
+      action,
+      dot: this.getDraftDot(),
+      ...extra,
+    })
+
+    if (response.ok && response.body.graph) {
+      this.applyCanonicalPayload(response.body, { preservePositions: true, fit: true })
+      return
+    }
+
+    this.handleAuthoringError(response.body)
+  },
+
+  async analyzeDot(dotText, options = {}) {
+    const requestId = ++this.analysisRequestId
+    this.setAuthoringStatus("Syncing", false)
+
+    const response = await this.requestJson("/api/authoring/analyze", { dot: dotText })
+    if (requestId !== this.analysisRequestId) return
+
+    if (response.ok && response.body.graph) {
+      this.applyCanonicalPayload(response.body, options)
+      return
+    }
+
+    this.handleAuthoringError(response.body)
+  },
+
+  applyCanonicalPayload(payload, options = {}) {
+    const preservePositions = options.preservePositions !== false
+    const fit = options.fit === true
+    const previousPositions = new Map(
+      (this.state.nodes || []).map((node) => [node.id, { x: node.x, y: node.y }])
+    )
+
+    const graph = payload.graph || {}
+    const nodeEntries = Object.values(graph.nodes || {})
+
+    this.state = {
+      graphAttrs: graph.attrs || {},
+      nodes: nodeEntries.map((node, index) => {
+        const previous = preservePositions ? previousPositions.get(node.id) : null
+        return {
+          id: node.id,
+          type: node.type,
+          attrs: node.attrs || {},
+          x: previous?.x ?? 60 + index * 170,
+          y: previous?.y ?? 80 + (index % 2) * 120,
+        }
+      }),
+      edges: (graph.edges || []).map((edge) => ({
+        from: edge.from,
+        to: edge.to,
+        attrs: edge.attrs || {},
+      })),
+    }
+
+    if (fit) this.fitNodesInViewport()
+    this.populateGraphFields()
+    this.renderDiagnostics(payload.diagnostics || [], payload.autofixes || [])
+    this.sync({ writeDot: false })
+
+    if (this.dotEl && typeof payload.dot === "string") {
+      this.dotEl.value = payload.dot
+      this.lastExternalDotValue = payload.dot
+    }
+
+    this.setAuthoringStatus("Canonical", true)
+  },
+
+  handleAuthoringError(body) {
+    this.renderDiagnostics(body?.diagnostics || [], body?.autofixes || [])
+    this.setAuthoringStatus("Needs Repair", false)
+  },
+
+  setAuthoringStatus(label, ok) {
+    if (!this.authoringStatus) return
+    this.authoringStatus.textContent = label
+    this.authoringStatus.className = [
+      "rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]",
+      ok ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-amber-300 bg-amber-50 text-amber-700",
+    ].join(" ")
+  },
+
+  renderDiagnostics(diagnostics, autofixes) {
+    if (this.diagnosticsSummary) {
+      const counts = diagnostics.reduce((acc, diag) => {
+        const severity = diag.severity || "info"
+        acc[severity] = (acc[severity] || 0) + 1
+        return acc
+      }, {})
+
+      const parts = ["error", "warning", "info"]
+        .filter((severity) => counts[severity])
+        .map((severity) => `${counts[severity]} ${severity}${counts[severity] === 1 ? "" : "s"}`)
+
+      this.diagnosticsSummary.textContent =
+        parts.length > 0 ? parts.join(" | ") : "No validator findings. Builder matches the canonical graph."
+    }
+
+    if (this.autofixActions) {
+      this.autofixActions.innerHTML = (autofixes || []).map((fix) => (
+        `<button type="button" class="builder-btn builder-autofix-btn" data-fix-id="${this.escapeHtml(fix.id)}">${this.escapeHtml(fix.label)}</button>`
+      )).join("")
+
+      this.autofixActions.querySelectorAll("[data-fix-id]").forEach((button) => {
+        button.addEventListener("click", () => this.runTransform("apply_fix", { fix_id: button.dataset.fixId }))
+      })
+    }
+
+    if (this.diagnosticsList) {
+      if (!diagnostics || diagnostics.length === 0) {
+        this.diagnosticsList.innerHTML = `
+          <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700">
+            DOT parses cleanly and validator diagnostics are empty.
+          </div>
+        `
+        return
+      }
+
+      this.diagnosticsList.innerHTML = diagnostics.map((diag) => {
+        const severity = diag.severity || "info"
+        const color =
+          severity === "error"
+            ? "border-red-300 bg-red-50 text-red-700"
+            : severity === "warning"
+              ? "border-amber-300 bg-amber-50 text-amber-800"
+              : "border-sky-300 bg-sky-50 text-sky-700"
+        const location = diag.node_id
+          ? `node ${diag.node_id}`
+          : diag.edge?.from && diag.edge?.to
+            ? `edge ${diag.edge.from} -> ${diag.edge.to}`
+            : "graph"
+
+        return `
+          <div class="rounded-lg border px-3 py-2 ${color}">
+            <div class="flex items-center justify-between gap-3">
+              <span class="font-semibold uppercase tracking-[0.16em]">${this.escapeHtml(severity)}</span>
+              <span class="text-[11px] uppercase tracking-[0.16em]">${this.escapeHtml(location)}</span>
+            </div>
+            <p class="mt-1">${this.escapeHtml(diag.message || "")}</p>
+          </div>
+        `
+      }).join("")
+    }
   },
 
   bindNodePropertyControls() {
@@ -606,7 +834,7 @@ const PipelineBuilder = {
     graphControls.forEach((el) => {
       el?.addEventListener("input", () => {
         this.state.graphAttrs = this.readGraphFields()
-        this.writeDot()
+        this.sync({ writeDot: true, canonicalize: true })
       })
     })
   },
@@ -649,10 +877,12 @@ const PipelineBuilder = {
       y: 60 + this.state.nodes.length * 30,
     })
     this.fitNodesInViewport()
-    this.sync()
+    this.sync({ writeDot: true, canonicalize: true })
   },
 
-  sync(writeDot = true) {
+  sync(options = {}) {
+    const writeDot = options.writeDot !== false
+    const canonicalize = options.canonicalize === true
     this.positionDiamondAnchors()
     this.resolveNodeOverlaps()
     this.renderNodes()
@@ -660,24 +890,12 @@ const PipelineBuilder = {
     this.renderWorkflowSummary()
     this.updateAddButtons()
     if (writeDot) this.writeDot()
+    if (canonicalize) this.analyzeDot(this.getDraftDot(), { preservePositions: true, fit: false })
   },
 
   syncFromDotInput() {
     const dotText = this.dotEl?.value || ""
-    const parsed = this.parseDot(dotText, { useFallback: false })
-
-    // Ignore incomplete/partial DOT edits while the user is still typing.
-    if (parsed.nodes.length === 0 && parsed.edges.length === 0) return
-
-    this.state = {
-      graphAttrs: parsed.graphAttrs || {},
-      nodes: parsed.nodes || [],
-      edges: parsed.edges || [],
-    }
-    this.fitNodesInViewport()
-    this.populateGraphFields()
-    this.sync(false)
-    this.lastExternalDotValue = dotText
+    this.analyzeDot(dotText, { preservePositions: true, fit: true })
   },
 
   bindPanelToggles() {
@@ -940,7 +1158,7 @@ const PipelineBuilder = {
 
     if (targetId && targetId !== this.edgeDragSource) {
       this.addEdge(this.edgeDragSource, targetId, { openDialog: true })
-      this.sync()
+      this.sync({ writeDot: true, canonicalize: true })
     }
 
     this.cancelEdgeDrag()
@@ -1005,7 +1223,7 @@ const PipelineBuilder = {
       node.x = Math.round((nodeX + dx) / GRID_SIZE) * GRID_SIZE
       node.y = Math.round((nodeY + dy) / GRID_SIZE) * GRID_SIZE
       this.clampNodeToViewport(node)
-      this.sync()
+      this.sync({ writeDot: false })
     }
 
     const up = () => {
@@ -1030,7 +1248,7 @@ const PipelineBuilder = {
     }
 
     this.pendingSource = null
-    this.sync()
+    this.sync({ writeDot: true, canonicalize: true })
   },
 
   writeDot() {
@@ -1061,11 +1279,18 @@ const PipelineBuilder = {
     this.lastExternalDotValue = this.dotEl.value
   },
 
+  getDraftDot() {
+    this.writeDot()
+    return this.dotEl?.value || ""
+  },
+
   buildNodeAttrMap(node) {
     const attrs = this.sanitizeNodeAttrs(node.attrs, node.type, node.id)
     const shape = NODE_TYPE_TO_SHAPE[node.type] || "box"
+    const impliedType = this.typeFromShape(shape)
     attrs.shape = shape
     attrs.label = attrs.label || node.id
+    if (node.type && node.type !== impliedType) attrs.type = node.type
     if (node.type === "tool") attrs.tool_command = attrs.tool_command || "echo hello world"
     if (node.type === "exit") delete attrs.type
     if (node.type === "start") delete attrs.type
@@ -1244,7 +1469,7 @@ const PipelineBuilder = {
     node.attrs = this.sanitizeNodeAttrs(this.readNodePropertyAttrs(label, requestedType), requestedType, node.id)
 
     this.fitNodesInViewport()
-    this.sync()
+    this.sync({ writeDot: true, canonicalize: true })
     this.propsDialog?.close()
   },
 
@@ -1274,7 +1499,7 @@ const PipelineBuilder = {
     if (this.currentEditingNodeId === nodeId) this.currentEditingNodeId = null
     if (this.reopenNodePropertiesId === nodeId) this.reopenNodePropertiesId = null
     if (this.edgeDragSource === nodeId) this.cancelEdgeDrag()
-    this.sync()
+    this.sync({ writeDot: true, canonicalize: true })
   },
 
   readNodePropertyAttrs(label, nodeType) {
@@ -1396,7 +1621,7 @@ const PipelineBuilder = {
     const availableTargets = this.state.nodes.filter((node) => node.id !== this.currentEditingNodeId)
     if (availableTargets.length === 0) return
     const edgeIndex = this.addEdge(this.currentEditingNodeId, availableTargets[0].id)
-    this.sync()
+    this.sync({ writeDot: false })
     this.openEdgeProperties(edgeIndex, { reopenNodeId: this.currentEditingNodeId })
   },
 
@@ -1487,7 +1712,7 @@ const PipelineBuilder = {
       })
     )
 
-    this.sync()
+    this.sync({ writeDot: true, canonicalize: true })
     this.edgeDialog?.close()
   },
 
@@ -1503,7 +1728,7 @@ const PipelineBuilder = {
     this.state.edges.splice(edgeIndex, 1)
     this.currentEditingEdgeIndex = null
     this.reopenNodePropertiesId = reopenNodeId
-    if (sync) this.sync()
+    if (sync) this.sync({ writeDot: true, canonicalize: true })
   },
 
   handleEdgeDialogClose() {

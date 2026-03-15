@@ -18,6 +18,7 @@ and business logic.
 as controllers, components, channels, and so on.
 - [AttractorPhoenixWeb.AttractorChannel](AttractorPhoenixWeb.AttractorChannel.md): Phoenix Channel that streams `AttractorEx` pipeline snapshots and live updates.
 
+- [AttractorPhoenixWeb.AuthoringController](AttractorPhoenixWeb.AuthoringController.md)
 - [AttractorPhoenixWeb.BenchmarkLive](AttractorPhoenixWeb.BenchmarkLive.md)
 - [AttractorPhoenixWeb.CoreComponents](AttractorPhoenixWeb.CoreComponents.md): Provides core UI components.
 - [AttractorPhoenixWeb.DashboardLive](AttractorPhoenixWeb.DashboardLive.md)
@@ -36,6 +37,7 @@ used by your application.
 - [AttractorPhoenixWeb.SetupLive](AttractorPhoenixWeb.SetupLive.md)
 - [AttractorPhoenixWeb.Telemetry](AttractorPhoenixWeb.Telemetry.md)
 - [AttractorPhoenixWeb.UserSocket](AttractorPhoenixWeb.UserSocket.md)
+- [AttractorEx.Authoring](AttractorEx.Authoring.md): Canonical authoring helpers for DOT-backed builder workflows.
 - [AttractorEx.SimulationBackend](AttractorEx.SimulationBackend.md): Minimal fallback backend used by `AttractorEx.Handlers.Codergen` in tests and demos.
 
 - EntryPoints

@@ -6,9 +6,10 @@ This folder contains a DOT-driven pipeline engine inspired by strongDM Attractor
 
 1. Parser (`Parser`)
 2. Validator (`Validator`)
-3. Execution engine (`Engine`)
-4. Routing and condition evaluator (`Condition`)
-5. Handler registry + built-in handlers (`Handlers.*`)
+3. Authoring fidelity helpers (`Authoring`)
+4. Execution engine (`Engine`)
+5. Routing and condition evaluator (`Condition`)
+6. Handler registry + built-in handlers (`Handlers.*`)
 
 ## Independence from Phoenix App
 
@@ -27,6 +28,7 @@ Dependency boundary:
 AttractorEx.run(dot_source, context_map, opts)
 AttractorEx.resume(dot_source, checkpoint_or_path, opts)
 AttractorEx.start_http_server(port: 4041, store_root: "tmp/attractor_http_store")
+AttractorEx.Authoring.analyze(dot_source)
 ```
 
 Example:
@@ -49,7 +51,28 @@ checkpoint_path = Path.join(result.logs_root, "checkpoint.json")
 
 {:ok, server_pid} =
   AttractorEx.start_http_server(port: 4041, store_root: "tmp/attractor_http_store")
+
+{:ok, authoring_payload} = AttractorEx.Authoring.analyze(dot)
 ```
+
+## Authoring Fidelity
+
+`AttractorEx.Authoring` exposes canonical builder-facing authoring helpers so UI
+surfaces can stay aligned with engine semantics.
+
+Implemented authoring features:
+
+1. Canonical parse-and-normalize analysis via `AttractorEx.Authoring.analyze/1`
+2. Stable DOT formatting driven from normalized graphs
+3. Canonical graph JSON for builder rendering
+4. Inline validator diagnostics and suggested autofixes
+5. Built-in graph templates and transform actions for builder workflows
+
+Phoenix app authoring endpoints:
+
+1. `GET /api/authoring/templates`
+2. `POST /api/authoring/analyze`
+3. `POST /api/authoring/transform`
 
 ## HTTP Server Mode
 

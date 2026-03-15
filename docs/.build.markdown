@@ -17,6 +17,7 @@ AttractorEx.Agent.Tool.md
 AttractorEx.Agent.ToolCall.md
 AttractorEx.Agent.ToolRegistry.md
 AttractorEx.Agent.ToolResult.md
+AttractorEx.Authoring.md
 AttractorEx.Checkpoint.md
 AttractorEx.Condition.md
 AttractorEx.Edge.md
@@ -83,6 +84,7 @@ AttractorPhoenix.Mailer.md
 AttractorPhoenix.PipelineLibrary.md
 AttractorPhoenix.md
 AttractorPhoenixWeb.AttractorChannel.md
+AttractorPhoenixWeb.AuthoringController.md
 AttractorPhoenixWeb.BenchmarkLive.md
 AttractorPhoenixWeb.CoreComponents.md
 AttractorPhoenixWeb.DashboardLive.md

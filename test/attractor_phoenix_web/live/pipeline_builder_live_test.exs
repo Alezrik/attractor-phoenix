@@ -66,6 +66,9 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLiveTest do
     assert html =~ "node-prop-delete"
     assert html =~ "edge-prop-source"
     assert html =~ "edge-prop-save"
+    assert html =~ "builder-diagnostics-panel"
+    assert html =~ "builder-template-select"
+    assert html =~ "builder-format-dot"
   end
 
   test "builder node type selector covers all runtime node types", %{conn: conn} do
