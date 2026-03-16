@@ -225,20 +225,35 @@ const NODE_TYPE_DEFINITIONS = [
 const PipelineBuilder = {
   mounted() {
     this.dotEl = document.getElementById("pipeline-dot")
+    this.surface = document.getElementById("pipeline-builder")
+    this.worldEl = document.getElementById("builder-world")
     this.canvas = document.getElementById("builder-canvas")
     this.edgesSvg = document.getElementById("builder-edges")
+    this.canvasGrid = document.getElementById("builder-canvas-grid")
+    this.marqueeEl = document.getElementById("builder-marquee")
+    this.minimapEl = document.getElementById("builder-minimap")
+    this.minimapSurface = document.getElementById("builder-minimap-surface")
+    this.minimapNodes = document.getElementById("builder-minimap-nodes")
+    this.minimapViewport = document.getElementById("builder-minimap-viewport")
+    this.viewportBadge = document.getElementById("builder-viewport-badge")
+    this.selectionToolbar = document.getElementById("builder-selection-toolbar")
+    this.selectionCountEl = document.getElementById("builder-selection-count")
 
-    if (!this.dotEl || !this.canvas || !this.edgesSvg) return
+    if (!this.dotEl || !this.surface || !this.worldEl || !this.canvas || !this.edgesSvg) return
 
     this.csrfToken = document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || ""
     this.state = {graphAttrs: {}, nodes: [], edges: []}
+    this.viewport = { x: VIEWPORT_PADDING, y: VIEWPORT_PADDING, zoom: 1, minZoom: 0.35, maxZoom: 1.85 }
     this.connectMode = false
+    this.interactionMode = "select"
     this.pendingSource = null
     this.edgeDragSource = null
     this.edgeDragLine = null
+    this.activePointerSession = null
     this.nextId = 1
     this.analysisRequestId = 0
     this.selectedNodeId = null
+    this.selectedNodeIds = new Set()
     this.commandResults = []
     this.activeCommandIndex = 0
     this.commandUsage = this.loadCommandUsage()
@@ -346,6 +361,19 @@ const PipelineBuilder = {
     this.shortcutsBtn = document.getElementById("open-builder-shortcuts")
     this.shortcutsDialog = document.getElementById("builder-shortcuts-dialog")
     this.closeShortcutsBtn = document.getElementById("close-builder-shortcuts")
+    this.zoomInBtn = document.getElementById("builder-zoom-in")
+    this.zoomOutBtn = document.getElementById("builder-zoom-out")
+    this.fitViewBtn = document.getElementById("builder-fit-view")
+    this.resetViewBtn = document.getElementById("builder-reset-view")
+    this.minimapFitBtn = document.getElementById("builder-minimap-fit")
+    this.interactionSelectBtn = document.getElementById("builder-interaction-select")
+    this.interactionPanBtn = document.getElementById("builder-interaction-pan")
+    this.canvasConnectBtn = document.getElementById("builder-canvas-connect")
+    this.alignHorizontalBtn = document.getElementById("builder-align-horizontal")
+    this.alignVerticalBtn = document.getElementById("builder-align-vertical")
+    this.distributeHorizontalBtn = document.getElementById("builder-distribute-horizontal")
+    this.duplicateSelectionBtn = document.getElementById("builder-duplicate-selection")
+    this.deleteSelectionBtn = document.getElementById("builder-delete-selection")
     this.runPipelineBtn = document.getElementById("run-pipeline")
     this.savePipelineLibraryBtn = document.getElementById("save-pipeline-library")
     this.submitPipelineBtn = document.getElementById("submit-pipeline")
@@ -420,12 +448,14 @@ const PipelineBuilder = {
     this.bindAuthoringControls()
     this.bindCommandPalette()
     this.bindCanvasTracking()
+    this.bindViewportControls()
     this.bindKeyboardShortcuts()
 
     this.bindDotInput()
 
     this.renderDiagnostics([], [])
     this.loadTemplates()
+    this.applyInteractionMode()
     this.lastExternalDotValue = this.dotEl.value
     this.analyzeDot(this.dotEl.value, { preservePositions: false, fit: true })
   },
@@ -447,6 +477,7 @@ const PipelineBuilder = {
     window.removeEventListener("keydown", this.boundKeydown)
     window.removeEventListener("builder:command-palette:open", this.boundOpenPalette)
     window.removeEventListener("builder:shortcuts:open", this.boundOpenShortcuts)
+    window.removeEventListener("resize", this.boundResize)
   },
 
   bindDotInput() {
@@ -472,30 +503,157 @@ const PipelineBuilder = {
   },
 
   bindCanvasTracking() {
-    if (!this.canvas || this.canvas.dataset.pointerBound === "true") return
+    if (!this.surface || this.surface.dataset.pointerBound === "true") return
 
-    this.canvas.dataset.pointerBound = "true"
+    this.surface.dataset.pointerBound = "true"
     const trackPointer = (event) => {
-      const rect = this.canvas.getBoundingClientRect()
+      const rect = this.surface.getBoundingClientRect()
+      const inside =
+        event.clientX >= rect.left &&
+        event.clientX <= rect.right &&
+        event.clientY >= rect.top &&
+        event.clientY <= rect.bottom
+      const world = this.clientPointToWorld(event.clientX, event.clientY)
       this.lastPointer = {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top,
-        inside: event.clientX >= rect.left &&
-          event.clientX <= rect.right &&
-          event.clientY >= rect.top &&
-          event.clientY <= rect.bottom,
+        x: world.x,
+        y: world.y,
+        screenX: event.clientX - rect.left,
+        screenY: event.clientY - rect.top,
+        inside,
       }
     }
 
-    this.canvas.addEventListener("mousemove", trackPointer)
-    this.canvas.addEventListener("mousedown", trackPointer)
-    this.canvas.addEventListener("click", (event) => {
-      if (event.target !== this.canvas) return
-      if (this.selectedNodeId) {
-        this.selectedNodeId = null
-        this.sync({ writeDot: false, canonicalize: false })
+    this.surface.addEventListener("mousemove", trackPointer)
+    this.surface.addEventListener("mousedown", trackPointer)
+    this.surface.addEventListener("wheel", (event) => this.handleSurfaceWheel(event), { passive: false })
+    this.surface.addEventListener("mousedown", (event) => this.handleSurfacePointerDown(event))
+    this.surface.addEventListener("click", (event) => this.handleSurfaceClick(event))
+
+    if (this.minimapSurface && this.minimapSurface.dataset.builderBound !== "true") {
+      this.minimapSurface.dataset.builderBound = "true"
+      this.minimapSurface.addEventListener("mousedown", (event) => this.handleMinimapPointerDown(event))
+    }
+  },
+
+  bindViewportControls() {
+    if (this.zoomInBtn && this.zoomInBtn.dataset.builderBound !== "true") {
+      this.zoomInBtn.dataset.builderBound = "true"
+      this.zoomInBtn.addEventListener("click", () => this.zoomBy(1.12))
+    }
+
+    if (this.zoomOutBtn && this.zoomOutBtn.dataset.builderBound !== "true") {
+      this.zoomOutBtn.dataset.builderBound = "true"
+      this.zoomOutBtn.addEventListener("click", () => this.zoomBy(1 / 1.12))
+    }
+
+    if (this.fitViewBtn && this.fitViewBtn.dataset.builderBound !== "true") {
+      this.fitViewBtn.dataset.builderBound = "true"
+      this.fitViewBtn.addEventListener("click", () => this.fitView())
+    }
+
+    if (this.resetViewBtn && this.resetViewBtn.dataset.builderBound !== "true") {
+      this.resetViewBtn.dataset.builderBound = "true"
+      this.resetViewBtn.addEventListener("click", () => this.resetView())
+    }
+
+    if (this.minimapFitBtn && this.minimapFitBtn.dataset.builderBound !== "true") {
+      this.minimapFitBtn.dataset.builderBound = "true"
+      this.minimapFitBtn.addEventListener("click", () => this.fitView())
+    }
+
+    if (this.interactionSelectBtn && this.interactionSelectBtn.dataset.builderBound !== "true") {
+      this.interactionSelectBtn.dataset.builderBound = "true"
+      this.interactionSelectBtn.addEventListener("click", () => this.setInteractionMode("select"))
+    }
+
+    if (this.interactionPanBtn && this.interactionPanBtn.dataset.builderBound !== "true") {
+      this.interactionPanBtn.dataset.builderBound = "true"
+      this.interactionPanBtn.addEventListener("click", () => this.setInteractionMode("pan"))
+    }
+
+    if (this.canvasConnectBtn && this.canvasConnectBtn.dataset.builderBound !== "true") {
+      this.canvasConnectBtn.dataset.builderBound = "true"
+      this.canvasConnectBtn.addEventListener("click", () => this.toggleConnectMode())
+    }
+
+    if (this.alignHorizontalBtn && this.alignHorizontalBtn.dataset.builderBound !== "true") {
+      this.alignHorizontalBtn.dataset.builderBound = "true"
+      this.alignHorizontalBtn.addEventListener("click", () => this.alignSelection("horizontal"))
+    }
+
+    if (this.alignVerticalBtn && this.alignVerticalBtn.dataset.builderBound !== "true") {
+      this.alignVerticalBtn.dataset.builderBound = "true"
+      this.alignVerticalBtn.addEventListener("click", () => this.alignSelection("vertical"))
+    }
+
+    if (this.distributeHorizontalBtn && this.distributeHorizontalBtn.dataset.builderBound !== "true") {
+      this.distributeHorizontalBtn.dataset.builderBound = "true"
+      this.distributeHorizontalBtn.addEventListener("click", () => this.distributeSelection("horizontal"))
+    }
+
+    if (this.duplicateSelectionBtn && this.duplicateSelectionBtn.dataset.builderBound !== "true") {
+      this.duplicateSelectionBtn.dataset.builderBound = "true"
+      this.duplicateSelectionBtn.addEventListener("click", () => this.duplicateSelection())
+    }
+
+    if (this.deleteSelectionBtn && this.deleteSelectionBtn.dataset.builderBound !== "true") {
+      this.deleteSelectionBtn.dataset.builderBound = "true"
+      this.deleteSelectionBtn.addEventListener("click", () => this.deleteSelection())
+    }
+
+    if (!this.boundResize) {
+      this.boundResize = () => {
+        this.updateWorldFrame()
+        this.applyViewportTransform()
+        this.renderMinimap()
       }
-    })
+      window.addEventListener("resize", this.boundResize)
+    }
+  },
+
+  handleSurfaceWheel(event) {
+    if (!this.surface) return
+    event.preventDefault()
+    const multiplier = event.deltaY < 0 ? 1.08 : 1 / 1.08
+    this.zoomBy(multiplier, { clientX: event.clientX, clientY: event.clientY })
+  },
+
+  handleSurfacePointerDown(event) {
+    if (event.button !== 0) return
+    if (!this.surfaceBackgroundHit(event.target)) return
+
+    if (this.connectMode) {
+      this.clearSelection({ sync: true })
+      return
+    }
+
+    if (this.interactionMode === "pan" && !event.shiftKey) {
+      this.startViewportPan(event)
+      return
+    }
+
+    this.startMarqueeSelection(event)
+  },
+
+  handleSurfaceClick(event) {
+    if (!this.surfaceBackgroundHit(event.target)) return
+    if (this.activePointerSession?.kind === "marquee") return
+    this.clearSelection({ sync: true })
+  },
+
+  surfaceBackgroundHit(target) {
+    if (!(target instanceof HTMLElement || target instanceof SVGElement)) return false
+    if (target.closest(".builder-canvas-controls, .builder-minimap, .builder-selection-toolbar, .builder-node")) {
+      return false
+    }
+
+    return (
+      target === this.surface ||
+      target === this.canvas ||
+      target === this.worldEl ||
+      target === this.canvasGrid ||
+      target === this.edgesSvg
+    )
   },
 
   bindCommandPalette() {
@@ -667,11 +825,13 @@ const PipelineBuilder = {
   },
 
   getViewportCenterPosition() {
-    if (!this.canvas) return { x: 80, y: 60 }
+    if (!this.surface) return { x: 80, y: 60 }
 
+    const rect = this.surface.getBoundingClientRect()
+    const world = this.clientPointToWorld(rect.left + rect.width / 2, rect.top + rect.height / 2)
     return this.normalizeInsertPosition({
-      x: this.canvas.clientWidth / 2 - NODE_WIDTH / 2,
-      y: this.canvas.clientHeight / 2 - NODE_HEIGHT / 2,
+      x: world.x - NODE_WIDTH / 2,
+      y: world.y - NODE_HEIGHT / 2,
     })
   },
 
@@ -683,6 +843,199 @@ const PipelineBuilder = {
 
     this.clampNodeToViewport(node)
     return node
+  },
+
+  clientPointToWorld(clientX, clientY) {
+    const rect = this.surface?.getBoundingClientRect()
+    if (!rect) return { x: 0, y: 0 }
+
+    return {
+      x: (clientX - rect.left - this.viewport.x) / this.viewport.zoom,
+      y: (clientY - rect.top - this.viewport.y) / this.viewport.zoom,
+    }
+  },
+
+  worldPointToScreen(point) {
+    return {
+      x: point.x * this.viewport.zoom + this.viewport.x,
+      y: point.y * this.viewport.zoom + this.viewport.y,
+    }
+  },
+
+  clampZoom(value) {
+    return Math.min(this.viewport.maxZoom, Math.max(this.viewport.minZoom, value))
+  },
+
+  setViewport(nextViewport = {}) {
+    this.viewport = {
+      ...this.viewport,
+      ...nextViewport,
+      zoom: this.clampZoom(nextViewport.zoom ?? this.viewport.zoom),
+    }
+    this.applyViewportTransform()
+    this.renderMinimap()
+    this.renderSelectionToolbar()
+  },
+
+  zoomBy(multiplier, anchor = null) {
+    const rect = this.surface?.getBoundingClientRect()
+    if (!rect) return
+
+    const clientX = anchor?.clientX ?? rect.left + rect.width / 2
+    const clientY = anchor?.clientY ?? rect.top + rect.height / 2
+    const before = this.clientPointToWorld(clientX, clientY)
+    const zoom = this.clampZoom(this.viewport.zoom * multiplier)
+    const x = clientX - rect.left - before.x * zoom
+    const y = clientY - rect.top - before.y * zoom
+    this.setViewport({ x, y, zoom })
+  },
+
+  resetView() {
+    this.setViewport({ x: VIEWPORT_PADDING, y: VIEWPORT_PADDING, zoom: 1 })
+  },
+
+  setInteractionMode(mode) {
+    this.interactionMode = mode === "pan" ? "pan" : "select"
+    if (this.interactionMode === "pan") this.toggleConnectMode(false)
+    this.applyInteractionMode()
+  },
+
+  applyInteractionMode() {
+    if (this.surface) this.surface.dataset.interactionMode = this.interactionMode
+    if (this.interactionSelectBtn) {
+      this.interactionSelectBtn.dataset.active = this.interactionMode === "select" ? "true" : "false"
+    }
+    if (this.interactionPanBtn) {
+      this.interactionPanBtn.dataset.active = this.interactionMode === "pan" ? "true" : "false"
+    }
+    this.updateViewportBadge()
+  },
+
+  updateViewportBadge() {
+    if (!this.viewportBadge) return
+    const mode = this.connectMode ? "Connect" : this.interactionMode === "pan" ? "Pan" : "Select"
+    this.viewportBadge.textContent = `${Math.round(this.viewport.zoom * 100)}% · ${mode}`
+  },
+
+  startViewportPan(event) {
+    event.preventDefault()
+    const startX = event.clientX
+    const startY = event.clientY
+    const origin = { x: this.viewport.x, y: this.viewport.y }
+    this.activePointerSession = { kind: "pan" }
+
+    const move = (moveEvent) => {
+      this.setViewport({
+        x: origin.x + (moveEvent.clientX - startX),
+        y: origin.y + (moveEvent.clientY - startY),
+      })
+    }
+
+    const up = () => {
+      window.removeEventListener("mousemove", move)
+      window.removeEventListener("mouseup", up)
+      this.activePointerSession = null
+    }
+
+    window.addEventListener("mousemove", move)
+    window.addEventListener("mouseup", up)
+  },
+
+  startMarqueeSelection(event) {
+    if (!this.surface || !this.marqueeEl) return
+    event.preventDefault()
+
+    const rect = this.surface.getBoundingClientRect()
+    const startScreenX = event.clientX - rect.left
+    const startScreenY = event.clientY - rect.top
+    const startWorld = this.clientPointToWorld(event.clientX, event.clientY)
+    const append = event.shiftKey
+    const baseSelection = new Set(append ? this.selectedNodeIds : [])
+    this.activePointerSession = { kind: "marquee" }
+    this.marqueeEl.classList.remove("hidden")
+
+    const move = (moveEvent) => {
+      const currentScreenX = moveEvent.clientX - rect.left
+      const currentScreenY = moveEvent.clientY - rect.top
+      const currentWorld = this.clientPointToWorld(moveEvent.clientX, moveEvent.clientY)
+      const left = Math.min(startScreenX, currentScreenX)
+      const top = Math.min(startScreenY, currentScreenY)
+      const width = Math.abs(currentScreenX - startScreenX)
+      const height = Math.abs(currentScreenY - startScreenY)
+
+      this.marqueeEl.style.left = `${left}px`
+      this.marqueeEl.style.top = `${top}px`
+      this.marqueeEl.style.width = `${width}px`
+      this.marqueeEl.style.height = `${height}px`
+
+      const minX = Math.min(startWorld.x, currentWorld.x)
+      const minY = Math.min(startWorld.y, currentWorld.y)
+      const maxX = Math.max(startWorld.x, currentWorld.x)
+      const maxY = Math.max(startWorld.y, currentWorld.y)
+      const selected = this.state.nodes
+        .filter((node) =>
+          node.x + NODE_WIDTH >= minX &&
+          node.x <= maxX &&
+          node.y + NODE_HEIGHT >= minY &&
+          node.y <= maxY
+        )
+        .map((node) => node.id)
+
+      this.selectedNodeIds = new Set([...baseSelection, ...selected])
+      this.selectedNodeId = selected[selected.length - 1] || [...baseSelection][0] || null
+      this.renderSelectionToolbar()
+      this.renderNodes()
+    }
+
+    const up = () => {
+      window.removeEventListener("mousemove", move)
+      window.removeEventListener("mouseup", up)
+      this.marqueeEl.classList.add("hidden")
+      this.activePointerSession = null
+      this.sync({ writeDot: false, canonicalize: false })
+    }
+
+    window.addEventListener("mousemove", move)
+    window.addEventListener("mouseup", up)
+  },
+
+  handleMinimapPointerDown(event) {
+    if (!this.minimapSurface) return
+    event.preventDefault()
+    const moveViewport = (moveEvent) => {
+      const position = this.readMinimapPosition(moveEvent)
+      if (!position) return
+      this.centerViewportOn(position.x, position.y)
+    }
+
+    const up = () => {
+      window.removeEventListener("mousemove", moveViewport)
+      window.removeEventListener("mouseup", up)
+    }
+
+    moveViewport(event)
+    window.addEventListener("mousemove", moveViewport)
+    window.addEventListener("mouseup", up)
+  },
+
+  readMinimapPosition(event) {
+    const rect = this.minimapSurface?.getBoundingClientRect()
+    if (!rect) return null
+    const bounds = this.getGraphBounds()
+    const width = Math.max(1, bounds.maxX - bounds.minX)
+    const height = Math.max(1, bounds.maxY - bounds.minY)
+    const x = bounds.minX + ((event.clientX - rect.left) / rect.width) * width
+    const y = bounds.minY + ((event.clientY - rect.top) / rect.height) * height
+    return { x, y }
+  },
+
+  centerViewportOn(worldX, worldY) {
+    const rect = this.surface?.getBoundingClientRect()
+    if (!rect) return
+    this.setViewport({
+      x: rect.width / 2 - worldX * this.viewport.zoom,
+      y: rect.height / 2 - worldY * this.viewport.zoom,
+    })
   },
 
   getActionDefinitions() {
@@ -766,12 +1119,16 @@ const PipelineBuilder = {
         id: "delete-selection",
         kind: "action",
         category: "Canvas",
-        title: "Delete Selected Node",
-        subtitle: this.selectedNodeId ? `Remove ${this.selectedNodeId} from the canvas.` : "Select a node, then delete it.",
+        title: "Delete Selection",
+        subtitle: this.selectedNodeIds.size > 1
+          ? `Remove ${this.selectedNodeIds.size} selected nodes from the canvas.`
+          : this.selectedNodeId
+            ? `Remove ${this.selectedNodeId} from the canvas.`
+            : "Select a node, then delete it.",
         shortcut: "Backspace",
         keywords: ["delete", "remove", "selection", "node"],
-        available: () => !!this.selectedNodeId,
-        execute: () => this.deleteNode(this.selectedNodeId),
+        available: () => this.selectedNodeIds.size > 0,
+        execute: () => this.deleteSelection(),
       },
       {
         id: "run-pipeline",
@@ -1093,9 +1450,7 @@ const PipelineBuilder = {
       })),
     }
 
-    if (this.selectedNodeId && !this.state.nodes.some((node) => node.id === this.selectedNodeId)) {
-      this.selectedNodeId = null
-    }
+    this.ensureSelectionValidity()
 
     if (fit) this.fitNodesInViewport()
     this.populateGraphFields()
@@ -1464,16 +1819,22 @@ const PipelineBuilder = {
       y: position.y,
     })
     this.selectedNodeId = id
+    this.selectedNodeIds = new Set([id])
     this.sync({ writeDot: true, canonicalize: true })
   },
 
   sync(options = {}) {
     const writeDot = options.writeDot !== false
     const canonicalize = options.canonicalize === true
+    this.ensureSelectionValidity()
     this.positionDiamondAnchors()
     this.resolveNodeOverlaps()
+    this.updateWorldFrame()
+    this.applyViewportTransform()
     this.renderNodes()
     this.renderEdges()
+    this.renderMinimap()
+    this.renderSelectionToolbar()
     this.renderWorkflowSummary()
     this.updateAddButtons()
     if (this.commandPaletteDialog?.open) this.refreshCommandPalette()
@@ -1489,15 +1850,21 @@ const PipelineBuilder = {
   toggleConnectMode(force = null) {
     this.connectMode = force === null ? !this.connectMode : !!force
     this.pendingSource = null
+    if (this.connectMode) this.interactionMode = "select"
     if (this.connectBtn) {
       this.connectBtn.dataset.active = this.connectMode ? "true" : "false"
       this.connectBtn.textContent = this.connectMode ? "Adding Edges..." : "Add Edges"
     }
+    if (this.canvasConnectBtn) {
+      this.canvasConnectBtn.dataset.active = this.connectMode ? "true" : "false"
+      this.canvasConnectBtn.textContent = this.connectMode ? "Connecting" : "Connect"
+    }
+    this.applyInteractionMode()
   },
 
   fitView() {
     this.fitNodesInViewport()
-    this.sync({ writeDot: true, canonicalize: false })
+    this.sync({ writeDot: false, canonicalize: false })
   },
 
   bindPanelToggles() {
@@ -1670,7 +2037,7 @@ const PipelineBuilder = {
     for (const node of this.state.nodes) {
       const el = document.createElement("div")
       el.className = `builder-node builder-node-${node.type}`
-      if (node.id === this.selectedNodeId) el.classList.add("builder-node-selected")
+      if (this.selectedNodeIds.has(node.id)) el.classList.add("builder-node-selected")
       el.dataset.id = node.id
       const displayLabel = (node.attrs?.label || node.id).trim()
       el.style.left = `${node.x}px`
@@ -1695,7 +2062,7 @@ const PipelineBuilder = {
         }
       })
       label.addEventListener("mouseup", (event) => this.completeEdgeDrag(event, node.id))
-      label.addEventListener("click", () => this.handleNodeClick(node.id))
+      label.addEventListener("click", (event) => this.handleNodeClick(event, node.id))
       label.addEventListener("dblclick", (event) => {
         event.preventDefault()
         event.stopPropagation()
@@ -1731,13 +2098,14 @@ const PipelineBuilder = {
     if (!sourceNode) return
 
     this.edgeDragSource = nodeId
+    const center = this.getNodeCenter(sourceNode)
 
     const line = document.createElementNS("http://www.w3.org/2000/svg", "line")
     line.classList.add("builder-edge-preview")
-    line.setAttribute("x1", `${sourceNode.x + 64}`)
-    line.setAttribute("y1", `${sourceNode.y + 20}`)
-    line.setAttribute("x2", `${sourceNode.x + 64}`)
-    line.setAttribute("y2", `${sourceNode.y + 20}`)
+    line.setAttribute("x1", `${center.x}`)
+    line.setAttribute("y1", `${center.y}`)
+    line.setAttribute("x2", `${center.x}`)
+    line.setAttribute("y2", `${center.y}`)
     this.edgesSvg.appendChild(line)
     this.edgeDragLine = line
 
@@ -1748,10 +2116,10 @@ const PipelineBuilder = {
   },
 
   updateEdgeDrag(event) {
-    if (!this.edgeDragLine || !this.edgesSvg) return
-    const rect = this.edgesSvg.getBoundingClientRect()
-    this.edgeDragLine.setAttribute("x2", `${event.clientX - rect.left}`)
-    this.edgeDragLine.setAttribute("y2", `${event.clientY - rect.top}`)
+    if (!this.edgeDragLine) return
+    const world = this.clientPointToWorld(event.clientX, event.clientY)
+    this.edgeDragLine.setAttribute("x2", `${world.x}`)
+    this.edgeDragLine.setAttribute("y2", `${world.y}`)
   },
 
   completeEdgeDrag(event, targetId) {
@@ -1790,13 +2158,15 @@ const PipelineBuilder = {
       const from = this.state.nodes.find((node) => node.id === edge.from)
       const to = this.state.nodes.find((node) => node.id === edge.to)
       if (!from || !to) continue
+      const fromCenter = this.getNodeCenter(from)
+      const toCenter = this.getNodeCenter(to)
 
       const line = document.createElementNS("http://www.w3.org/2000/svg", "line")
       line.classList.add("builder-edge")
-      line.setAttribute("x1", `${from.x + 64}`)
-      line.setAttribute("y1", `${from.y + 20}`)
-      line.setAttribute("x2", `${to.x + 64}`)
-      line.setAttribute("y2", `${to.y + 20}`)
+      line.setAttribute("x1", `${fromCenter.x}`)
+      line.setAttribute("y1", `${fromCenter.y}`)
+      line.setAttribute("x2", `${toCenter.x}`)
+      line.setAttribute("y2", `${toCenter.y}`)
       line.setAttribute("marker-end", "url(#builder-arrow)")
       line.dataset.edgeIndex = `${edgeIndex}`
       line.addEventListener("click", (event) => {
@@ -1811,21 +2181,32 @@ const PipelineBuilder = {
   startDrag(event, nodeId) {
     if (this.connectMode) return
     event.preventDefault()
+    event.stopPropagation()
 
     const node = this.state.nodes.find((entry) => entry.id === nodeId)
     if (!node) return
+    const shiftToggle = event.shiftKey
+
+    if (!this.selectedNodeIds.has(nodeId)) {
+      this.selectedNodeIds = shiftToggle ? new Set([...this.selectedNodeIds, nodeId]) : new Set([nodeId])
+      this.selectedNodeId = nodeId
+    }
+
+    const selected = this.state.nodes.filter((entry) => this.selectedNodeIds.has(entry.id))
+    const origin = new Map(selected.map((entry) => [entry.id, { x: entry.x, y: entry.y }]))
 
     const startX = event.clientX
     const startY = event.clientY
-    const nodeX = node.x
-    const nodeY = node.y
 
     const move = (moveEvent) => {
-      const dx = moveEvent.clientX - startX
-      const dy = moveEvent.clientY - startY
-      node.x = Math.round((nodeX + dx) / GRID_SIZE) * GRID_SIZE
-      node.y = Math.round((nodeY + dy) / GRID_SIZE) * GRID_SIZE
-      this.clampNodeToViewport(node)
+      const dx = (moveEvent.clientX - startX) / this.viewport.zoom
+      const dy = (moveEvent.clientY - startY) / this.viewport.zoom
+      selected.forEach((entry) => {
+        const base = origin.get(entry.id)
+        entry.x = Math.round((base.x + dx) / GRID_SIZE) * GRID_SIZE
+        entry.y = Math.round((base.y + dy) / GRID_SIZE) * GRID_SIZE
+        this.clampNodeToViewport(entry)
+      })
       this.sync({ writeDot: false })
     }
 
@@ -1838,8 +2219,10 @@ const PipelineBuilder = {
     window.addEventListener("mouseup", up)
   },
 
-  handleNodeClick(nodeId) {
-    this.selectedNodeId = nodeId
+  handleNodeClick(event, nodeId) {
+    event.preventDefault()
+    event.stopPropagation()
+    this.toggleNodeSelection(nodeId, { append: event.shiftKey, sync: !this.connectMode })
 
     if (!this.connectMode) return
 
@@ -1854,6 +2237,200 @@ const PipelineBuilder = {
 
     this.pendingSource = null
     this.sync({ writeDot: true, canonicalize: true })
+  },
+
+  getNodeCenter(node) {
+    return { x: node.x + NODE_WIDTH / 2, y: node.y + NODE_HEIGHT / 2 }
+  },
+
+  ensureSelectionValidity() {
+    const valid = new Set(this.state.nodes.map((node) => node.id))
+    this.selectedNodeIds = new Set([...this.selectedNodeIds].filter((id) => valid.has(id)))
+    if (this.selectedNodeId && !valid.has(this.selectedNodeId)) this.selectedNodeId = null
+    if (!this.selectedNodeId && this.selectedNodeIds.size > 0) {
+      this.selectedNodeId = [...this.selectedNodeIds][0]
+    }
+  },
+
+  clearSelection(options = {}) {
+    this.selectedNodeIds = new Set()
+    this.selectedNodeId = null
+    if (options.sync) this.sync({ writeDot: false, canonicalize: false })
+  },
+
+  toggleNodeSelection(nodeId, options = {}) {
+    const append = options.append === true
+    if (append) {
+      if (this.selectedNodeIds.has(nodeId)) {
+        this.selectedNodeIds.delete(nodeId)
+      } else {
+        this.selectedNodeIds.add(nodeId)
+      }
+    } else {
+      this.selectedNodeIds = new Set([nodeId])
+    }
+
+    this.selectedNodeId = this.selectedNodeIds.has(nodeId) ? nodeId : [...this.selectedNodeIds][0] || null
+    if (options.sync !== false) this.sync({ writeDot: false, canonicalize: false })
+  },
+
+  renderSelectionToolbar() {
+    if (!this.selectionToolbar || !this.selectionCountEl) return
+    const count = this.selectedNodeIds.size
+    const show = count > 1
+    this.selectionToolbar.classList.toggle("hidden", !show)
+    this.selectionCountEl.textContent = `${count} nodes selected`
+    if (this.duplicateSelectionBtn) this.duplicateSelectionBtn.disabled = count === 0
+    if (this.deleteSelectionBtn) this.deleteSelectionBtn.disabled = count === 0
+    if (this.alignHorizontalBtn) this.alignHorizontalBtn.disabled = count < 2
+    if (this.alignVerticalBtn) this.alignVerticalBtn.disabled = count < 2
+    if (this.distributeHorizontalBtn) this.distributeHorizontalBtn.disabled = count < 3
+  },
+
+  getGraphBounds() {
+    if (this.state.nodes.length === 0) {
+      return { minX: 0, minY: 0, maxX: NODE_WIDTH + VIEWPORT_PADDING * 2, maxY: NODE_HEIGHT + VIEWPORT_PADDING * 2 }
+    }
+
+    return {
+      minX: Math.min(...this.state.nodes.map((node) => node.x)),
+      minY: Math.min(...this.state.nodes.map((node) => node.y)),
+      maxX: Math.max(...this.state.nodes.map((node) => node.x + NODE_WIDTH)),
+      maxY: Math.max(...this.state.nodes.map((node) => node.y + NODE_HEIGHT)),
+    }
+  },
+
+  updateWorldFrame() {
+    if (!this.surface || !this.worldEl || !this.edgesSvg) return
+    const bounds = this.getGraphBounds()
+    const width = Math.max(bounds.maxX + VIEWPORT_PADDING * 3, this.surface.clientWidth / this.viewport.zoom + VIEWPORT_PADDING * 2)
+    const height = Math.max(bounds.maxY + VIEWPORT_PADDING * 3, this.surface.clientHeight / this.viewport.zoom + VIEWPORT_PADDING * 2)
+    this.worldEl.style.width = `${Math.round(width)}px`
+    this.worldEl.style.height = `${Math.round(height)}px`
+    this.edgesSvg.setAttribute("viewBox", `0 0 ${Math.round(width)} ${Math.round(height)}`)
+  },
+
+  applyViewportTransform() {
+    if (!this.worldEl || !this.canvasGrid) return
+    this.worldEl.style.transform = `translate(${this.viewport.x}px, ${this.viewport.y}px) scale(${this.viewport.zoom})`
+    this.canvasGrid.style.backgroundSize = `${Math.max(12, GRID_SIZE * this.viewport.zoom)}px ${Math.max(12, GRID_SIZE * this.viewport.zoom)}px`
+    this.canvasGrid.style.backgroundPosition = `${this.viewport.x}px ${this.viewport.y}px`
+    this.updateViewportBadge()
+  },
+
+  renderMinimap() {
+    if (!this.minimapSurface || !this.minimapNodes || !this.minimapViewport || this.state.nodes.length === 0) return
+
+    const bounds = this.getGraphBounds()
+    const width = Math.max(1, bounds.maxX - bounds.minX)
+    const height = Math.max(1, bounds.maxY - bounds.minY)
+    const surfaceWidth = this.minimapSurface.clientWidth
+    const surfaceHeight = this.minimapSurface.clientHeight
+
+    this.minimapNodes.innerHTML = ""
+    this.state.nodes.forEach((node) => {
+      const nodeEl = document.createElement("div")
+      nodeEl.className = "builder-minimap-node"
+      if (this.selectedNodeIds.has(node.id)) nodeEl.classList.add("builder-minimap-node-selected")
+      nodeEl.style.left = `${((node.x - bounds.minX) / width) * surfaceWidth}px`
+      nodeEl.style.top = `${((node.y - bounds.minY) / height) * surfaceHeight}px`
+      nodeEl.style.width = `${Math.max(6, (NODE_WIDTH / width) * surfaceWidth)}px`
+      nodeEl.style.height = `${Math.max(4, (NODE_HEIGHT / height) * surfaceHeight)}px`
+      this.minimapNodes.appendChild(nodeEl)
+    })
+
+    const visibleWorldWidth = this.surface.clientWidth / this.viewport.zoom
+    const visibleWorldHeight = this.surface.clientHeight / this.viewport.zoom
+    const viewportWorldLeft = (-this.viewport.x) / this.viewport.zoom
+    const viewportWorldTop = (-this.viewport.y) / this.viewport.zoom
+
+    this.minimapViewport.style.left = `${((viewportWorldLeft - bounds.minX) / width) * surfaceWidth}px`
+    this.minimapViewport.style.top = `${((viewportWorldTop - bounds.minY) / height) * surfaceHeight}px`
+    this.minimapViewport.style.width = `${Math.min(surfaceWidth, (visibleWorldWidth / width) * surfaceWidth)}px`
+    this.minimapViewport.style.height = `${Math.min(surfaceHeight, (visibleWorldHeight / height) * surfaceHeight)}px`
+  },
+
+  alignSelection(direction) {
+    const nodes = this.state.nodes.filter((node) => this.selectedNodeIds.has(node.id))
+    if (nodes.length < 2) return
+
+    if (direction === "horizontal") {
+      const centerY = Math.round(nodes.reduce((acc, node) => acc + node.y, 0) / nodes.length / GRID_SIZE) * GRID_SIZE
+      nodes.forEach((node) => { node.y = centerY })
+    } else {
+      const centerX = Math.round(nodes.reduce((acc, node) => acc + node.x, 0) / nodes.length / GRID_SIZE) * GRID_SIZE
+      nodes.forEach((node) => { node.x = centerX })
+    }
+
+    nodes.forEach((node) => this.clampNodeToViewport(node))
+    this.sync({ writeDot: true, canonicalize: true })
+  },
+
+  distributeSelection(direction) {
+    const nodes = this.state.nodes.filter((node) => this.selectedNodeIds.has(node.id))
+    if (nodes.length < 3) return
+
+    const sorted = [...nodes].sort((a, b) => direction === "horizontal" ? a.x - b.x : a.y - b.y)
+    const first = sorted[0]
+    const last = sorted[sorted.length - 1]
+    const span = direction === "horizontal" ? last.x - first.x : last.y - first.y
+    const step = span / (sorted.length - 1)
+
+    sorted.forEach((node, index) => {
+      if (direction === "horizontal") node.x = Math.round((first.x + step * index) / GRID_SIZE) * GRID_SIZE
+      else node.y = Math.round((first.y + step * index) / GRID_SIZE) * GRID_SIZE
+      this.clampNodeToViewport(node)
+    })
+
+    this.sync({ writeDot: true, canonicalize: true })
+  },
+
+  duplicateSelection() {
+    const selected = this.state.nodes.filter((node) => this.selectedNodeIds.has(node.id))
+    if (selected.length === 0) return
+
+    const idMap = new Map()
+    const duplicates = []
+    selected.forEach((node) => {
+      if (node.type === "start" || node.type === "exit") return
+      const newId = this.generateDuplicateId(node.id)
+      idMap.set(node.id, newId)
+      duplicates.push({
+        id: newId,
+        type: node.type,
+        attrs: this.normalizeNodeAttrs({ ...(node.attrs || {}), label: node.attrs?.label || newId }, node.type, newId),
+        x: node.x + GRID_SIZE * 2,
+        y: node.y + GRID_SIZE * 2,
+      })
+    })
+
+    const duplicateEdges = this.state.edges
+      .filter((edge) => idMap.has(edge.from) && idMap.has(edge.to))
+      .map((edge) => ({ from: idMap.get(edge.from), to: idMap.get(edge.to), attrs: { ...(edge.attrs || {}) } }))
+
+    this.state.nodes.push(...duplicates)
+    this.state.edges.push(...duplicateEdges)
+    this.selectedNodeIds = new Set(duplicates.map((node) => node.id))
+    this.selectedNodeId = duplicates[0]?.id || this.selectedNodeId
+    this.sync({ writeDot: true, canonicalize: true })
+  },
+
+  deleteSelection() {
+    const ids = [...this.selectedNodeIds]
+    if (ids.length === 0) return
+    ids.forEach((id) => this.deleteNode(id, { sync: false }))
+    this.clearSelection({ sync: false })
+    this.sync({ writeDot: true, canonicalize: true })
+  },
+
+  generateDuplicateId(baseId) {
+    let index = 1
+    let nextId = `${baseId}_copy`
+    const existing = new Set(this.state.nodes.map((node) => node.id))
+    while (existing.has(nextId)) {
+      nextId = `${baseId}_copy_${index++}`
+    }
+    return nextId
   },
 
   writeDot() {
@@ -1941,36 +2518,22 @@ const PipelineBuilder = {
   },
 
   fitNodesInViewport() {
-    if (!this.canvas || this.state.nodes.length === 0) return
+    if (!this.surface || this.state.nodes.length === 0) return
 
-    const width = Math.max(this.canvas.clientWidth, NODE_WIDTH + VIEWPORT_PADDING * 2)
-    const height = Math.max(this.canvas.clientHeight, NODE_HEIGHT + VIEWPORT_PADDING * 2)
-
-    const minX = Math.min(...this.state.nodes.map((node) => node.x))
-    const minY = Math.min(...this.state.nodes.map((node) => node.y))
-    const maxX = Math.max(...this.state.nodes.map((node) => node.x + NODE_WIDTH))
-    const maxY = Math.max(...this.state.nodes.map((node) => node.y + NODE_HEIGHT))
-
-    const boundsW = Math.max(1, maxX - minX)
-    const boundsH = Math.max(1, maxY - minY)
-    const availW = Math.max(1, width - VIEWPORT_PADDING * 2)
-    const availH = Math.max(1, height - VIEWPORT_PADDING * 2)
-    const scale = Math.min(1, availW / boundsW, availH / boundsH)
-
-    this.state.nodes.forEach((node) => {
-      node.x = Math.round((node.x - minX) * scale + VIEWPORT_PADDING)
-      node.y = Math.round((node.y - minY) * scale + VIEWPORT_PADDING)
-      this.clampNodeToViewport(node)
-    })
+    const bounds = this.getGraphBounds()
+    const boundsW = Math.max(1, bounds.maxX - bounds.minX)
+    const boundsH = Math.max(1, bounds.maxY - bounds.minY)
+    const availW = Math.max(1, this.surface.clientWidth - VIEWPORT_PADDING * 4)
+    const availH = Math.max(1, this.surface.clientHeight - VIEWPORT_PADDING * 4)
+    const zoom = this.clampZoom(Math.min(availW / boundsW, availH / boundsH, 1.2))
+    const x = (this.surface.clientWidth - boundsW * zoom) / 2 - bounds.minX * zoom
+    const y = (this.surface.clientHeight - boundsH * zoom) / 2 - bounds.minY * zoom
+    this.setViewport({ x, y, zoom })
   },
 
   clampNodeToViewport(node) {
-    if (!this.canvas) return
-
-    const maxX = Math.max(0, this.canvas.clientWidth - NODE_WIDTH)
-    const maxY = Math.max(0, this.canvas.clientHeight - NODE_HEIGHT)
-    node.x = Math.min(Math.max(0, node.x), maxX)
-    node.y = Math.min(Math.max(0, node.y), maxY)
+    node.x = Math.max(0, node.x)
+    node.y = Math.max(0, node.y)
   },
 
   openNodeProperties(nodeId) {
@@ -1979,6 +2542,7 @@ const PipelineBuilder = {
     if (!node) return
 
     this.selectedNodeId = nodeId
+    this.selectedNodeIds = new Set([nodeId])
     const attrs = node.attrs || {}
     this.currentEditingNodeId = nodeId
     this.propId.value = node.id
@@ -2085,7 +2649,8 @@ const PipelineBuilder = {
     this.propsDialog?.close()
   },
 
-  deleteNode(nodeId) {
+  deleteNode(nodeId, options = {}) {
+    const syncAfter = options.sync !== false
     const nodeIndex = this.state.nodes.findIndex((entry) => entry.id === nodeId)
     if (nodeIndex === -1) return
 
@@ -2105,8 +2670,9 @@ const PipelineBuilder = {
     if (this.currentEditingNodeId === nodeId) this.currentEditingNodeId = null
     if (this.reopenNodePropertiesId === nodeId) this.reopenNodePropertiesId = null
     if (this.selectedNodeId === nodeId) this.selectedNodeId = null
+    this.selectedNodeIds.delete(nodeId)
     if (this.edgeDragSource === nodeId) this.cancelEdgeDrag()
-    this.sync({ writeDot: true, canonicalize: true })
+    if (syncAfter) this.sync({ writeDot: true, canonicalize: true })
   },
 
   readNodePropertyAttrs(label, nodeType) {
