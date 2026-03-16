@@ -54,13 +54,21 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLiveTest do
     assert html =~ "Run via /run"
     assert html =~ "Submit via /pipelines"
     assert html =~ ">LLM<"
-    assert html =~ "Graph Contract"
+    assert html =~ "Graph Inspector"
+    assert html =~ "Runtime"
+    assert html =~ "Selection"
+    assert html =~ ~s(id="builder-inspector-tab-graph")
+    assert html =~ ~s(id="builder-inspector-tab-node")
+    assert html =~ ~s(id="builder-inspector-tab-edge")
+    assert html =~ ~s(id="builder-inspector-tab-diagnostics")
+    assert html =~ ~s(id="builder-inspector-tab-source")
+    assert html =~ ~s(id="builder-inspector-tab-runtime")
+    assert html =~ ~s(id="builder-inspector-panel-runtime")
     assert html =~ "node-prop-max-tokens"
     assert html =~ "node-prop-temperature"
     assert html =~ "node-prop-human-input"
     assert html =~ "node-prop-join-policy"
     assert html =~ "node-prop-manager-stop-condition"
-    assert html =~ "Edge Properties"
     assert html =~ "node-prop-add-edge"
     assert html =~ "node-prop-delete"
     assert html =~ "edge-prop-source"
@@ -273,9 +281,11 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLiveTest do
     |> render_submit(params)
 
     assert has_element?(view, "#run-result")
-    assert render(view) =~ "Run ID:"
-    assert render(view) =~ "Graph JSON"
+    assert has_element?(view, "#builder-runtime-status-badge")
+    assert render(view) =~ "Latest Run"
+    assert render(view) =~ "Logs Root"
     assert render(view) =~ "POST /run"
+    assert render(view) =~ "Graph JSON"
   end
 
   test "saves the current builder pipeline to the library and reloads it by query param", %{

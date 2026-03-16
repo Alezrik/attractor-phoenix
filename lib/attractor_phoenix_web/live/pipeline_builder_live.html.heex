@@ -500,773 +500,1035 @@
             </div>
           </div>
         </dialog>
-
-        <dialog
-          id="node-properties-dialog"
-          class="rounded-xl border border-base-300 p-0 backdrop:bg-black/40"
-        >
-          <form method="dialog" class="w-[min(96vw,56rem)] space-y-4 bg-base-100 p-4">
-            <h3 class="text-lg font-semibold">Node Properties</h3>
-
-            <div class="grid gap-3 md:grid-cols-3">
-              <label id="node-prop-wrap-id" class="block space-y-1">
-                <span class="text-xs font-semibold">ID</span>
-                <input
-                  id="node-prop-id"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label id="node-prop-wrap-label" class="block space-y-1">
-                <span class="text-xs font-semibold">Label</span>
-                <input
-                  id="node-prop-label"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label id="node-prop-wrap-type" class="block space-y-1">
-                <span class="text-xs font-semibold">Type</span>
-                <select
-                  id="node-prop-type"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                >
-                  <option value="start">start</option>
-                  <option value="tool">tool</option>
-                  <option value="wait.human">wait.human</option>
-                  <option value="wait_for_human">wait_for_human</option>
-                  <option value="conditional">conditional</option>
-                  <option value="parallel">parallel</option>
-                  <option value="parallel.fan_in">parallel.fan_in</option>
-                  <option value="stack.manager_loop">stack.manager_loop</option>
-                  <option value="codergen">codergen</option>
-                  <option value="exit">exit</option>
-                </select>
-              </label>
-            </div>
-
-            <div class="grid gap-3 md:grid-cols-2">
-              <label id="node-prop-wrap-prompt" class="block space-y-1 md:col-span-2">
-                <span class="text-xs font-semibold">Prompt</span>
-                <textarea
-                  id="node-prop-prompt"
-                  rows="3"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                ></textarea>
-              </label>
-              <label id="node-prop-wrap-class" class="block space-y-1">
-                <span class="text-xs font-semibold">Class</span>
-                <input
-                  id="node-prop-class"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label id="node-prop-wrap-timeout" class="block space-y-1">
-                <span class="text-xs font-semibold">Timeout</span>
-                <input
-                  id="node-prop-timeout"
-                  placeholder="900s"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label id="node-prop-wrap-max-retries" class="block space-y-1">
-                <span class="text-xs font-semibold">Max Retries</span>
-                <input
-                  id="node-prop-max-retries"
-                  type="number"
-                  min="0"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label id="node-prop-wrap-fidelity" class="block space-y-1">
-                <span class="text-xs font-semibold">Fidelity</span>
-                <select
-                  id="node-prop-fidelity"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                >
-                  <option value="">(default)</option>
-                  <option value="full">full</option>
-                  <option value="truncate">truncate</option>
-                  <option value="compact">compact</option>
-                  <option value="summary:low">summary:low</option>
-                  <option value="summary:medium">summary:medium</option>
-                  <option value="summary:high">summary:high</option>
-                </select>
-              </label>
-              <label id="node-prop-wrap-thread-id" class="block space-y-1">
-                <span class="text-xs font-semibold">Thread ID</span>
-                <input
-                  id="node-prop-thread-id"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label id="node-prop-wrap-retry-target" class="block space-y-1">
-                <span class="text-xs font-semibold">Retry Target</span>
-                <select
-                  id="node-prop-retry-target"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                >
-                  <option value="">(none)</option>
-                </select>
-              </label>
-              <label id="node-prop-wrap-fallback-retry-target" class="block space-y-1">
-                <span class="text-xs font-semibold">Fallback Retry Target</span>
-                <select
-                  id="node-prop-fallback-retry-target"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                >
-                  <option value="">(none)</option>
-                </select>
-              </label>
-              <label id="node-prop-wrap-llm-model" class="block space-y-1">
-                <span class="text-xs font-semibold">LLM Model</span>
-                <input
-                  id="node-prop-llm-model"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label id="node-prop-wrap-llm-provider" class="block space-y-1">
-                <span class="text-xs font-semibold">LLM Provider</span>
-                <input
-                  id="node-prop-llm-provider"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label id="node-prop-wrap-reasoning-effort" class="block space-y-1">
-                <span class="text-xs font-semibold">Reasoning Effort</span>
-                <select
-                  id="node-prop-reasoning-effort"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                >
-                  <option value="">(default)</option>
-                  <option value="low">low</option>
-                  <option value="medium">medium</option>
-                  <option value="high">high</option>
-                </select>
-              </label>
-              <label id="node-prop-wrap-max-tokens" class="block space-y-1">
-                <span class="text-xs font-semibold">Max Tokens</span>
-                <input
-                  id="node-prop-max-tokens"
-                  type="number"
-                  min="1"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label id="node-prop-wrap-temperature" class="block space-y-1">
-                <span class="text-xs font-semibold">Temperature</span>
-                <input
-                  id="node-prop-temperature"
-                  type="number"
-                  min="0"
-                  max="2"
-                  step="0.1"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <div id="node-prop-wrap-command" class="space-y-1">
-                <span class="text-xs font-semibold">Tool Command</span>
-                <input
-                  id="node-prop-command"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm font-mono"
-                />
-              </div>
-              <label id="node-prop-wrap-human-default-choice" class="block space-y-1">
-                <span class="text-xs font-semibold">Human Default Choice</span>
-                <input
-                  id="node-prop-human-default-choice"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label id="node-prop-wrap-human-timeout" class="block space-y-1">
-                <span class="text-xs font-semibold">Human Timeout</span>
-                <input
-                  id="node-prop-human-timeout"
-                  placeholder="30s"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label id="node-prop-wrap-human-input" class="block space-y-1">
-                <span class="text-xs font-semibold">Human Input</span>
-                <select
-                  id="node-prop-human-input"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                >
-                  <option value="">(default)</option>
-                  <option value="text">text</option>
-                  <option value="textarea">textarea</option>
-                  <option value="checkbox">checkbox</option>
-                  <option value="boolean">boolean</option>
-                  <option value="confirmation">confirmation</option>
-                  <option value="single_select">single_select</option>
-                  <option value="multi_select">multi_select</option>
-                  <option value="radio">radio</option>
-                  <option value="select">select</option>
-                </select>
-              </label>
-              <label
-                id="node-prop-wrap-human-multiple"
-                class="flex items-center gap-2 text-xs font-semibold"
-              >
-                <input id="node-prop-human-multiple" type="checkbox" /> human.multiple
-              </label>
-              <label
-                id="node-prop-wrap-human-required"
-                class="flex items-center gap-2 text-xs font-semibold"
-              >
-                <input id="node-prop-human-required" type="checkbox" /> human.required
-              </label>
-              <label id="node-prop-wrap-join-policy" class="block space-y-1">
-                <span class="text-xs font-semibold">Join Policy</span>
-                <select
-                  id="node-prop-join-policy"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                >
-                  <option value="">(default)</option>
-                  <option value="wait_all">wait_all</option>
-                  <option value="first_success">first_success</option>
-                  <option value="k_of_n">k_of_n</option>
-                  <option value="quorum">quorum</option>
-                </select>
-              </label>
-              <label id="node-prop-wrap-max-parallel" class="block space-y-1">
-                <span class="text-xs font-semibold">Max Parallel</span>
-                <input
-                  id="node-prop-max-parallel"
-                  type="number"
-                  min="1"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label id="node-prop-wrap-k" class="block space-y-1">
-                <span class="text-xs font-semibold">K</span>
-                <input
-                  id="node-prop-k"
-                  type="number"
-                  min="1"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label id="node-prop-wrap-quorum-ratio" class="block space-y-1">
-                <span class="text-xs font-semibold">Quorum Ratio</span>
-                <input
-                  id="node-prop-quorum-ratio"
-                  type="number"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label id="node-prop-wrap-manager-actions" class="block space-y-1">
-                <span class="text-xs font-semibold">Manager Actions</span>
-                <input
-                  id="node-prop-manager-actions"
-                  placeholder="observe,wait,steer"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label id="node-prop-wrap-manager-max-cycles" class="block space-y-1">
-                <span class="text-xs font-semibold">Manager Max Cycles</span>
-                <input
-                  id="node-prop-manager-max-cycles"
-                  type="number"
-                  min="1"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label id="node-prop-wrap-manager-poll-interval" class="block space-y-1">
-                <span class="text-xs font-semibold">Manager Poll Interval</span>
-                <input
-                  id="node-prop-manager-poll-interval"
-                  placeholder="500ms"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label id="node-prop-wrap-manager-stop-condition" class="block space-y-1">
-                <span class="text-xs font-semibold">Manager Stop Condition</span>
-                <input
-                  id="node-prop-manager-stop-condition"
-                  placeholder={"context.stack.child.status == \"completed\""}
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label
-                id="node-prop-wrap-stack-child-autostart"
-                class="flex items-center gap-2 text-xs font-semibold"
-              >
-                <input id="node-prop-stack-child-autostart" type="checkbox" />
-                stack.child_autostart
-              </label>
-              <label
-                id="node-prop-wrap-goal-gate"
-                class="flex items-center gap-2 text-xs font-semibold"
-              >
-                <input id="node-prop-goal-gate" type="checkbox" /> goal_gate
-              </label>
-              <label
-                id="node-prop-wrap-auto-status"
-                class="flex items-center gap-2 text-xs font-semibold"
-              >
-                <input id="node-prop-auto-status" type="checkbox" /> auto_status
-              </label>
-              <label
-                id="node-prop-wrap-allow-partial"
-                class="flex items-center gap-2 text-xs font-semibold"
-              >
-                <input id="node-prop-allow-partial" type="checkbox" /> allow_partial
-              </label>
-            </div>
-
-            <div id="node-prop-wrap-edges" class="space-y-2 rounded-lg border border-base-300 p-3">
-              <div class="flex items-center justify-between">
-                <div class="space-y-1">
-                  <span class="block text-xs font-semibold uppercase tracking-wide text-base-content/70">
-                    Edges
-                  </span>
-                  <span class="block text-[10px] uppercase tracking-wide text-base-content/50">
-                    source -&gt; target
-                  </span>
-                </div>
-                <button id="node-prop-add-edge" class="builder-btn" type="button">
-                  + Add Edge
-                </button>
-              </div>
-              <div id="node-edges-list" class="space-y-2"></div>
-            </div>
-
-            <div class="flex items-center justify-end gap-2 pt-2">
-              <button id="node-prop-delete" value="delete" class="builder-btn" type="button">
-                Delete Node
-              </button>
-              <button id="node-prop-cancel" value="cancel" class="builder-btn" type="submit">
-                Cancel
-              </button>
-              <button id="node-prop-save" value="default" class="builder-btn" type="button">
-                Save
-              </button>
-            </div>
-          </form>
-        </dialog>
-
-        <dialog
-          id="edge-properties-dialog"
-          class="rounded-xl border border-base-300 p-0 backdrop:bg-black/40"
-        >
-          <form method="dialog" class="w-[min(96vw,42rem)] space-y-4 bg-base-100 p-4">
-            <h3 class="text-lg font-semibold">Edge Properties</h3>
-
-            <div class="grid gap-3 md:grid-cols-2">
-              <label class="block space-y-1">
-                <span class="text-xs font-semibold">Source</span>
-                <select
-                  id="edge-prop-source"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                >
-                </select>
-              </label>
-              <label class="block space-y-1">
-                <span class="text-xs font-semibold">Target</span>
-                <select
-                  id="edge-prop-target"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                >
-                </select>
-              </label>
-              <label class="block space-y-1">
-                <span class="text-xs font-semibold">Rule</span>
-                <select
-                  id="edge-prop-mode"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                >
-                  <option value="default">default</option>
-                  <option value="status">status</option>
-                  <option value="condition">condition</option>
-                </select>
-              </label>
-              <div class="space-y-1">
-                <label id="edge-prop-value-wrap" class="block space-y-1">
-                  <span class="text-xs font-semibold">Value</span>
-                  <input
-                    id="edge-prop-value"
-                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm font-mono"
-                  />
-                </label>
-                <label id="edge-prop-status-wrap" class="block space-y-1">
-                  <span class="text-xs font-semibold">Status</span>
-                  <select
-                    id="edge-prop-status"
-                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                  >
-                    <option value="success">success</option>
-                    <option value="fail">fail</option>
-                    <option value="retry">retry</option>
-                    <option value="partial_success">partial_success</option>
-                  </select>
-                </label>
-              </div>
-              <label class="block space-y-1 md:col-span-2">
-                <span class="text-xs font-semibold">Label</span>
-                <input
-                  id="edge-prop-label"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label class="block space-y-1">
-                <span class="text-xs font-semibold">Weight</span>
-                <input
-                  id="edge-prop-weight"
-                  type="number"
-                  step="1"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label class="block space-y-1">
-                <span class="text-xs font-semibold">Fidelity</span>
-                <select
-                  id="edge-prop-fidelity"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                >
-                  <option value="">(default)</option>
-                  <option value="full">full</option>
-                  <option value="truncate">truncate</option>
-                  <option value="compact">compact</option>
-                  <option value="summary:low">summary:low</option>
-                  <option value="summary:medium">summary:medium</option>
-                  <option value="summary:high">summary:high</option>
-                </select>
-              </label>
-              <label class="block space-y-1">
-                <span class="text-xs font-semibold">Thread ID</span>
-                <input
-                  id="edge-prop-thread-id"
-                  class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-                />
-              </label>
-              <label class="flex items-center gap-2 text-xs font-semibold">
-                <input id="edge-prop-loop-restart" type="checkbox" /> loop_restart
-              </label>
-            </div>
-
-            <div class="flex items-center justify-between gap-2 pt-2">
-              <button id="edge-prop-delete" value="delete" class="builder-btn" type="button">
-                Delete Edge
-              </button>
-              <div class="flex items-center gap-2">
-                <button id="edge-prop-cancel" value="cancel" class="builder-btn" type="submit">
-                  Cancel
-                </button>
-                <button id="edge-prop-save" value="default" class="builder-btn" type="button">
-                  Save Edge
-                </button>
-              </div>
-            </div>
-          </form>
-        </dialog>
       </main>
 
       <aside id="builder-right-panel" class="builder-side builder-right">
         <div class="flex items-center justify-between">
-          <h2 class="text-sm font-semibold">DOT + Run</h2>
+          <div>
+            <p class="builder-kicker">Inspector</p>
+            <h2 class="text-sm font-semibold">Graph, diagnostics, source, and runtime</h2>
+          </div>
           <button id="toggle-right-panel" type="button" class="builder-btn">Hide Right</button>
         </div>
-        <div class="space-y-3 rounded-lg border border-base-300 bg-base-100 p-3">
-          <h3 class="text-sm font-semibold">Graph Settings</h3>
-          <div class="grid gap-3 md:grid-cols-2">
-            <label class="space-y-1">
-              <span class="text-xs font-semibold">Goal</span>
-              <input
-                id="graph-goal"
-                class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-              />
-            </label>
-            <label class="space-y-1">
-              <span class="text-xs font-semibold">Label</span>
-              <input
-                id="graph-label"
-                class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-              />
-            </label>
-            <label class="space-y-1 md:col-span-2">
-              <span class="text-xs font-semibold">Model Stylesheet</span>
-              <textarea
-                id="graph-model-stylesheet"
-                rows="2"
-                class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm font-mono"
-              ></textarea>
-            </label>
-            <label class="space-y-1">
-              <span class="text-xs font-semibold">Default Max Retry</span>
-              <input
-                id="graph-default-max-retry"
-                type="number"
-                min="0"
-                class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-              />
-            </label>
-            <label class="space-y-1">
-              <span class="text-xs font-semibold">Default Fidelity</span>
-              <input
-                id="graph-default-fidelity"
-                class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-              />
-            </label>
-            <label class="space-y-1">
-              <span class="text-xs font-semibold">Retry Target</span>
-              <input
-                id="graph-retry-target"
-                class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-              />
-            </label>
-            <label class="space-y-1">
-              <span class="text-xs font-semibold">Fallback Retry Target</span>
-              <input
-                id="graph-fallback-retry-target"
-                class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
-              />
-            </label>
-          </div>
-        </div>
-
-        <div class="space-y-3 rounded-lg border border-base-300 bg-base-100 p-3">
-          <h3 class="text-sm font-semibold">Graph Contract</h3>
-          <div class="space-y-3 text-xs leading-6 text-base-content/75">
-            <div>
-              <p class="font-semibold text-base-content">Node JSON</p>
-              <p class="font-mono">
-                id, type, shape, prompt, goal_gate, retry_target, fallback_retry_target, attrs
-              </p>
-              <p class="mt-1 text-[11px] text-base-content/60">
-                The editor only exposes attrs supported by the runtime for the selected node type.
-              </p>
-            </div>
-            <div>
-              <p class="font-semibold text-base-content">Edge JSON</p>
-              <p class="font-mono">from, to, condition, status, attrs</p>
-              <p class="mt-1 text-[11px] text-base-content/60">
-                Edge rules are limited to default routing, status routing, or condition routing.
-              </p>
-            </div>
-            <p>
-              The builder keeps authoring DOT, but the live contract is the parsed
-              `GET /pipelines/:id/graph?format=json` payload shown below after each run.
-            </p>
-          </div>
-        </div>
-
-        <div
-          id="builder-diagnostics-panel"
-          class="space-y-3 rounded-lg border border-base-300 bg-base-100 p-3"
-        >
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <h3 class="text-sm font-semibold">Lint Panel</h3>
-              <p id="builder-diagnostics-summary" class="text-xs text-base-content/65">
-                Canonical parser and validator diagnostics appear here.
-              </p>
-            </div>
-          </div>
-
-          <div id="builder-autofix-actions" class="flex flex-wrap gap-2"></div>
-          <div id="builder-diagnostics-list" class="space-y-2 text-xs text-base-content/75"></div>
-        </div>
-
         <.form
           for={@form}
           id="pipeline-runner-form"
           phx-submit="pipeline_action"
-          class="space-y-4"
+          class="builder-inspector-shell"
         >
-          <%= if @loaded_library_entry do %>
-            <div
-              id="builder-library-banner"
-              class="rounded-2xl border border-base-300 bg-base-200/60 px-4 py-3"
+          <div id="builder-inspector-tabs" class="builder-inspector-tabs" role="tablist">
+            <button
+              id="builder-inspector-tab-selection"
+              type="button"
+              class="builder-inspector-tab"
+              data-inspector-tab="selection"
             >
-              <div class="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p class="text-xs font-semibold uppercase tracking-[0.24em] text-base-content/55">
-                    Loaded from library
-                  </p>
-                  <p class="text-sm font-semibold">
-                    {@loaded_library_entry.name}
-                    <span class="font-mono text-xs text-base-content/60">
-                      ({@loaded_library_entry.id})
-                    </span>
+              Selection
+            </button>
+            <button
+              id="builder-inspector-tab-graph"
+              type="button"
+              class="builder-inspector-tab"
+              data-inspector-tab="graph"
+            >
+              Graph
+            </button>
+            <button
+              id="builder-inspector-tab-node"
+              type="button"
+              class="builder-inspector-tab"
+              data-inspector-tab="node"
+            >
+              Node
+            </button>
+            <button
+              id="builder-inspector-tab-edge"
+              type="button"
+              class="builder-inspector-tab"
+              data-inspector-tab="edge"
+            >
+              Edge
+            </button>
+            <button
+              id="builder-inspector-tab-diagnostics"
+              type="button"
+              class="builder-inspector-tab"
+              data-inspector-tab="diagnostics"
+            >
+              Diagnostics
+            </button>
+            <button
+              id="builder-inspector-tab-source"
+              type="button"
+              class="builder-inspector-tab"
+              data-inspector-tab="source"
+            >
+              Source
+            </button>
+            <button
+              id="builder-inspector-tab-runtime"
+              type="button"
+              class="builder-inspector-tab"
+              data-inspector-tab="runtime"
+            >
+              Runtime
+            </button>
+          </div>
+
+          <section
+            id="builder-inspector-panel-selection"
+            class="builder-inspector-panel"
+            data-inspector-panel="selection"
+          >
+            <div class="builder-inspector-card">
+              <p class="builder-kicker">Selection</p>
+              <h3 class="text-base font-semibold">
+                Contextual editing stays docked to the canvas
+              </h3>
+              <p
+                id="builder-selection-inspector-copy"
+                class="mt-2 text-sm leading-6 text-base-content/68"
+              >
+                Select a node or edge to edit it here. Multi-select keeps bulk actions on the canvas toolbar.
+              </p>
+              <div class="builder-selection-summary-grid mt-4">
+                <div class="builder-selection-summary-tile">
+                  <span class="builder-selection-summary-label">Selected node</span>
+                  <strong id="builder-selection-node-name">None</strong>
+                </div>
+                <div class="builder-selection-summary-tile">
+                  <span class="builder-selection-summary-label">Selection count</span>
+                  <strong id="builder-selection-inspector-count">0</strong>
+                </div>
+                <div class="builder-selection-summary-tile">
+                  <span class="builder-selection-summary-label">Edge focus</span>
+                  <strong id="builder-selection-edge-name">None</strong>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section
+            id="builder-inspector-panel-graph"
+            class="builder-inspector-panel hidden"
+            data-inspector-panel="graph"
+          >
+            <div class="builder-inspector-card space-y-4">
+              <div>
+                <p class="builder-kicker">Graph Inspector</p>
+                <h3 class="text-base font-semibold">Graph settings and runtime contract</h3>
+              </div>
+              <div class="grid gap-3 md:grid-cols-2">
+                <label class="space-y-1">
+                  <span class="text-xs font-semibold">Goal</span>
+                  <input
+                    id="graph-goal"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label class="space-y-1">
+                  <span class="text-xs font-semibold">Label</span>
+                  <input
+                    id="graph-label"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label class="space-y-1 md:col-span-2">
+                  <span class="text-xs font-semibold">Model Stylesheet</span>
+                  <textarea
+                    id="graph-model-stylesheet"
+                    rows="2"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm font-mono"
+                  ></textarea>
+                </label>
+                <label class="space-y-1">
+                  <span class="text-xs font-semibold">Default Max Retry</span>
+                  <input
+                    id="graph-default-max-retry"
+                    type="number"
+                    min="0"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label class="space-y-1">
+                  <span class="text-xs font-semibold">Default Fidelity</span>
+                  <input
+                    id="graph-default-fidelity"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label class="space-y-1">
+                  <span class="text-xs font-semibold">Retry Target</span>
+                  <input
+                    id="graph-retry-target"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label class="space-y-1">
+                  <span class="text-xs font-semibold">Fallback Retry Target</span>
+                  <input
+                    id="graph-fallback-retry-target"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+              </div>
+
+              <div class="builder-contract-card">
+                <h4 class="text-sm font-semibold">Graph Contract</h4>
+                <div class="mt-3 space-y-3 text-xs leading-6 text-base-content/75">
+                  <div>
+                    <p class="font-semibold text-base-content">Node JSON</p>
+                    <p class="font-mono">
+                      id, type, shape, prompt, goal_gate, retry_target, fallback_retry_target, attrs
+                    </p>
+                    <p class="mt-1 text-[11px] text-base-content/60">
+                      The editor only exposes attrs supported by the runtime for the selected node type.
+                    </p>
+                  </div>
+                  <div>
+                    <p class="font-semibold text-base-content">Edge JSON</p>
+                    <p class="font-mono">from, to, condition, status, attrs</p>
+                    <p class="mt-1 text-[11px] text-base-content/60">
+                      Edge rules are limited to default routing, status routing, or condition routing.
+                    </p>
+                  </div>
+                  <p>
+                    The builder keeps authoring DOT, but the live contract is the parsed
+                    `GET /pipelines/:id/graph?format=json` payload shown in the runtime sidecar.
                   </p>
                 </div>
-                <.link
-                  navigate={~p"/library/#{@loaded_library_entry.id}/edit"}
-                  class="builder-btn"
+              </div>
+            </div>
+          </section>
+
+          <section
+            id="builder-inspector-panel-node"
+            class="builder-inspector-panel hidden"
+            data-inspector-panel="node"
+          >
+            <div class="builder-inspector-card space-y-4">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="builder-kicker">Node Inspector</p>
+                  <h3 class="text-base font-semibold">
+                    Edit runtime-backed node fields in place
+                  </h3>
+                </div>
+                <span
+                  id="builder-node-inspector-badge"
+                  class="rounded-full border border-base-300 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-base-content/60"
                 >
-                  Manage Entry
-                </.link>
+                  No node
+                </span>
+              </div>
+
+              <div class="grid gap-3 md:grid-cols-3">
+                <label id="node-prop-wrap-id" class="block space-y-1">
+                  <span class="text-xs font-semibold">ID</span>
+                  <input
+                    id="node-prop-id"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label id="node-prop-wrap-label" class="block space-y-1">
+                  <span class="text-xs font-semibold">Label</span>
+                  <input
+                    id="node-prop-label"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label id="node-prop-wrap-type" class="block space-y-1">
+                  <span class="text-xs font-semibold">Type</span>
+                  <select
+                    id="node-prop-type"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  >
+                    <option value="start">start</option>
+                    <option value="tool">tool</option>
+                    <option value="wait.human">wait.human</option>
+                    <option value="wait_for_human">wait_for_human</option>
+                    <option value="conditional">conditional</option>
+                    <option value="parallel">parallel</option>
+                    <option value="parallel.fan_in">parallel.fan_in</option>
+                    <option value="stack.manager_loop">stack.manager_loop</option>
+                    <option value="codergen">codergen</option>
+                    <option value="exit">exit</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="grid gap-3 md:grid-cols-2">
+                <label id="node-prop-wrap-prompt" class="block space-y-1 md:col-span-2">
+                  <span class="text-xs font-semibold">Prompt</span>
+                  <textarea
+                    id="node-prop-prompt"
+                    rows="3"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  ></textarea>
+                </label>
+                <label id="node-prop-wrap-class" class="block space-y-1">
+                  <span class="text-xs font-semibold">Class</span>
+                  <input
+                    id="node-prop-class"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label id="node-prop-wrap-timeout" class="block space-y-1">
+                  <span class="text-xs font-semibold">Timeout</span>
+                  <input
+                    id="node-prop-timeout"
+                    placeholder="900s"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label id="node-prop-wrap-max-retries" class="block space-y-1">
+                  <span class="text-xs font-semibold">Max Retries</span>
+                  <input
+                    id="node-prop-max-retries"
+                    type="number"
+                    min="0"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label id="node-prop-wrap-fidelity" class="block space-y-1">
+                  <span class="text-xs font-semibold">Fidelity</span>
+                  <select
+                    id="node-prop-fidelity"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  >
+                    <option value="">(default)</option>
+                    <option value="full">full</option>
+                    <option value="truncate">truncate</option>
+                    <option value="compact">compact</option>
+                    <option value="summary:low">summary:low</option>
+                    <option value="summary:medium">summary:medium</option>
+                    <option value="summary:high">summary:high</option>
+                  </select>
+                </label>
+                <label id="node-prop-wrap-thread-id" class="block space-y-1">
+                  <span class="text-xs font-semibold">Thread ID</span>
+                  <input
+                    id="node-prop-thread-id"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label id="node-prop-wrap-retry-target" class="block space-y-1">
+                  <span class="text-xs font-semibold">Retry Target</span>
+                  <select
+                    id="node-prop-retry-target"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  >
+                    <option value="">(none)</option>
+                  </select>
+                </label>
+                <label id="node-prop-wrap-fallback-retry-target" class="block space-y-1">
+                  <span class="text-xs font-semibold">Fallback Retry Target</span>
+                  <select
+                    id="node-prop-fallback-retry-target"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  >
+                    <option value="">(none)</option>
+                  </select>
+                </label>
+                <label id="node-prop-wrap-llm-model" class="block space-y-1">
+                  <span class="text-xs font-semibold">LLM Model</span>
+                  <input
+                    id="node-prop-llm-model"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label id="node-prop-wrap-llm-provider" class="block space-y-1">
+                  <span class="text-xs font-semibold">LLM Provider</span>
+                  <input
+                    id="node-prop-llm-provider"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label id="node-prop-wrap-reasoning-effort" class="block space-y-1">
+                  <span class="text-xs font-semibold">Reasoning Effort</span>
+                  <select
+                    id="node-prop-reasoning-effort"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  >
+                    <option value="">(default)</option>
+                    <option value="low">low</option>
+                    <option value="medium">medium</option>
+                    <option value="high">high</option>
+                  </select>
+                </label>
+                <label id="node-prop-wrap-max-tokens" class="block space-y-1">
+                  <span class="text-xs font-semibold">Max Tokens</span>
+                  <input
+                    id="node-prop-max-tokens"
+                    type="number"
+                    min="1"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label id="node-prop-wrap-temperature" class="block space-y-1">
+                  <span class="text-xs font-semibold">Temperature</span>
+                  <input
+                    id="node-prop-temperature"
+                    type="number"
+                    min="0"
+                    max="2"
+                    step="0.1"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <div id="node-prop-wrap-command" class="space-y-1">
+                  <span class="text-xs font-semibold">Tool Command</span>
+                  <input
+                    id="node-prop-command"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm font-mono"
+                  />
+                </div>
+                <label id="node-prop-wrap-human-default-choice" class="block space-y-1">
+                  <span class="text-xs font-semibold">Human Default Choice</span>
+                  <input
+                    id="node-prop-human-default-choice"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label id="node-prop-wrap-human-timeout" class="block space-y-1">
+                  <span class="text-xs font-semibold">Human Timeout</span>
+                  <input
+                    id="node-prop-human-timeout"
+                    placeholder="30s"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label id="node-prop-wrap-human-input" class="block space-y-1">
+                  <span class="text-xs font-semibold">Human Input</span>
+                  <select
+                    id="node-prop-human-input"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  >
+                    <option value="">(default)</option>
+                    <option value="text">text</option>
+                    <option value="textarea">textarea</option>
+                    <option value="checkbox">checkbox</option>
+                    <option value="boolean">boolean</option>
+                    <option value="confirmation">confirmation</option>
+                    <option value="single_select">single_select</option>
+                    <option value="multi_select">multi_select</option>
+                    <option value="radio">radio</option>
+                    <option value="select">select</option>
+                  </select>
+                </label>
+                <label
+                  id="node-prop-wrap-human-multiple"
+                  class="flex items-center gap-2 text-xs font-semibold"
+                >
+                  <input id="node-prop-human-multiple" type="checkbox" /> human.multiple
+                </label>
+                <label
+                  id="node-prop-wrap-human-required"
+                  class="flex items-center gap-2 text-xs font-semibold"
+                >
+                  <input id="node-prop-human-required" type="checkbox" /> human.required
+                </label>
+                <label id="node-prop-wrap-join-policy" class="block space-y-1">
+                  <span class="text-xs font-semibold">Join Policy</span>
+                  <select
+                    id="node-prop-join-policy"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  >
+                    <option value="">(default)</option>
+                    <option value="wait_all">wait_all</option>
+                    <option value="first_success">first_success</option>
+                    <option value="k_of_n">k_of_n</option>
+                    <option value="quorum">quorum</option>
+                  </select>
+                </label>
+                <label id="node-prop-wrap-max-parallel" class="block space-y-1">
+                  <span class="text-xs font-semibold">Max Parallel</span>
+                  <input
+                    id="node-prop-max-parallel"
+                    type="number"
+                    min="1"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label id="node-prop-wrap-k" class="block space-y-1">
+                  <span class="text-xs font-semibold">K</span>
+                  <input
+                    id="node-prop-k"
+                    type="number"
+                    min="1"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label id="node-prop-wrap-quorum-ratio" class="block space-y-1">
+                  <span class="text-xs font-semibold">Quorum Ratio</span>
+                  <input
+                    id="node-prop-quorum-ratio"
+                    type="number"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label id="node-prop-wrap-manager-actions" class="block space-y-1">
+                  <span class="text-xs font-semibold">Manager Actions</span>
+                  <input
+                    id="node-prop-manager-actions"
+                    placeholder="observe,wait,steer"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label id="node-prop-wrap-manager-max-cycles" class="block space-y-1">
+                  <span class="text-xs font-semibold">Manager Max Cycles</span>
+                  <input
+                    id="node-prop-manager-max-cycles"
+                    type="number"
+                    min="1"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label id="node-prop-wrap-manager-poll-interval" class="block space-y-1">
+                  <span class="text-xs font-semibold">Manager Poll Interval</span>
+                  <input
+                    id="node-prop-manager-poll-interval"
+                    placeholder="500ms"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label id="node-prop-wrap-manager-stop-condition" class="block space-y-1">
+                  <span class="text-xs font-semibold">Manager Stop Condition</span>
+                  <input
+                    id="node-prop-manager-stop-condition"
+                    placeholder={"context.stack.child.status == \"completed\""}
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label
+                  id="node-prop-wrap-stack-child-autostart"
+                  class="flex items-center gap-2 text-xs font-semibold"
+                >
+                  <input id="node-prop-stack-child-autostart" type="checkbox" />
+                  stack.child_autostart
+                </label>
+                <label
+                  id="node-prop-wrap-goal-gate"
+                  class="flex items-center gap-2 text-xs font-semibold"
+                >
+                  <input id="node-prop-goal-gate" type="checkbox" /> goal_gate
+                </label>
+                <label
+                  id="node-prop-wrap-auto-status"
+                  class="flex items-center gap-2 text-xs font-semibold"
+                >
+                  <input id="node-prop-auto-status" type="checkbox" /> auto_status
+                </label>
+                <label
+                  id="node-prop-wrap-allow-partial"
+                  class="flex items-center gap-2 text-xs font-semibold"
+                >
+                  <input id="node-prop-allow-partial" type="checkbox" /> allow_partial
+                </label>
+              </div>
+
+              <div
+                id="node-prop-wrap-edges"
+                class="space-y-2 rounded-lg border border-base-300 p-3"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="space-y-1">
+                    <span class="block text-xs font-semibold uppercase tracking-wide text-base-content/70">
+                      Edges
+                    </span>
+                    <span class="block text-[10px] uppercase tracking-wide text-base-content/50">
+                      source -&gt; target
+                    </span>
+                  </div>
+                  <button id="node-prop-add-edge" class="builder-btn" type="button">
+                    + Add Edge
+                  </button>
+                </div>
+                <div id="node-edges-list" class="space-y-2"></div>
+              </div>
+
+              <div class="flex items-center justify-end gap-2 pt-2">
+                <button id="node-prop-delete" class="builder-btn" type="button">
+                  Delete Node
+                </button>
+                <button id="node-prop-cancel" class="builder-btn" type="button">
+                  Close
+                </button>
+                <button id="node-prop-save" class="builder-btn" type="button">
+                  Save
+                </button>
               </div>
             </div>
-          <% end %>
+          </section>
 
-          <div class="space-y-2">
-            <label class="text-sm font-semibold" for="pipeline-dot">Pipeline DOT</label>
-            <.input
-              field={@form[:dot]}
-              id="pipeline-dot"
-              type="textarea"
-              rows="16"
-              class="w-full rounded-xl border border-base-300 bg-base-100 p-3 font-mono text-xs"
-            />
-          </div>
+          <section
+            id="builder-inspector-panel-edge"
+            class="builder-inspector-panel hidden"
+            data-inspector-panel="edge"
+          >
+            <div class="builder-inspector-card space-y-4">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="builder-kicker">Edge Inspector</p>
+                  <h3 class="text-base font-semibold">Tune routing without leaving the canvas</h3>
+                </div>
+                <span
+                  id="builder-edge-inspector-badge"
+                  class="rounded-full border border-base-300 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-base-content/60"
+                >
+                  No edge
+                </span>
+              </div>
 
-          <div class="space-y-2">
-            <label class="text-sm font-semibold" for="pipeline-context-json">Context JSON</label>
-            <.input
-              field={@form[:context_json]}
-              id="pipeline-context-json"
-              type="textarea"
-              rows="6"
-              class="w-full rounded-xl border border-base-300 bg-base-100 p-3 font-mono text-xs"
-            />
-          </div>
+              <div class="grid gap-3 md:grid-cols-2">
+                <label class="block space-y-1">
+                  <span class="text-xs font-semibold">Source</span>
+                  <select
+                    id="edge-prop-source"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  >
+                  </select>
+                </label>
+                <label class="block space-y-1">
+                  <span class="text-xs font-semibold">Target</span>
+                  <select
+                    id="edge-prop-target"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  >
+                  </select>
+                </label>
+                <label class="block space-y-1">
+                  <span class="text-xs font-semibold">Rule</span>
+                  <select
+                    id="edge-prop-mode"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  >
+                    <option value="default">default</option>
+                    <option value="status">status</option>
+                    <option value="condition">condition</option>
+                  </select>
+                </label>
+                <div class="space-y-1">
+                  <label id="edge-prop-value-wrap" class="block space-y-1">
+                    <span class="text-xs font-semibold">Value</span>
+                    <input
+                      id="edge-prop-value"
+                      class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm font-mono"
+                    />
+                  </label>
+                  <label id="edge-prop-status-wrap" class="block space-y-1">
+                    <span class="text-xs font-semibold">Status</span>
+                    <select
+                      id="edge-prop-status"
+                      class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                    >
+                      <option value="success">success</option>
+                      <option value="fail">fail</option>
+                      <option value="retry">retry</option>
+                      <option value="partial_success">partial_success</option>
+                    </select>
+                  </label>
+                </div>
+                <label class="block space-y-1 md:col-span-2">
+                  <span class="text-xs font-semibold">Label</span>
+                  <input
+                    id="edge-prop-label"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label class="block space-y-1">
+                  <span class="text-xs font-semibold">Weight</span>
+                  <input
+                    id="edge-prop-weight"
+                    type="number"
+                    step="1"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label class="block space-y-1">
+                  <span class="text-xs font-semibold">Fidelity</span>
+                  <select
+                    id="edge-prop-fidelity"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  >
+                    <option value="">(default)</option>
+                    <option value="full">full</option>
+                    <option value="truncate">truncate</option>
+                    <option value="compact">compact</option>
+                    <option value="summary:low">summary:low</option>
+                    <option value="summary:medium">summary:medium</option>
+                    <option value="summary:high">summary:high</option>
+                  </select>
+                </label>
+                <label class="block space-y-1">
+                  <span class="text-xs font-semibold">Thread ID</span>
+                  <input
+                    id="edge-prop-thread-id"
+                    class="w-full rounded border border-base-300 bg-base-100 px-2 py-1 text-sm"
+                  />
+                </label>
+                <label class="flex items-center gap-2 text-xs font-semibold">
+                  <input id="edge-prop-loop-restart" type="checkbox" /> loop_restart
+                </label>
+              </div>
 
-          <div class="space-y-3 rounded-2xl border border-base-300 bg-base-100 p-4">
-            <div class="flex items-center justify-between gap-3">
+              <div class="flex items-center justify-between gap-2 pt-2">
+                <button id="edge-prop-delete" class="builder-btn" type="button">
+                  Delete Edge
+                </button>
+                <div class="flex items-center gap-2">
+                  <button id="edge-prop-cancel" class="builder-btn" type="button">
+                    Close
+                  </button>
+                  <button id="edge-prop-save" class="builder-btn" type="button">
+                    Save Edge
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section
+            id="builder-inspector-panel-diagnostics"
+            class="builder-inspector-panel hidden"
+            data-inspector-panel="diagnostics"
+          >
+            <div id="builder-diagnostics-panel" class="builder-inspector-card space-y-4">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="builder-kicker">Diagnostics</p>
+                  <h3 class="text-base font-semibold">Parser and validator feedback</h3>
+                  <p id="builder-diagnostics-summary" class="mt-2 text-xs text-base-content/65">
+                    Canonical parser and validator diagnostics appear here.
+                  </p>
+                </div>
+              </div>
+
+              <div id="builder-autofix-actions" class="flex flex-wrap gap-2"></div>
+              <div
+                id="builder-diagnostics-list"
+                class="space-y-2 text-xs text-base-content/75"
+              >
+              </div>
+            </div>
+          </section>
+
+          <section
+            id="builder-inspector-panel-source"
+            class="builder-inspector-panel hidden"
+            data-inspector-panel="source"
+          >
+            <div class="builder-inspector-card space-y-4">
               <div>
-                <h3 class="text-sm font-semibold">Library Save</h3>
-                <p class="text-xs text-base-content/65">
-                  Store this builder state for future loading.
-                </p>
+                <p class="builder-kicker">Source</p>
+                <h3 class="text-base font-semibold">
+                  DOT, context, and library save live together
+                </h3>
               </div>
-              <.link navigate={~p"/library"} class="builder-btn">
-                Open Library
-              </.link>
+
+              <%= if @loaded_library_entry do %>
+                <div
+                  id="builder-library-banner"
+                  class="rounded-2xl border border-base-300 bg-base-200/60 px-4 py-3"
+                >
+                  <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p class="text-xs font-semibold uppercase tracking-[0.24em] text-base-content/55">
+                        Loaded from library
+                      </p>
+                      <p class="text-sm font-semibold">
+                        {@loaded_library_entry.name}
+                        <span class="font-mono text-xs text-base-content/60">
+                          ({@loaded_library_entry.id})
+                        </span>
+                      </p>
+                    </div>
+                    <.link
+                      navigate={~p"/library/#{@loaded_library_entry.id}/edit"}
+                      class="builder-btn"
+                    >
+                      Manage Entry
+                    </.link>
+                  </div>
+                </div>
+              <% end %>
+
+              <div class="space-y-2">
+                <label class="text-sm font-semibold" for="pipeline-dot">Pipeline DOT</label>
+                <.input
+                  field={@form[:dot]}
+                  id="pipeline-dot"
+                  type="textarea"
+                  rows="16"
+                  class="w-full rounded-xl border border-base-300 bg-base-100 p-3 font-mono text-xs"
+                />
+              </div>
+
+              <div class="space-y-2">
+                <label class="text-sm font-semibold" for="pipeline-context-json">
+                  Context JSON
+                </label>
+                <.input
+                  field={@form[:context_json]}
+                  id="pipeline-context-json"
+                  type="textarea"
+                  rows="6"
+                  class="w-full rounded-xl border border-base-300 bg-base-100 p-3 font-mono text-xs"
+                />
+              </div>
+
+              <div class="space-y-3 rounded-2xl border border-base-300 bg-base-100 p-4">
+                <div class="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 class="text-sm font-semibold">Library Save</h3>
+                    <p class="text-xs text-base-content/65">
+                      Store this builder state for future loading.
+                    </p>
+                  </div>
+                  <.link navigate={~p"/library"} class="builder-btn">
+                    Open Library
+                  </.link>
+                </div>
+
+                <.input
+                  field={@form[:library_name]}
+                  id="pipeline-library-name"
+                  type="text"
+                  label="Library Name"
+                />
+
+                <.input
+                  field={@form[:library_description]}
+                  id="pipeline-library-description"
+                  type="textarea"
+                  rows="3"
+                  label="Library Description"
+                />
+
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    id="save-pipeline-library"
+                    name="pipeline[action]"
+                    value="save_library"
+                    type="submit"
+                    class="rounded-lg border border-base-300 bg-base-100 px-4 py-2 text-sm font-semibold transition hover:bg-base-200"
+                  >
+                    Save to Library
+                  </button>
+                </div>
+              </div>
             </div>
+          </section>
 
-            <.input
-              field={@form[:library_name]}
-              id="pipeline-library-name"
-              type="text"
-              label="Library Name"
-            />
+          <section
+            id="builder-inspector-panel-runtime"
+            class="builder-inspector-panel hidden"
+            data-inspector-panel="runtime"
+          >
+            <div class="builder-inspector-card space-y-4">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="builder-kicker">Runtime</p>
+                  <h3 class="text-base font-semibold">Run controls and recent feedback</h3>
+                  <p class="mt-2 text-sm leading-6 text-base-content/68">
+                    Submit the current DOT and context without leaving the builder.
+                  </p>
+                </div>
+                <span
+                  id="builder-runtime-status-badge"
+                  class={[
+                    "run-status-pill",
+                    cond do
+                      @status in [nil, "", :running, "running"] -> "run-status-running"
+                      @status in [:success, "success"] -> "run-status-success"
+                      @status in [:fail, "fail"] -> "run-status-fail"
+                      @status in [:cancelled, "cancelled"] -> "run-status-cancelled"
+                      true -> "run-status-question"
+                    end
+                  ]}
+                >
+                  {if @status in [nil, ""], do: "idle", else: @status}
+                </span>
+              </div>
 
-            <.input
-              field={@form[:library_description]}
-              id="pipeline-library-description"
-              type="textarea"
-              rows="3"
-              label="Library Description"
-            />
-          </div>
+              <.inline_error
+                :if={@error}
+                id="run-error"
+                title="Pipeline action failed"
+                message={@error}
+              />
 
-          <div class="flex flex-wrap gap-2">
-            <button
-              id="run-pipeline"
-              name="pipeline[action]"
-              value="run"
-              type="submit"
-              class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
-            >
-              Run via /run
-            </button>
-            <button
-              id="submit-pipeline"
-              name="pipeline[action]"
-              value="pipelines"
-              type="submit"
-              class="rounded-lg border border-base-300 bg-base-100 px-4 py-2 text-sm font-semibold transition hover:bg-base-200"
-            >
-              Submit via /pipelines
-            </button>
-            <button
-              id="save-pipeline-library"
-              name="pipeline[action]"
-              value="save_library"
-              type="submit"
-              class="rounded-lg border border-base-300 bg-base-100 px-4 py-2 text-sm font-semibold transition hover:bg-base-200"
-            >
-              Save to Library
-            </button>
-          </div>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  id="run-pipeline"
+                  name="pipeline[action]"
+                  value="run"
+                  type="submit"
+                  class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
+                >
+                  Run via /run
+                </button>
+                <button
+                  id="submit-pipeline"
+                  name="pipeline[action]"
+                  value="pipelines"
+                  type="submit"
+                  class="rounded-lg border border-base-300 bg-base-100 px-4 py-2 text-sm font-semibold transition hover:bg-base-200"
+                >
+                  Submit via /pipelines
+                </button>
+              </div>
+
+              <div class="builder-runtime-summary-grid">
+                <div class="builder-runtime-summary-card">
+                  <span class="builder-runtime-summary-label">Endpoint</span>
+                  <strong>
+                    {if @result && @result.submit_endpoint == "pipelines",
+                      do: "POST /pipelines",
+                      else: "POST /run"}
+                  </strong>
+                </div>
+                <div class="builder-runtime-summary-card">
+                  <span class="builder-runtime-summary-label">Pending Questions</span>
+                  <strong>{length(@questions)}</strong>
+                </div>
+                <div class="builder-runtime-summary-card">
+                  <span class="builder-runtime-summary-label">Recent Events</span>
+                  <strong>{length(@events)}</strong>
+                </div>
+              </div>
+
+              <%= if @result do %>
+                <div id="run-result" class="builder-runtime-result space-y-4">
+                  <div class="builder-runtime-result-header">
+                    <div>
+                      <h4 class="text-sm font-semibold">Latest Run</h4>
+                      <p class="text-xs text-base-content/65">
+                        Authoring and execution stay in one sidecar.
+                      </p>
+                    </div>
+                    <.link
+                      navigate={~p"/runs/#{@result.run_id}"}
+                      id="open-run-detail"
+                      class="builder-btn"
+                    >
+                      Open Run Detail
+                    </.link>
+                  </div>
+
+                  <div class="builder-runtime-summary-grid">
+                    <div class="builder-runtime-summary-card">
+                      <span class="builder-runtime-summary-label">Status</span>
+                      <strong>{@result.status}</strong>
+                    </div>
+                    <div class="builder-runtime-summary-card">
+                      <span class="builder-runtime-summary-label">Run ID</span>
+                      <strong class="font-mono text-xs">{@result.run_id}</strong>
+                    </div>
+                    <div class="builder-runtime-summary-card">
+                      <span class="builder-runtime-summary-label">Logs Root</span>
+                      <strong class="font-mono text-xs">{@result.logs_root}</strong>
+                    </div>
+                  </div>
+
+                  <%= if @events != [] do %>
+                    <div class="space-y-2 rounded-lg border border-base-300 bg-base-100 p-3">
+                      <div class="flex items-center justify-between gap-3">
+                        <h5 class="text-sm font-semibold">Recent Events</h5>
+                        <span class="text-xs text-base-content/60">{length(@events)} total</span>
+                      </div>
+                      <div class="space-y-2">
+                        <%= for event <- Enum.take(Enum.reverse(@events), 5) do %>
+                          <div class="rounded-lg border border-base-300/70 px-3 py-2 text-xs">
+                            <div class="flex items-center justify-between gap-3">
+                              <span class="font-semibold">{event["type"] || "event"}</span>
+                              <span class="text-base-content/60">{event["timestamp"]}</span>
+                            </div>
+                            <%= if event["status"] do %>
+                              <p class="mt-1 text-base-content/70">status: {event["status"]}</p>
+                            <% end %>
+                          </div>
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
+
+                  <%= if @checkpoint do %>
+                    <details class="builder-runtime-details" open>
+                      <summary>Checkpoint</summary>
+                      <pre class="mt-3 overflow-x-auto text-xs"><%= Jason.encode_to_iodata!(@checkpoint, pretty: true) %></pre>
+                    </details>
+                  <% end %>
+
+                  <%= if is_map(get_in(@result, [:context, "tools"])) and map_size(get_in(@result, [:context, "tools"])) > 0 do %>
+                    <details id="command-output" class="builder-runtime-details">
+                      <summary>Command Output</summary>
+                      <div class="mt-3 space-y-3">
+                        <%= for {node_id, output} <- get_in(@result, [:context, "tools"]) do %>
+                          <div class="space-y-1">
+                            <p class="text-xs font-semibold text-base-content/70">{node_id}</p>
+                            <pre class="overflow-x-auto rounded border border-base-300 bg-base-100 p-2 text-xs">{output}</pre>
+                          </div>
+                        <% end %>
+                      </div>
+                    </details>
+                  <% end %>
+
+                  <%= if is_map(@graph_json) and map_size(@graph_json) > 0 do %>
+                    <details class="builder-runtime-details">
+                      <summary>Graph JSON</summary>
+                      <p class="mt-3 text-xs text-base-content/65">
+                        Canonical node contract:
+                        <code>
+                          id, type, shape, prompt, goal_gate, retry_target, fallback_retry_target, attrs
+                        </code>
+                      </p>
+                      <p class="text-xs text-base-content/65">
+                        Canonical edge contract: <code>from, to, condition, status, attrs</code>
+                      </p>
+                      <pre class="mt-3 overflow-x-auto rounded border border-base-300 bg-base-100 p-2 text-xs"><%= Jason.encode_to_iodata!(@graph_json, pretty: true) %></pre>
+                    </details>
+                  <% end %>
+
+                  <details class="builder-runtime-details">
+                    <summary>Full Run Payload</summary>
+                    <pre class="mt-3 overflow-x-auto rounded-lg bg-base-100 p-3 text-xs"><%= Jason.encode_to_iodata!(@result, pretty: true) %></pre>
+                  </details>
+                </div>
+              <% else %>
+                <div class="builder-runtime-empty">
+                  <p class="text-sm font-semibold">No run yet</p>
+                  <p class="text-xs leading-5 text-base-content/65">
+                    The builder will keep recent status, questions, and events here after you run or submit the current graph.
+                  </p>
+                </div>
+              <% end %>
+
+              <div class="rounded-2xl border border-base-300 bg-base-100 p-4">
+                <h4 class="text-sm font-semibold">Operator Handoff</h4>
+                <p class="mt-2 text-xs leading-5 text-base-content/65">
+                  Continue into the richer operator and debugger surfaces when you need full topology or timeline detail.
+                </p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <.link navigate={~p"/"} class="builder-btn">Open Dashboard</.link>
+                  <%= if @result do %>
+                    <.link navigate={~p"/runs/#{@result.run_id}/debugger"} class="builder-btn">
+                      Open Debugger Context
+                    </.link>
+                  <% else %>
+                    <.link navigate={~p"/"} class="builder-btn">
+                      Open Operator Views
+                    </.link>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </section>
         </.form>
       </aside>
     </div>
-
-    <.inline_error :if={@error} id="run-error" title="Pipeline action failed" message={@error} />
-
-    <%= if @result do %>
-      <div id="run-result" class="space-y-3 rounded-xl border border-base-300 bg-base-200/50 p-4">
-        <h2 class="text-lg font-semibold">Run Result</h2>
-        <p class="text-sm">Status: <strong>{@result.status}</strong></p>
-        <p class="text-sm">Run ID: <code>{@result.run_id}</code></p>
-        <p class="text-sm">
-          Endpoint:
-          <strong>
-            {if @result.submit_endpoint == "pipelines", do: "POST /pipelines", else: "POST /run"}
-          </strong>
-        </p>
-        <p class="text-sm">Logs: <code>{@result.logs_root}</code></p>
-        <p class="text-sm">Events: <strong>{@result.event_count}</strong></p>
-        <p class="text-sm">Pending Questions: <strong>{length(@questions)}</strong></p>
-        <div class="flex flex-wrap gap-2">
-          <.link navigate={~p"/runs/#{@result.run_id}"} id="open-run-detail" class="builder-btn">
-            Open Run Detail
-          </.link>
-        </div>
-
-        <%= if @checkpoint do %>
-          <div class="rounded-lg border border-base-300 bg-base-100 p-3 text-sm">
-            <p class="font-semibold">Checkpoint</p>
-            <pre class="mt-2 overflow-x-auto text-xs"><%= Jason.encode_to_iodata!(@checkpoint, pretty: true) %></pre>
-          </div>
-        <% end %>
-
-        <%= if @events != [] do %>
-          <div class="space-y-2 rounded-lg border border-base-300 bg-base-100 p-3">
-            <h3 class="text-sm font-semibold">Recent Events</h3>
-            <div class="space-y-2">
-              <%= for event <- Enum.take(Enum.reverse(@events), 5) do %>
-                <div class="rounded-lg border border-base-300/70 px-3 py-2 text-xs">
-                  <div class="flex items-center justify-between gap-3">
-                    <span class="font-semibold">{event["type"] || "event"}</span>
-                    <span class="text-base-content/60">{event["timestamp"]}</span>
-                  </div>
-                  <%= if event["status"] do %>
-                    <p class="mt-1 text-base-content/70">status: {event["status"]}</p>
-                  <% end %>
-                </div>
-              <% end %>
-            </div>
-          </div>
-        <% end %>
-
-        <%= if is_map(get_in(@result, [:context, "tools"])) and map_size(get_in(@result, [:context, "tools"])) > 0 do %>
-          <div
-            id="command-output"
-            class="space-y-2 rounded-lg border border-base-300 bg-base-100 p-3"
-          >
-            <h3 class="text-sm font-semibold">Command Output</h3>
-            <%= for {node_id, output} <- get_in(@result, [:context, "tools"]) do %>
-              <div class="space-y-1">
-                <p class="text-xs font-semibold text-base-content/70">{node_id}</p>
-                <pre class="overflow-x-auto rounded border border-base-300 bg-base-100 p-2 text-xs">{output}</pre>
-              </div>
-            <% end %>
-          </div>
-        <% end %>
-
-        <%= if is_map(@graph_json) and map_size(@graph_json) > 0 do %>
-          <div class="space-y-2 rounded-lg border border-base-300 bg-base-100 p-3">
-            <h3 class="text-sm font-semibold">Graph JSON</h3>
-            <p class="text-xs text-base-content/65">
-              Canonical node contract:
-              <code>
-                id, type, shape, prompt, goal_gate, retry_target, fallback_retry_target, attrs
-              </code>
-            </p>
-            <p class="text-xs text-base-content/65">
-              Canonical edge contract: <code>from, to, condition, status, attrs</code>
-            </p>
-            <pre class="overflow-x-auto rounded border border-base-300 bg-base-100 p-2 text-xs"><%= Jason.encode_to_iodata!(@graph_json, pretty: true) %></pre>
-          </div>
-        <% end %>
-
-        <pre class="overflow-x-auto rounded-lg bg-base-100 p-3 text-xs"><%= Jason.encode_to_iodata!(@result, pretty: true) %></pre>
-      </div>
-    <% end %>
   </section>
 </Layouts.app>

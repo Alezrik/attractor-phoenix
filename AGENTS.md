@@ -3,6 +3,7 @@ This is a web application written using the Phoenix web framework.
 ## Project guidelines
 
 - Use `mix precommit` alias when you are done with all changes and fix any pending issues
+- Run `mix format` on every touched Elixir, HEEx, and `.exs` file before wrapping work. `mix format --check-formatted` failures in CI are common here, especially for `*.html.heex`.
 - Use the already included and available `:req` (`Req`) library for HTTP requests, **avoid** `:httpoison`, `:tesla`, and `:httpc`. Req is included by default and is the preferred HTTP client for Phoenix apps
 - `AttractorEx` documentation is a required maintained artifact in this repo. Keep `mix docs` passing when you change the library, and remember that ExDoc publishes into the tracked repo `docs/` directory for GitHub Pages
 - When you change `lib/attractor_ex/` behavior, also update the relevant docs in `docs/`, module docs in `lib/attractor_ex/**/*.ex`, and spec-compliance references in:
@@ -97,6 +98,7 @@ custom classes must fully style the input
 ## Mix guidelines
 
 - Read the docs and options before using tasks (by using `mix help task_name`)
+- If CI reports `mix format --check-formatted` failures, immediately run `mix format` on the listed files and re-check before doing anything else.
 - To debug test failures, run tests in a specific file with `mix test test/my_test.exs` or run all previously failed tests with `mix test --failed`
 - `mix deps.clean --all` is **almost never needed**. **Avoid** using it unless you have good reason
 
