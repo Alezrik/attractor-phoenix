@@ -123,6 +123,14 @@ liveSocket.connect()
 // >> liveSocket.enableLatencySim(1000)  // enabled for duration of browser session
 // >> liveSocket.disableLatencySim()
 window.liveSocket = liveSocket
+window.builderCommands = {
+  openPalette() {
+    window.dispatchEvent(new CustomEvent("builder:command-palette:open"))
+  },
+  openShortcuts() {
+    window.dispatchEvent(new CustomEvent("builder:shortcuts:open"))
+  },
+}
 
 // The lines below enable quality of life phoenix_live_reload
 // development features:

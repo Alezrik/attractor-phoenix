@@ -68,6 +68,12 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLiveTest do
     assert html =~ "builder-diagnostics-panel"
     assert html =~ "builder-template-select"
     assert html =~ "builder-format-dot"
+    assert html =~ "open-command-palette"
+    assert html =~ "builder-command-palette"
+    assert html =~ "builder-command-search"
+    assert html =~ "builder-command-results"
+    assert html =~ "builder-shortcut-cheatsheet"
+    assert html =~ "builder-shortcuts-dialog"
   end
 
   test "builder node type selector covers all runtime node types", %{conn: conn} do
@@ -105,6 +111,19 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLiveTest do
         ] do
       assert html =~ ~s(id="#{button_id}")
     end
+  end
+
+  test "builder exposes command palette actions and visible keyboard shortcuts", %{conn: conn} do
+    {:ok, _view, html} = live(conn, ~p"/builder")
+
+    assert html =~ "Command Palette"
+    assert html =~ "Ctrl+K"
+    assert html =~ "Shift+A"
+    assert html =~ "Shift+R"
+    assert html =~ "Open Palette"
+    assert html =~ "Shortcuts"
+    assert html =~ "Search actions and node inserts"
+    assert html =~ "Quick add at cursor"
   end
 
   test "create route opens the prompt dialog and loads generated dot into the builder", %{
