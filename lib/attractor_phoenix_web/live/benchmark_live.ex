@@ -35,4 +35,16 @@ defmodule AttractorPhoenixWeb.BenchmarkLive do
 
   defp leadership_status_tone(true), do: "bg-success/12 text-success"
   defp leadership_status_tone(false), do: "bg-warning/12 text-warning"
+
+  defp blocked_criteria(benchmark) do
+    Enum.reject(benchmark.leadership_criteria, & &1.met?)
+  end
+
+  defp top_dimension(benchmark) do
+    Enum.max_by(benchmark.dimensions, & &1.score)
+  end
+
+  defp weakest_dimension(benchmark) do
+    Enum.min_by(benchmark.dimensions, & &1.score)
+  end
 end

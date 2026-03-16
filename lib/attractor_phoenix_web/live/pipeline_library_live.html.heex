@@ -14,67 +14,133 @@
   </:actions>
   <:status>
     <Layouts.shell_status_item>
-      <span class="shell-status-label">Saved Pipelines</span>
-      <span class="shell-status-value">{length(@entries)}</span>
-      <span class="shell-status-note">Reusable entries available to the builder</span>
+      <span class="shell-status-label">Launchable Pipelines</span>
+      <span class="shell-status-value">{@entry_count}</span>
+      <span class="shell-status-note">Reusable builder starting points</span>
     </Layouts.shell_status_item>
     <Layouts.shell_status_item>
-      <span class="shell-status-label">Editor Mode</span>
-      <span class="shell-status-value">{@live_action}</span>
-      <span class="shell-status-note">Index, create, and edit share one admin route</span>
+      <span class="shell-status-label">Current Form</span>
+      <span class="shell-status-value">
+        {if @live_action == :edit, do: "Editing", else: "Create"}
+      </span>
+      <span class="shell-status-note">Browse and form work stay in one route</span>
     </Layouts.shell_status_item>
   </:status>
-  <section
-    class="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.9fr)]"
-    id="library-page"
-  >
+  <section class="library-launchpad-grid" id="library-page">
     <div class="space-y-6">
-      <div class="grid gap-4 md:grid-cols-3">
-        <article class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
-          <p class="text-xs font-semibold uppercase tracking-[0.24em] text-base-content/55">
-            Saved Pipelines
-          </p>
-          <p class="mt-3 text-4xl font-bold">{length(@entries)}</p>
-          <p class="mt-2 text-sm text-base-content/65">
-            Central library entries available to the builder.
-          </p>
-        </article>
-
-        <article class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
-          <p class="text-xs font-semibold uppercase tracking-[0.24em] text-base-content/55">
-            Live Loading
-          </p>
-          <p class="mt-3 text-lg font-semibold">`/builder?library=:id`</p>
-          <p class="mt-2 text-sm text-base-content/65">
-            Each saved pipeline deep-links directly back into the editor.
-          </p>
-        </article>
-
-        <article class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
-          <p class="text-xs font-semibold uppercase tracking-[0.24em] text-base-content/55">
-            Storage
-          </p>
-          <p class="mt-3 text-lg font-semibold">Local JSON persistence</p>
-          <p class="mt-2 text-sm text-base-content/65">
-            Lightweight file-backed storage without an added database dependency.
-          </p>
-        </article>
-      </div>
-
-      <div class="rounded-[1.75rem] border border-base-300 bg-base-100 p-4 shadow-sm sm:p-6">
-        <div class="flex items-center justify-between gap-3">
+      <section class="library-launchpad-hero">
+        <div class="space-y-4">
           <div>
-            <h2 class="text-xl font-semibold">Library Admin</h2>
-            <p class="text-sm text-base-content/65">
-              Edit saved pipelines or open them directly in the builder.
+            <p class="dashboard-card-label">Builder continuity</p>
+            <h2 class="mt-3 text-2xl font-semibold sm:text-3xl">
+              Library is the fastest route back into active graph work.
+            </h2>
+            <p class="mt-3 max-w-3xl text-sm leading-7 text-base-content/72">
+              Browse saved flows, reopen the freshest graph in one click, and keep the form panel
+              for curation instead of treating the whole route like CRUD chrome.
             </p>
           </div>
-          <span class="rounded-full border border-base-300 bg-base-200 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-base-content/60">
-            {@live_action}
-          </span>
+
+          <div class="library-kpi-grid">
+            <article class="library-kpi-card">
+              <p class="library-kpi-label">Saved launchpads</p>
+              <p class="library-kpi-value">{@entry_count}</p>
+              <p class="library-kpi-note">Ready to load into Builder</p>
+            </article>
+            <article class="library-kpi-card">
+              <p class="library-kpi-label">Recently touched</p>
+              <p class="library-kpi-value">{length(@recent_entries)}</p>
+              <p class="library-kpi-note">Surface the latest handoff first</p>
+            </article>
+            <article class="library-kpi-card">
+              <p class="library-kpi-label">Storage model</p>
+              <p class="library-kpi-value text-lg">Local JSON</p>
+              <p class="library-kpi-note">Persistent without adding a database</p>
+            </article>
+          </div>
         </div>
 
-        <div id="library-entries" class="mt-5 space-y-3">
+        <%= if @featured_entry do %>
+          <article class="library-featured-card" id="library-featured-entry">
+            <p class="library-featured-kicker">Continue recent work</p>
+            <div class="mt-3 flex items-start justify-between gap-3">
+              <div>
+                <h3 class="text-2xl font-semibold">{@featured_entry.name}</h3>
+                <p class="mt-2 text-sm leading-6 text-base-content/72">
+                  {if @featured_entry.description == "",
+                    do:
+                      "Most recently updated library flow with builder-ready DOT and context payload.",
+                    else: @featured_entry.description}
+                </p>
+              </div>
+              <span class="library-entry-chip">{@featured_entry.id}</span>
+            </div>
+
+            <div class="mt-5 grid gap-3 sm:grid-cols-3">
+              <div class="library-stat-block">
+                <span class="library-stat-label">Updated</span>
+                <strong>{@featured_entry.updated_at}</strong>
+              </div>
+              <div class="library-stat-block">
+                <span class="library-stat-label">DOT payload</span>
+                <strong>{String.length(@featured_entry.dot)} chars</strong>
+              </div>
+              <div class="library-stat-block">
+                <span class="library-stat-label">Context JSON</span>
+                <strong>{String.length(@featured_entry.context_json)} chars</strong>
+              </div>
+            </div>
+
+            <div class="mt-5 flex flex-wrap gap-2">
+              <.link
+                navigate={~p"/builder?library=#{@featured_entry.id}"}
+                class="ui-button ui-button-primary"
+              >
+                Load in Builder
+              </.link>
+              <.link navigate={~p"/library/#{@featured_entry.id}/edit"} class="builder-btn">
+                Curate entry
+              </.link>
+            </div>
+          </article>
+        <% else %>
+          <article class="library-featured-card">
+            <p class="library-featured-kicker">Launch surface</p>
+            <h3 class="mt-3 text-2xl font-semibold">No reusable graphs yet</h3>
+            <p class="mt-2 text-sm leading-6 text-base-content/72">
+              Start in Builder or seed the form panel here. Once saved, the library becomes the
+              quickest way to reopen work with full route continuity.
+            </p>
+            <div class="mt-5 flex flex-wrap gap-2">
+              <.link navigate={~p"/builder"} class="ui-button ui-button-primary">
+                Open Builder
+              </.link>
+              <.link navigate={~p"/library/new"} class="builder-btn">Create first entry</.link>
+            </div>
+          </article>
+        <% end %>
+      </section>
+
+      <section class="dashboard-panel">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p class="dashboard-card-label">Launchpad catalog</p>
+            <h2 class="mt-3 text-xl font-semibold">
+              Pick up work or hand a graph back to authoring
+            </h2>
+            <p class="mt-2 text-sm leading-6 text-base-content/70">
+              Every row is optimized for reopening, understanding recency, and making a quick
+              builder choice before touching the curation panel.
+            </p>
+          </div>
+          <div class="library-route-links" id="library-route-links">
+            <.link navigate={~p"/builder"} class="library-route-link">Builder</.link>
+            <.link navigate={~p"/setup"} class="library-route-link">Setup</.link>
+            <.link navigate={~p"/benchmark"} class="library-route-link">Benchmark</.link>
+          </div>
+        </div>
+
+        <div id="library-entries" class="mt-6 space-y-3">
           <%= if @entries == [] do %>
             <.empty_state
               title="No library pipelines yet"
@@ -87,34 +153,38 @@
             </.empty_state>
           <% end %>
 
-          <%= for entry <- @entries do %>
-            <article
-              id={"library-entry-#{entry.id}"}
-              class="grid gap-4 rounded-2xl border border-base-300 bg-base-100 px-5 py-5 transition hover:border-base-content/30 hover:shadow-sm lg:grid-cols-[minmax(0,1fr)_auto]"
-            >
+          <%= for {entry, index} <- Enum.with_index(@entries) do %>
+            <article id={"library-entry-#{entry.id}"} class="library-entry-row">
               <div class="space-y-3">
-                <div class="flex flex-wrap items-center gap-3">
+                <div class="flex flex-wrap items-center gap-2">
                   <h3 class="text-lg font-semibold">{entry.name}</h3>
-                  <span class="rounded-full border border-base-300 bg-base-200 px-2.5 py-1 font-mono text-[11px] text-base-content/65">
-                    {entry.id}
+                  <span class="library-entry-chip">{entry.id}</span>
+                  <span :if={index == 0} class="library-entry-badge">Recent</span>
+                  <span :if={entry.inserted_at == entry.updated_at} class="library-entry-badge">
+                    New draft
                   </span>
                 </div>
 
-                <p class="text-sm leading-6 text-base-content/70">
+                <p class="text-sm leading-6 text-base-content/72">
                   {if entry.description == "",
-                    do: "No description provided.",
+                    do:
+                      "No description provided. Open it in Builder to add routing context or refine the flow.",
                     else: entry.description}
                 </p>
 
-                <div class="flex flex-wrap gap-4 text-xs text-base-content/55">
+                <div class="library-entry-meta">
                   <span>Updated {entry.updated_at}</span>
+                  <span>Inserted {entry.inserted_at}</span>
                   <span>{String.length(entry.dot)} chars of DOT</span>
                   <span>{String.length(entry.context_json)} chars of JSON</span>
                 </div>
               </div>
 
-              <div class="flex flex-wrap items-center justify-start gap-2 lg:justify-end">
-                <.link navigate={~p"/builder?library=#{entry.id}"} class="builder-btn">
+              <div class="library-entry-actions">
+                <.link
+                  navigate={~p"/builder?library=#{entry.id}"}
+                  class="ui-button ui-button-primary"
+                >
                   Load in Builder
                 </.link>
                 <.link navigate={~p"/library/#{entry.id}/edit"} class="builder-btn">
@@ -133,19 +203,30 @@
             </article>
           <% end %>
         </div>
-      </div>
+      </section>
     </div>
 
-    <aside class="rounded-[1.75rem] border border-base-300 bg-base-100 p-5 shadow-sm sm:p-6">
+    <aside class="library-form-panel">
       <div class="space-y-2">
-        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-base-content/55">
-          {if @live_action == :edit, do: "Edit Pipeline", else: "Create Pipeline"}
+        <p class="dashboard-card-label">
+          {if @live_action == :edit, do: "Entry curation", else: "New launchpad"}
         </p>
         <h2 class="text-2xl font-bold">
-          {if @live_action == :edit, do: "Update library entry", else: "Add library entry"}
+          {if @live_action == :edit,
+            do: "Update library entry",
+            else: "Create a reusable launchpad"}
         </h2>
         <p class="text-sm leading-6 text-base-content/70">
-          This form stores the same DOT and context payload the builder consumes.
+          Store the same DOT and context payload the builder consumes, but keep creation isolated
+          from the browse-first launch surface on the left.
+        </p>
+      </div>
+
+      <div class="library-form-note">
+        <p class="library-stat-label">What this panel is for</p>
+        <p class="mt-2 text-sm leading-6 text-base-content/72">
+          Naming, documenting, and curating reusable graphs. Loading and continuing work stays the
+          primary action elsewhere on the route.
         </p>
       </div>
 
@@ -186,7 +267,7 @@
         />
 
         <div class="flex flex-wrap gap-2 pt-2">
-          <button id="save-library-entry" type="submit" class="builder-btn">
+          <button id="save-library-entry" type="submit" class="ui-button ui-button-primary">
             {if @live_action == :edit, do: "Update Pipeline", else: "Create Pipeline"}
           </button>
           <.link navigate={~p"/library"} class="builder-btn">

@@ -20,7 +20,7 @@
   </:actions>
   <:status>
     <Layouts.shell_status_item>
-      <span class="shell-status-label">Default Model</span>
+      <span class="shell-status-label">Default Route</span>
       <span class="shell-status-value">
         {if @settings.default_model, do: @settings.default_model, else: "Not selected"}
       </span>
@@ -31,49 +31,82 @@
       </span>
     </Layouts.shell_status_item>
     <Layouts.shell_status_item>
-      <span class="shell-status-label">Discovered Models</span>
-      <span class="shell-status-value">
-        {Enum.reduce(@settings.providers, 0, fn {_provider, entry}, total ->
-          total + length(entry.models)
-        end)}
+      <span class="shell-status-label">Provider Coverage</span>
+      <span class="shell-status-value">{configured_provider_count(@settings)} / 3</span>
+      <span class="shell-status-note">
+        {discovered_model_count(@settings)} discovered models in inventory
       </span>
-      <span class="shell-status-note">Across OpenAI, Anthropic, and Gemini</span>
     </Layouts.shell_status_item>
   </:status>
   <section class="space-y-8" id="setup-page">
-    <section class="dashboard-panel">
-      <div class="space-y-2">
-        <p class="dashboard-card-label">Setup Overview</p>
-        <h2 class="text-xl font-semibold">LLM Providers and Defaults</h2>
-        <p class="text-sm leading-6 text-base-content/70">
-          Configure API keys, fetch provider inventories, and set the default generation model for
-          the Create flow.
-        </p>
-      </div>
+    <section class="setup-control-grid">
+      <article class="setup-control-hero">
+        <div>
+          <p class="dashboard-card-label">Provider control room</p>
+          <h2 class="mt-3 text-2xl font-semibold sm:text-3xl">
+            Scan provider health before touching credentials.
+          </h2>
+          <p class="mt-3 max-w-3xl text-sm leading-7 text-base-content/72">
+            The route now prioritizes health, recency, mode, and default-role clarity so operators
+            can understand readiness at a glance before working through form density.
+          </p>
+        </div>
+
+        <div class="setup-summary-grid" id="setup-summary-grid">
+          <article class="setup-summary-card">
+            <p class="setup-summary-label">Providers configured</p>
+            <p class="setup-summary-value">{configured_provider_count(@settings)}</p>
+            <p class="setup-summary-note">API-backed or CLI-backed</p>
+          </article>
+          <article class="setup-summary-card">
+            <p class="setup-summary-label">Models discovered</p>
+            <p class="setup-summary-value">{discovered_model_count(@settings)}</p>
+            <p class="setup-summary-note">Across all provider inventories</p>
+          </article>
+          <article class="setup-summary-card">
+            <p class="setup-summary-label">Default generator</p>
+            <p class="setup-summary-value text-lg">
+              {if @settings.default_provider,
+                do:
+                  "#{String.capitalize(@settings.default_provider)} / #{@settings.default_model}",
+                else: "Not selected"}
+            </p>
+            <p class="setup-summary-note">Applied to builder create flows</p>
+          </article>
+        </div>
+      </article>
+
+      <aside class="setup-route-links" id="setup-route-links">
+        <p class="dashboard-card-label">Execution routes</p>
+        <div class="mt-4 grid gap-2">
+          <.link navigate={~p"/builder"} class="library-route-link">Builder authoring</.link>
+          <.link navigate={~p"/library"} class="library-route-link">Library launchpads</.link>
+          <.link navigate={~p"/benchmark"} class="library-route-link">Benchmark priorities</.link>
+        </div>
+      </aside>
     </section>
 
     <.inline_error :if={@error} id="setup-error" title="Setup failed" message={@error} />
 
-    <section class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-      <article class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <h2 class="text-lg font-semibold">Provider Credentials</h2>
-            <p class="mt-1 text-sm text-base-content/65">
-              Save keys here, then use Get Settings to query each provider for models currently
-              available to that key.
-            </p>
-          </div>
+    <section class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+      <article class="setup-form-card">
+        <div>
+          <p class="dashboard-card-label">Credential and fetch controls</p>
+          <h2 class="mt-3 text-xl font-semibold">Provider Credentials</h2>
+          <p class="mt-2 text-sm leading-6 text-base-content/68">
+            Save keys here, then fetch live inventories. Sensitive values stay obscured while the
+            health board below carries the scannable state.
+          </p>
         </div>
 
-        <.form for={@setup_form} id="setup-form" phx-submit="submit_setup" class="mt-5 space-y-4">
+        <.form for={@setup_form} id="setup-form" phx-submit="submit_setup" class="mt-6 space-y-4">
           <.input
             field={@setup_form[:openai]}
             id="setup-openai-key"
             type="password"
             label="OpenAI API Key"
           />
-          <div class="grid gap-4 rounded-2xl border border-base-300/70 bg-base-200/30 p-4 md:grid-cols-[0.5fr_1fr]">
+          <div class="setup-openai-mode-panel">
             <.input
               field={@setup_form[:openai_mode]}
               id="setup-openai-mode"
@@ -94,8 +127,8 @@
               Use CLI mode if you want to generate through the local <code>codex</code>
               tool
               instead of OpenAI API billing. Command templates must include <code>{prompt}</code>.
-              The default template is <code>codex exec --full-auto {prompt}</code>.
-              Add <code>{model}</code>
+              The default template is <code>codex exec --full-auto {prompt}</code>. Add
+              <code>{model}</code>
               only if you want the selected model passed through to the CLI.
             </p>
           </div>
@@ -118,7 +151,7 @@
               name="setup[action]"
               value="save_keys"
               type="submit"
-              class="rounded-lg border border-base-300 bg-base-100 px-4 py-2 text-sm font-semibold transition hover:bg-base-200"
+              class="builder-btn"
             >
               Save Keys
             </button>
@@ -127,7 +160,7 @@
               name="setup[action]"
               value="refresh_models"
               type="submit"
-              class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400"
+              class="ui-button ui-button-primary"
             >
               Get Settings
             </button>
@@ -135,102 +168,114 @@
         </.form>
       </article>
 
-      <article class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
-        <h2 class="text-lg font-semibold">Default Generation Model</h2>
-        <p class="mt-1 text-sm text-base-content/65">
-          The Create dialog will use this provider/model by default, but users can still override
-          it per generation.
-        </p>
+      <div class="space-y-4">
+        <article class="setup-default-card">
+          <div>
+            <p class="dashboard-card-label">Default role routing</p>
+            <h2 class="mt-3 text-xl font-semibold">Default Generation Model</h2>
+            <p class="mt-2 text-sm leading-6 text-base-content/68">
+              Set the default builder generation route after inventory has been fetched.
+            </p>
+          </div>
 
-        <.form
-          for={@default_form}
-          id="default-model-form"
-          phx-submit="save_default"
-          class="mt-5 space-y-4"
-        >
-          <.input
-            field={@default_form[:selection]}
-            id="default-model-selection"
-            type="select"
-            label="Default provider/model"
-            prompt="Choose a discovered model"
-            options={
-              Enum.map(AttractorPhoenix.LLMSetup.available_models(), fn model ->
-                {"#{String.capitalize(model.provider)} / #{model.id}",
-                 "#{model.provider}::#{model.id}"}
-              end)
-            }
-          />
-
-          <button
-            id="save-default-model"
-            type="submit"
-            class="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-400"
+          <.form
+            for={@default_form}
+            id="default-model-form"
+            phx-submit="save_default"
+            class="mt-5 space-y-4"
           >
-            Save Default
-          </button>
-        </.form>
-      </article>
+            <.input
+              field={@default_form[:selection]}
+              id="default-model-selection"
+              type="select"
+              label="Default provider/model"
+              prompt="Choose a discovered model"
+              options={
+                Enum.map(AttractorPhoenix.LLMSetup.available_models(), fn model ->
+                  {"#{String.capitalize(model.provider)} / #{model.id}",
+                   "#{model.provider}::#{model.id}"}
+                end)
+              }
+            />
+
+            <button id="save-default-model" type="submit" class="ui-button ui-button-primary">
+              Save Default
+            </button>
+          </.form>
+        </article>
+
+        <article class="setup-default-card">
+          <p class="dashboard-card-label">What the board is showing</p>
+          <div class="mt-4 space-y-3 text-sm leading-6 text-base-content/72">
+            <p><strong>Status:</strong> key presence, fetch result, and model readiness.</p>
+            <p>
+              <strong>Recency:</strong>
+              last sync time or whether the provider has never been queried.
+            </p>
+            <p><strong>Mode:</strong> direct API vs CLI-backed OpenAI execution.</p>
+          </div>
+        </article>
+      </div>
     </section>
 
     <section class="grid gap-4 lg:grid-cols-3">
       <%= for provider <- ["openai", "anthropic", "gemini"] do %>
         <% entry = @settings.providers[provider] %>
-        <article
-          id={"provider-card-#{provider}"}
-          class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm"
-        >
+        <article id={"provider-card-#{provider}"} class="setup-provider-card">
           <div class="flex items-start justify-between gap-3">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.24em] text-base-content/55">
                 {provider}
               </p>
               <h3 class="mt-2 text-xl font-semibold">{String.capitalize(provider)}</h3>
+              <p class="mt-2 text-sm text-base-content/68">Health, inventory, and route role</p>
             </div>
-            <span class={[
-              "rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]",
-              entry.api_key == "" && "bg-base-200 text-base-content/60",
-              entry.api_key != "" && entry.last_error == nil && "bg-success/15 text-success",
-              entry.last_error != nil && "bg-error/15 text-error"
-            ]}>
-              <%= cond do %>
-                <% entry.api_key == "" -> %>
-                  no key
-                <% entry.last_error != nil -> %>
-                  error
-                <% true -> %>
-                  ready
-              <% end %>
+            <span class={["setup-health-pill", provider_health_tone(entry)]}>
+              {provider_health_label(entry)}
             </span>
           </div>
 
-          <div class="mt-4 space-y-3 text-sm">
-            <p>
-              Key: <strong>{if entry.api_key == "", do: "not saved", else: "saved"}</strong>
-            </p>
-            <p>
-              Mode: <strong>{String.upcase(entry.mode)}</strong>
-            </p>
-            <%= if provider == "openai" and entry.mode == "cli" do %>
-              <p>
-                Command:
-                <strong class="break-all font-mono text-[11px]">{entry.cli_command}</strong>
-              </p>
-            <% end %>
-            <p>
-              Last sync: <strong>{entry.last_synced_at || "never"}</strong>
-            </p>
-            <%= if entry.last_error do %>
-              <p class="rounded-xl border border-error/30 bg-error/10 px-3 py-2 text-xs text-error">
-                {entry.last_error}
-              </p>
-            <% end %>
+          <div class="setup-provider-meta-grid">
+            <div class="setup-provider-meta">
+              <span class="setup-provider-meta-label">Credential</span>
+              <strong>{provider_key_status(entry)}</strong>
+            </div>
+            <div class="setup-provider-meta">
+              <span class="setup-provider-meta-label">Mode</span>
+              <strong>{String.upcase(entry.mode)}</strong>
+            </div>
+            <div class="setup-provider-meta">
+              <span class="setup-provider-meta-label">Last sync</span>
+              <strong>{provider_recency(entry)}</strong>
+            </div>
+            <div class="setup-provider-meta">
+              <span class="setup-provider-meta-label">Default role</span>
+              <strong>
+                {if @settings.default_provider == provider,
+                  do: "Current default",
+                  else: "Available"}
+              </strong>
+            </div>
           </div>
 
-          <div class="mt-4">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-base-content/55">
-              Models
-            </p>
+          <%= if provider == "openai" and entry.mode == "cli" do %>
+            <div class="setup-command-note">
+              <p class="setup-provider-meta-label">CLI command</p>
+              <p class="mt-2 break-all font-mono text-[11px]">{entry.cli_command}</p>
+            </div>
+          <% end %>
+
+          <%= if entry.last_error do %>
+            <p class="setup-provider-error">{entry.last_error}</p>
+          <% end %>
+
+          <div class="mt-5">
+            <div class="flex items-center justify-between gap-3">
+              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-base-content/55">
+                Models
+              </p>
+              <span class="text-xs text-base-content/55">{length(entry.models)} available</span>
+            </div>
 
             <div id={"provider-models-#{provider}"} class="mt-3 space-y-2">
               <%= if entry.models == [] do %>
@@ -242,12 +287,16 @@
               <% end %>
 
               <%= for model <- entry.models do %>
-                <div class="rounded-xl border border-base-300/70 px-3 py-2 text-sm">
+                <div class="setup-model-row">
                   <div class="flex items-center justify-between gap-3">
                     <span class="font-mono text-xs">{model.id}</span>
                     <%= if @settings.default_provider == provider and @settings.default_model == model.id do %>
                       <span class="rounded-full bg-amber-500/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-700">
                         default
+                      </span>
+                    <% else %>
+                      <span class="text-[10px] font-semibold uppercase tracking-[0.14em] text-base-content/50">
+                        standby
                       </span>
                     <% end %>
                   </div>
