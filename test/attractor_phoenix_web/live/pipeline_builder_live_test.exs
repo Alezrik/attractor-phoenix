@@ -282,10 +282,10 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLiveTest do
 
     assert has_element?(view, "#run-result")
     assert has_element?(view, "#builder-runtime-status-badge")
-    assert render(view) =~ "Run ID:"
     assert render(view) =~ "Latest Run"
-    assert render(view) =~ "Graph JSON"
+    assert render(view) =~ "Logs Root"
     assert render(view) =~ "POST /run"
+    assert render(view) =~ "Graph JSON"
   end
 
   test "saves the current builder pipeline to the library and reloads it by query param", %{
