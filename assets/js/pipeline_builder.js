@@ -254,6 +254,8 @@ const PipelineBuilder = {
     this.analysisRequestId = 0
     this.selectedNodeId = null
     this.selectedNodeIds = new Set()
+    this.selectedEdgeIndex = null
+    this.activeInspectorTab = "selection"
     this.commandResults = []
     this.activeCommandIndex = 0
     this.commandUsage = this.loadCommandUsage()
@@ -279,7 +281,6 @@ const PipelineBuilder = {
     this.connectBtn = document.getElementById("connect-toggle")
     this.clearEdgesBtn = document.getElementById("clear-edges")
     this.applyDotBtn = document.getElementById("apply-dot")
-    this.propsDialog = document.getElementById("node-properties-dialog")
     this.propId = document.getElementById("node-prop-id")
     this.propLabel = document.getElementById("node-prop-label")
     this.propType = document.getElementById("node-prop-type")
@@ -320,7 +321,6 @@ const PipelineBuilder = {
     this.propEdgesList = document.getElementById("node-edges-list")
     this.propAddEdge = document.getElementById("node-prop-add-edge")
     this.currentEditingNodeId = null
-    this.edgeDialog = document.getElementById("edge-properties-dialog")
     this.edgePropSource = document.getElementById("edge-prop-source")
     this.edgePropTarget = document.getElementById("edge-prop-target")
     this.edgePropMode = document.getElementById("edge-prop-mode")
@@ -348,6 +348,14 @@ const PipelineBuilder = {
     this.diagnosticsSummary = document.getElementById("builder-diagnostics-summary")
     this.diagnosticsList = document.getElementById("builder-diagnostics-list")
     this.autofixActions = document.getElementById("builder-autofix-actions")
+    this.inspectorTabs = Array.from(document.querySelectorAll("[data-inspector-tab]"))
+    this.inspectorPanels = Array.from(document.querySelectorAll("[data-inspector-panel]"))
+    this.selectionInspectorCopy = document.getElementById("builder-selection-inspector-copy")
+    this.selectionInspectorNodeName = document.getElementById("builder-selection-node-name")
+    this.selectionInspectorCount = document.getElementById("builder-selection-inspector-count")
+    this.selectionInspectorEdgeName = document.getElementById("builder-selection-edge-name")
+    this.nodeInspectorBadge = document.getElementById("builder-node-inspector-badge")
+    this.edgeInspectorBadge = document.getElementById("builder-edge-inspector-badge")
     this.templateSelect = document.getElementById("builder-template-select")
     this.loadTemplateBtn = document.getElementById("builder-load-template")
     this.formatDotBtn = document.getElementById("builder-format-dot")
@@ -438,11 +446,11 @@ const PipelineBuilder = {
     })
 
     this.bindNodePropertyControls()
+    this.bindInspectorControls()
     this.edgePropSource?.addEventListener("change", () => this.populateEdgeTargetOptions())
     this.edgePropMode?.addEventListener("change", () => this.updateEdgeDialogValueVisibility())
     this.edgePropSave?.addEventListener("click", () => this.saveEdgeProperties())
     this.edgePropDelete?.addEventListener("click", () => this.deleteCurrentEdge())
-    this.edgeDialog?.addEventListener("close", () => this.handleEdgeDialogClose())
     this.bindGraphInputs()
     this.bindPanelToggles()
     this.bindAuthoringControls()
@@ -457,6 +465,8 @@ const PipelineBuilder = {
     this.loadTemplates()
     this.applyInteractionMode()
     this.lastExternalDotValue = this.dotEl.value
+    this.setInspectorTab("selection")
+    this.refreshInspectorState()
     this.analyzeDot(this.dotEl.value, { preservePositions: false, fit: true })
   },
 
@@ -465,6 +475,8 @@ const PipelineBuilder = {
     if (!this.dotEl) return
     this.bindDotInput()
     this.bindNodePropertyControls()
+    this.bindInspectorControls()
+    this.refreshInspectorState()
 
     const nextDot = this.dotEl.value
     if (nextDot === this.lastExternalDotValue) return
@@ -1480,6 +1492,9 @@ const PipelineBuilder = {
   },
 
   renderDiagnostics(diagnostics, autofixes) {
+    const hasDiagnostics = Array.isArray(diagnostics) && diagnostics.length > 0
+    if (hasDiagnostics && this.activeInspectorTab !== "diagnostics") this.setInspectorTab("diagnostics")
+
     if (this.diagnosticsSummary) {
       const counts = diagnostics.reduce((acc, diag) => {
         const severity = diag.severity || "info"
@@ -1543,10 +1558,10 @@ const PipelineBuilder = {
   },
 
   bindNodePropertyControls() {
-    this.propsDialog = document.getElementById("node-properties-dialog")
     this.propType = document.getElementById("node-prop-type")
     this.propSave = document.getElementById("node-prop-save")
     this.propDelete = document.getElementById("node-prop-delete")
+    this.propCancel = document.getElementById("node-prop-cancel")
     this.propAddEdge = document.getElementById("node-prop-add-edge")
 
     if (this.propType && this.propType.dataset.builderBound !== "true") {
@@ -1564,10 +1579,111 @@ const PipelineBuilder = {
       this.propDelete.addEventListener("click", () => this.deleteCurrentNode())
     }
 
+    if (this.propCancel && this.propCancel.dataset.builderBound !== "true") {
+      this.propCancel.dataset.builderBound = "true"
+      this.propCancel.addEventListener("click", () => this.closeNodeInspector())
+    }
+
     if (this.propAddEdge && this.propAddEdge.dataset.builderBound !== "true") {
       this.propAddEdge.dataset.builderBound = "true"
       this.propAddEdge.addEventListener("click", () => this.startEdgeFromNodeDialog())
     }
+  },
+
+  bindInspectorControls() {
+    this.inspectorTabs.forEach((tab) => {
+      if (tab.dataset.builderBound === "true") return
+      tab.dataset.builderBound = "true"
+      tab.addEventListener("click", () => this.setInspectorTab(tab.dataset.inspectorTab || "selection"))
+    })
+
+    this.edgePropCancel = document.getElementById("edge-prop-cancel")
+    if (this.edgePropCancel && this.edgePropCancel.dataset.builderBound !== "true") {
+      this.edgePropCancel.dataset.builderBound = "true"
+      this.edgePropCancel.addEventListener("click", () => this.closeEdgeInspector())
+    }
+  },
+
+  setInspectorTab(tab) {
+    this.activeInspectorTab = tab || "selection"
+
+    this.inspectorTabs.forEach((button) => {
+      const isActive = button.dataset.inspectorTab === this.activeInspectorTab
+      button.classList.toggle("is-active", isActive)
+      button.setAttribute("aria-selected", isActive ? "true" : "false")
+    })
+
+    this.inspectorPanels.forEach((panel) => {
+      const isActive = panel.dataset.inspectorPanel === this.activeInspectorTab
+      panel.classList.toggle("hidden", !isActive)
+    })
+  },
+
+  refreshInspectorState() {
+    this.updateSelectionInspector()
+
+    if (this.currentEditingNodeId) {
+      const node = this.state.nodes.find((entry) => entry.id === this.currentEditingNodeId)
+      if (!node) this.closeNodeInspector()
+    }
+
+    if (this.currentEditingEdgeIndex !== null && !this.state.edges[this.currentEditingEdgeIndex]) {
+      this.closeEdgeInspector()
+    }
+  },
+
+  updateSelectionInspector() {
+    if (this.selectionInspectorCount) this.selectionInspectorCount.textContent = `${this.selectedNodeIds.size}`
+
+    const selectedNode = this.selectedNodeId
+      ? this.state.nodes.find((entry) => entry.id === this.selectedNodeId)
+      : null
+
+    if (this.selectionInspectorNodeName) {
+      this.selectionInspectorNodeName.textContent = selectedNode?.id || "None"
+    }
+
+    if (this.selectionInspectorEdgeName) {
+      const edge = this.currentEditingEdgeIndex !== null ? this.state.edges[this.currentEditingEdgeIndex] : null
+      this.selectionInspectorEdgeName.textContent = edge ? `${edge.from} -> ${edge.to}` : "None"
+    }
+
+    if (this.selectionInspectorCopy) {
+      this.selectionInspectorCopy.textContent =
+        this.currentEditingEdgeIndex !== null
+          ? "Edge routing is active in the inspector. Switch tabs or keep editing without leaving the canvas."
+          : selectedNode
+            ? `Node ${selectedNode.id} is ready for in-context editing.`
+            : this.selectedNodeIds.size > 1
+              ? `${this.selectedNodeIds.size} nodes are selected. Bulk actions stay on the canvas toolbar.`
+              : "Select a node or edge to edit it here. Multi-select keeps bulk actions on the canvas toolbar."
+    }
+
+    if (this.nodeInspectorBadge) {
+      this.nodeInspectorBadge.textContent = this.currentEditingNodeId || selectedNode?.id || "No node"
+    }
+
+    if (this.edgeInspectorBadge) {
+      const edge = this.currentEditingEdgeIndex !== null ? this.state.edges[this.currentEditingEdgeIndex] : null
+      this.edgeInspectorBadge.textContent = edge ? `${edge.from} -> ${edge.to}` : "No edge"
+    }
+  },
+
+  closeNodeInspector(options = {}) {
+    this.currentEditingNodeId = null
+    if (!options.preserveTab && this.activeInspectorTab === "node") this.setInspectorTab("selection")
+    this.updateSelectionInspector()
+  },
+
+  closeEdgeInspector(options = {}) {
+    const reopenNodeId = this.reopenNodePropertiesId
+    this.currentEditingEdgeIndex = null
+    this.reopenNodePropertiesId = null
+    this.selectedEdgeIndex = null
+    this.updateSelectionInspector()
+    if (options.preserveTab) return
+    if (reopenNodeId) this.openNodeProperties(reopenNodeId)
+    else if (this.activeInspectorTab === "edge") this.setInspectorTab("selection")
   },
 
   parseDot(dotText, options = {}) {
@@ -1835,6 +1951,7 @@ const PipelineBuilder = {
     this.renderEdges()
     this.renderMinimap()
     this.renderSelectionToolbar()
+    this.refreshInspectorState()
     this.renderWorkflowSummary()
     this.updateAddButtons()
     if (this.commandPaletteDialog?.open) this.refreshCommandPalette()
@@ -2128,7 +2245,7 @@ const PipelineBuilder = {
     event.stopPropagation()
 
     if (targetId && targetId !== this.edgeDragSource) {
-      this.addEdge(this.edgeDragSource, targetId, { openDialog: true })
+      this.addEdge(this.edgeDragSource, targetId, { openInspector: true })
       this.sync({ writeDot: true, canonicalize: true })
     }
 
@@ -2232,7 +2349,7 @@ const PipelineBuilder = {
     }
 
     if (this.pendingSource !== nodeId) {
-      this.addEdge(this.pendingSource, nodeId, { openDialog: true })
+      this.addEdge(this.pendingSource, nodeId, { openInspector: true })
     }
 
     this.pendingSource = null
@@ -2255,10 +2372,12 @@ const PipelineBuilder = {
   clearSelection(options = {}) {
     this.selectedNodeIds = new Set()
     this.selectedNodeId = null
+    this.selectedEdgeIndex = null
     if (options.sync) this.sync({ writeDot: false, canonicalize: false })
   },
 
   toggleNodeSelection(nodeId, options = {}) {
+    this.selectedEdgeIndex = null
     const append = options.append === true
     if (append) {
       if (this.selectedNodeIds.has(nodeId)) {
@@ -2537,12 +2656,12 @@ const PipelineBuilder = {
   },
 
   openNodeProperties(nodeId) {
-    if (!this.propsDialog) return
     const node = this.state.nodes.find((entry) => entry.id === nodeId)
     if (!node) return
 
     this.selectedNodeId = nodeId
     this.selectedNodeIds = new Set([nodeId])
+    this.currentEditingEdgeIndex = null
     const attrs = node.attrs || {}
     this.currentEditingNodeId = nodeId
     this.propId.value = node.id
@@ -2580,7 +2699,9 @@ const PipelineBuilder = {
     this.propCommand.value = attrs.tool_command || attrs.command || "echo hello world"
     this.applyNodeTypeVisibility()
     this.renderEdgesEditor(node.id)
-    this.propsDialog.showModal()
+    this.selectedEdgeIndex = null
+    this.setInspectorTab("node")
+    this.updateSelectionInspector()
   },
 
   applyNodeTypeVisibility() {
@@ -2640,13 +2761,13 @@ const PipelineBuilder = {
 
     this.fitNodesInViewport()
     this.sync({ writeDot: true, canonicalize: true })
-    this.propsDialog?.close()
+    this.setInspectorTab("node")
   },
 
   deleteCurrentNode() {
     if (!this.currentEditingNodeId) return
     this.deleteNode(this.currentEditingNodeId)
-    this.propsDialog?.close()
+    this.closeNodeInspector()
   },
 
   deleteNode(nodeId, options = {}) {
@@ -2734,7 +2855,7 @@ const PipelineBuilder = {
   },
 
   addEdge(fromId, toId, options = {}) {
-    const { openDialog = false, reopenNodeId = null } = options
+    const { openInspector = false, reopenNodeId = null } = options
     let edgeIndex = this.state.edges.findIndex((edge) => edge.from === fromId && edge.to === toId)
 
     if (edgeIndex === -1) {
@@ -2742,7 +2863,7 @@ const PipelineBuilder = {
       edgeIndex = this.state.edges.length - 1
     }
 
-    if (openDialog) this.openEdgeProperties(edgeIndex, { reopenNodeId })
+    if (openInspector) this.openEdgeProperties(edgeIndex, { reopenNodeId })
     return edgeIndex
   },
 
@@ -2799,12 +2920,13 @@ const PipelineBuilder = {
   },
 
   openEdgeProperties(edgeIndex, options = {}) {
-    if (!this.edgeDialog) return
     const edge = this.state.edges[edgeIndex]
     if (!edge) return
 
     this.currentEditingEdgeIndex = edgeIndex
+    this.currentEditingNodeId = options.reopenNodeId || null
     this.reopenNodePropertiesId = options.reopenNodeId || null
+    this.selectedEdgeIndex = edgeIndex
 
     this.populateEdgeSourceOptions(edge.from)
     this.populateEdgeTargetOptions(edge.to)
@@ -2823,9 +2945,8 @@ const PipelineBuilder = {
     this.edgePropThreadId.value = attrs.thread_id || ""
     this.edgePropLoopRestart.checked = this.boolAttr(attrs.loop_restart)
     this.updateEdgeDialogValueVisibility()
-
-    if (this.propsDialog?.open) this.propsDialog.close()
-    this.edgeDialog.showModal()
+    this.setInspectorTab("edge")
+    this.updateSelectionInspector()
   },
 
   populateEdgeSourceOptions(selectedValue) {
@@ -2886,13 +3007,13 @@ const PipelineBuilder = {
     )
 
     this.sync({ writeDot: true, canonicalize: true })
-    this.edgeDialog?.close()
+    this.setInspectorTab("edge")
   },
 
   deleteCurrentEdge() {
     if (this.currentEditingEdgeIndex === null) return
     this.removeEdge(this.currentEditingEdgeIndex, { sync: true, reopenNodeId: this.reopenNodePropertiesId })
-    this.edgeDialog?.close()
+    this.closeEdgeInspector()
   },
 
   removeEdge(edgeIndex, options = {}) {
@@ -2900,15 +3021,9 @@ const PipelineBuilder = {
     if (edgeIndex < 0 || edgeIndex >= this.state.edges.length) return
     this.state.edges.splice(edgeIndex, 1)
     this.currentEditingEdgeIndex = null
+    this.selectedEdgeIndex = null
     this.reopenNodePropertiesId = reopenNodeId
     if (sync) this.sync({ writeDot: true, canonicalize: true })
-  },
-
-  handleEdgeDialogClose() {
-    const reopenNodeId = this.reopenNodePropertiesId
-    this.currentEditingEdgeIndex = null
-    this.reopenNodePropertiesId = null
-    if (reopenNodeId) this.openNodeProperties(reopenNodeId)
   },
 
   describeEdgeRule(attrs = {}) {

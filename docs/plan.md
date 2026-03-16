@@ -2,6 +2,8 @@
 
 This planning area tracks how `attractor-phoenix` should move ahead of the reference implementations identified in `../examples/FOCUSED-RESEARCH.md`.
 
+UI planning now also incorporates the focused graph-editor research reviewed on 2026-03-15 in `C:\Users\ex_ra\code\examples\FOCUSED-RESEARCH-UI.md`, with `n8n`, `node-red`, and `xyflow` as the primary implementation references for the Phoenix UI.
+
 The plan is organized as a numbered document set so work can be tracked, revised, and expanded without turning one file into an unmaintainable backlog dump.
 
 ## Plan Index
@@ -42,3 +44,15 @@ Once these plan documents are accepted, the next planning step should be to crea
 2. `03A` debugger MVP timeline
 3. `04A` canonical parser-backed builder API
 4. `05A` black-box conformance fixture harness
+
+## UI Increment Set
+
+These documents turn the high-level workstreams into UI-specific implementation slices sized for a developer to execute without rediscovering the entire product direction.
+
+1. [04A. Product Shell And Design System](plan/04A-product-shell-and-design-system.md)
+2. [04B. Builder Command Palette And Quick Insert](plan/04B-builder-command-palette-and-quick-insert.md)
+3. [04C. Builder Canvas Navigation And Spatial Controls](plan/04C-builder-canvas-navigation-and-spatial-controls.md)
+4. [04D. Builder Inspector And Runtime Sidecar](plan/04D-builder-inspector-and-runtime-sidecar.md)
+5. [03A. Operator Run Topology And Live Dashboard](plan/03A-operator-run-topology-and-live-dashboard.md)
+6. [03B. Debugger Timeline And Human-Gate Inbox](plan/03B-debugger-timeline-and-human-gate-inbox.md)
+7. [04E. Library, Setup, And Benchmark Continuity](plan/04E-library-setup-and-benchmark-continuity.md)
