@@ -511,8 +511,6 @@
           </div>
           <button id="toggle-right-panel" type="button" class="builder-btn">Hide Right</button>
         </div>
-        
-
         <.form
           for={@form}
           id="pipeline-runner-form"
@@ -585,7 +583,9 @@
           >
             <div class="builder-inspector-card">
               <p class="builder-kicker">Selection</p>
-              <h3 class="text-base font-semibold">Contextual editing stays docked to the canvas</h3>
+              <h3 class="text-base font-semibold">
+                Contextual editing stays docked to the canvas
+              </h3>
               <p
                 id="builder-selection-inspector-copy"
                 class="mt-2 text-sm leading-6 text-base-content/68"
@@ -711,7 +711,9 @@
               <div class="flex items-start justify-between gap-3">
                 <div>
                   <p class="builder-kicker">Node Inspector</p>
-                  <h3 class="text-base font-semibold">Edit runtime-backed node fields in place</h3>
+                  <h3 class="text-base font-semibold">
+                    Edit runtime-backed node fields in place
+                  </h3>
                 </div>
                 <span
                   id="builder-node-inspector-badge"
@@ -1029,7 +1031,10 @@
                 </label>
               </div>
 
-              <div id="node-prop-wrap-edges" class="space-y-2 rounded-lg border border-base-300 p-3">
+              <div
+                id="node-prop-wrap-edges"
+                class="space-y-2 rounded-lg border border-base-300 p-3"
+              >
                 <div class="flex items-center justify-between">
                   <div class="space-y-1">
                     <span class="block text-xs font-semibold uppercase tracking-wide text-base-content/70">
@@ -1207,7 +1212,8 @@
               <div
                 id="builder-diagnostics-list"
                 class="space-y-2 text-xs text-base-content/75"
-              ></div>
+              >
+              </div>
             </div>
           </section>
 
@@ -1219,7 +1225,9 @@
             <div class="builder-inspector-card space-y-4">
               <div>
                 <p class="builder-kicker">Source</p>
-                <h3 class="text-base font-semibold">DOT, context, and library save live together</h3>
+                <h3 class="text-base font-semibold">
+                  DOT, context, and library save live together
+                </h3>
               </div>
 
               <%= if @loaded_library_entry do %>
@@ -1261,7 +1269,9 @@
               </div>
 
               <div class="space-y-2">
-                <label class="text-sm font-semibold" for="pipeline-context-json">Context JSON</label>
+                <label class="text-sm font-semibold" for="pipeline-context-json">
+                  Context JSON
+                </label>
                 <.input
                   field={@form[:context_json]}
                   id="pipeline-context-json"
