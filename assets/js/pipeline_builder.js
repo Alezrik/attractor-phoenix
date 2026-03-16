@@ -165,6 +165,62 @@ const NODE_ALLOWED_ATTRS_BY_TYPE = {
   ],
 }
 const EDGE_ALLOWED_ATTRS = ["label", "weight", "fidelity", "thread_id", "loop_restart", "status", "condition"]
+const NODE_TYPE_DEFINITIONS = [
+  {
+    type: "start",
+    title: "Insert Start Node",
+    subtitle: "Create the single workflow entry point.",
+    keywords: ["start", "entry", "begin", "quick insert"],
+  },
+  {
+    type: "tool",
+    title: "Insert Tool Node",
+    subtitle: "Run a shell command or tool step.",
+    keywords: ["tool", "command", "shell", "quick insert"],
+  },
+  {
+    type: "codergen",
+    title: "Insert LLM Node",
+    subtitle: "Add a codergen or LLM-backed step.",
+    keywords: ["llm", "codergen", "model", "assistant", "quick insert"],
+  },
+  {
+    type: "wait.human",
+    title: "Insert Human Node",
+    subtitle: "Pause for a human decision or input.",
+    keywords: ["human", "approval", "wait", "review", "quick insert"],
+  },
+  {
+    type: "conditional",
+    title: "Insert Decision Node",
+    subtitle: "Route to different paths from conditions.",
+    keywords: ["decision", "conditional", "branch", "if", "quick insert"],
+  },
+  {
+    type: "parallel",
+    title: "Insert Parallel Node",
+    subtitle: "Fan work out to concurrent paths.",
+    keywords: ["parallel", "fan out", "concurrent", "quick insert"],
+  },
+  {
+    type: "parallel.fan_in",
+    title: "Insert Fan-In Node",
+    subtitle: "Merge parallel branches back together.",
+    keywords: ["fan in", "merge", "parallel", "join", "quick insert"],
+  },
+  {
+    type: "stack.manager_loop",
+    title: "Insert Manager Node",
+    subtitle: "Supervise looped child work.",
+    keywords: ["manager", "loop", "stack", "supervisor", "quick insert"],
+  },
+  {
+    type: "exit",
+    title: "Insert End Node",
+    subtitle: "Create the single workflow exit point.",
+    keywords: ["end", "exit", "finish", "done", "quick insert"],
+  },
+]
 
 const PipelineBuilder = {
   mounted() {
@@ -182,6 +238,11 @@ const PipelineBuilder = {
     this.edgeDragLine = null
     this.nextId = 1
     this.analysisRequestId = 0
+    this.selectedNodeId = null
+    this.commandResults = []
+    this.activeCommandIndex = 0
+    this.commandUsage = this.loadCommandUsage()
+    this.lastPointer = null
     this.shellEl = document.getElementById("builder-shell")
     this.summaryEl = document.getElementById("workflow-summary")
     this.toggleLeftBtn = document.getElementById("toggle-left-panel")
@@ -275,6 +336,21 @@ const PipelineBuilder = {
     this.templateSelect = document.getElementById("builder-template-select")
     this.loadTemplateBtn = document.getElementById("builder-load-template")
     this.formatDotBtn = document.getElementById("builder-format-dot")
+    this.commandPaletteBtn = document.getElementById("open-command-palette")
+    this.commandPaletteSecondaryBtn = document.getElementById("open-command-palette-secondary")
+    this.commandPaletteDialog = document.getElementById("builder-command-palette")
+    this.closeCommandPaletteBtn = document.getElementById("close-command-palette")
+    this.commandSearchInput = document.getElementById("builder-command-search")
+    this.commandResultsEl = document.getElementById("builder-command-results")
+    this.commandEmptyEl = document.getElementById("builder-command-empty")
+    this.shortcutsBtn = document.getElementById("open-builder-shortcuts")
+    this.shortcutsDialog = document.getElementById("builder-shortcuts-dialog")
+    this.closeShortcutsBtn = document.getElementById("close-builder-shortcuts")
+    this.runPipelineBtn = document.getElementById("run-pipeline")
+    this.savePipelineLibraryBtn = document.getElementById("save-pipeline-library")
+    this.submitPipelineBtn = document.getElementById("submit-pipeline")
+    this.openCreateLink = document.getElementById("open-create-dialog")
+    this.openLibraryLink = document.querySelector('a[href="/library"]')
     this.nodeFieldWraps = {
       id: document.getElementById("node-prop-wrap-id"),
       label: document.getElementById("node-prop-wrap-label"),
@@ -327,12 +403,7 @@ const PipelineBuilder = {
       this.sync({ writeDot: true, canonicalize: true })
     })
 
-    this.connectBtn?.addEventListener("click", () => {
-      this.connectMode = !this.connectMode
-      this.pendingSource = null
-      this.connectBtn.dataset.active = this.connectMode ? "true" : "false"
-      this.connectBtn.textContent = this.connectMode ? "Adding Edges..." : "Add Edges"
-    })
+    this.connectBtn?.addEventListener("click", () => this.toggleConnectMode())
 
     this.applyDotBtn?.addEventListener("click", () => {
       this.analyzeDot(this.dotEl.value, { preservePositions: true, fit: true })
@@ -347,6 +418,9 @@ const PipelineBuilder = {
     this.bindGraphInputs()
     this.bindPanelToggles()
     this.bindAuthoringControls()
+    this.bindCommandPalette()
+    this.bindCanvasTracking()
+    this.bindKeyboardShortcuts()
 
     this.bindDotInput()
 
@@ -369,6 +443,12 @@ const PipelineBuilder = {
     this.syncFromDotInput()
   },
 
+  destroyed() {
+    window.removeEventListener("keydown", this.boundKeydown)
+    window.removeEventListener("builder:command-palette:open", this.boundOpenPalette)
+    window.removeEventListener("builder:shortcuts:open", this.boundOpenShortcuts)
+  },
+
   bindDotInput() {
     if (!this.dotEl || this.dotEl.dataset.builderBound === "true") return
 
@@ -389,6 +469,508 @@ const PipelineBuilder = {
       this.formatDotBtn.dataset.builderBound = "true"
       this.formatDotBtn.addEventListener("click", () => this.runTransform("format"))
     }
+  },
+
+  bindCanvasTracking() {
+    if (!this.canvas || this.canvas.dataset.pointerBound === "true") return
+
+    this.canvas.dataset.pointerBound = "true"
+    const trackPointer = (event) => {
+      const rect = this.canvas.getBoundingClientRect()
+      this.lastPointer = {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+        inside: event.clientX >= rect.left &&
+          event.clientX <= rect.right &&
+          event.clientY >= rect.top &&
+          event.clientY <= rect.bottom,
+      }
+    }
+
+    this.canvas.addEventListener("mousemove", trackPointer)
+    this.canvas.addEventListener("mousedown", trackPointer)
+    this.canvas.addEventListener("click", (event) => {
+      if (event.target !== this.canvas) return
+      if (this.selectedNodeId) {
+        this.selectedNodeId = null
+        this.sync({ writeDot: false, canonicalize: false })
+      }
+    })
+  },
+
+  bindCommandPalette() {
+    if (this.commandPaletteBtn && this.commandPaletteBtn.dataset.builderBound !== "true") {
+      this.commandPaletteBtn.dataset.builderBound = "true"
+      this.commandPaletteBtn.addEventListener("click", () => this.openCommandPalette())
+    }
+
+    if (this.commandPaletteSecondaryBtn && this.commandPaletteSecondaryBtn.dataset.builderBound !== "true") {
+      this.commandPaletteSecondaryBtn.dataset.builderBound = "true"
+      this.commandPaletteSecondaryBtn.addEventListener("click", () => this.openCommandPalette())
+    }
+
+    if (this.closeCommandPaletteBtn && this.closeCommandPaletteBtn.dataset.builderBound !== "true") {
+      this.closeCommandPaletteBtn.dataset.builderBound = "true"
+      this.closeCommandPaletteBtn.addEventListener("click", () => this.closeCommandPalette())
+    }
+
+    if (this.commandSearchInput && this.commandSearchInput.dataset.builderBound !== "true") {
+      this.commandSearchInput.dataset.builderBound = "true"
+      this.commandSearchInput.addEventListener("input", () => this.refreshCommandPalette())
+      this.commandSearchInput.addEventListener("keydown", (event) => this.handleCommandSearchKeydown(event))
+    }
+
+    if (this.commandPaletteDialog && this.commandPaletteDialog.dataset.builderBound !== "true") {
+      this.commandPaletteDialog.dataset.builderBound = "true"
+      this.commandPaletteDialog.addEventListener("click", (event) => {
+        if (event.target === this.commandPaletteDialog) this.closeCommandPalette()
+      })
+      this.commandPaletteDialog.addEventListener("close", () => this.handlePaletteClose())
+    }
+
+    if (this.shortcutsBtn && this.shortcutsBtn.dataset.builderBound !== "true") {
+      this.shortcutsBtn.dataset.builderBound = "true"
+      this.shortcutsBtn.addEventListener("click", () => this.openShortcutsDialog())
+    }
+
+    if (this.closeShortcutsBtn && this.closeShortcutsBtn.dataset.builderBound !== "true") {
+      this.closeShortcutsBtn.dataset.builderBound = "true"
+      this.closeShortcutsBtn.addEventListener("click", () => this.closeShortcutsDialog())
+    }
+
+    if (this.shortcutsDialog && this.shortcutsDialog.dataset.builderBound !== "true") {
+      this.shortcutsDialog.dataset.builderBound = "true"
+      this.shortcutsDialog.addEventListener("click", (event) => {
+        if (event.target === this.shortcutsDialog) this.closeShortcutsDialog()
+      })
+    }
+
+    this.boundOpenPalette = () => this.openCommandPalette()
+    this.boundOpenShortcuts = () => this.openShortcutsDialog()
+    window.addEventListener("builder:command-palette:open", this.boundOpenPalette)
+    window.addEventListener("builder:shortcuts:open", this.boundOpenShortcuts)
+  },
+
+  bindKeyboardShortcuts() {
+    if (this.boundKeydown) return
+
+    this.boundKeydown = (event) => {
+      if (event.defaultPrevented) return
+
+      const key = (event.key || "").toLowerCase()
+      if ((event.ctrlKey || event.metaKey) && key === "k") {
+        event.preventDefault()
+        this.openCommandPalette()
+        return
+      }
+
+      if (key === "escape") {
+        if (this.commandPaletteDialog?.open) {
+          event.preventDefault()
+          this.closeCommandPalette()
+          return
+        }
+
+        if (this.shortcutsDialog?.open) {
+          event.preventDefault()
+          this.closeShortcutsDialog()
+        }
+        return
+      }
+
+      if (this.commandPaletteDialog?.open || this.shortcutsDialog?.open) return
+      if (this.isEditingField(event.target)) return
+
+      if (event.shiftKey && key === "a") {
+        event.preventDefault()
+        this.openCommandPalette({ query: "insert " })
+        return
+      }
+
+      if (event.shiftKey && key === "f") {
+        event.preventDefault()
+        this.executeBuilderAction("format-dot")
+        return
+      }
+
+      if (event.shiftKey && key === "r") {
+        event.preventDefault()
+        this.executeBuilderAction("run-pipeline")
+        return
+      }
+
+      if (!event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey) {
+        if (key === "c") {
+          event.preventDefault()
+          this.executeBuilderAction("toggle-connect-mode")
+          return
+        }
+
+        if (key === "f") {
+          event.preventDefault()
+          this.executeBuilderAction("fit-view")
+          return
+        }
+
+        if (key === "i") {
+          event.preventDefault()
+          this.executeBuilderAction("open-inspector")
+          return
+        }
+
+        if (key === "?") {
+          event.preventDefault()
+          this.openShortcutsDialog()
+        }
+      }
+
+      if ((key === "backspace" || key === "delete") && this.selectedNodeId) {
+        event.preventDefault()
+        this.executeBuilderAction("delete-selection")
+      }
+    }
+
+    window.addEventListener("keydown", this.boundKeydown)
+  },
+
+  isEditingField(target) {
+    if (!(target instanceof HTMLElement)) return false
+    if (target.isContentEditable) return true
+    return !!target.closest("input, textarea, select, [contenteditable='true']")
+  },
+
+  loadCommandUsage() {
+    try {
+      return JSON.parse(window.localStorage.getItem("builder-command-usage") || "{}")
+    } catch (_error) {
+      return {}
+    }
+  },
+
+  persistCommandUsage() {
+    try {
+      window.localStorage.setItem("builder-command-usage", JSON.stringify(this.commandUsage || {}))
+    } catch (_error) {
+      // Ignore storage failures so the builder still works in private mode.
+    }
+  },
+
+  trackCommandUsage(actionId) {
+    this.commandUsage[actionId] = (this.commandUsage[actionId] || 0) + 1
+    this.persistCommandUsage()
+  },
+
+  getInsertPosition(preferred = null) {
+    if (preferred) return this.normalizeInsertPosition(preferred)
+    if (this.lastPointer?.inside) return this.normalizeInsertPosition(this.lastPointer)
+    return this.getViewportCenterPosition()
+  },
+
+  getViewportCenterPosition() {
+    if (!this.canvas) return { x: 80, y: 60 }
+
+    return this.normalizeInsertPosition({
+      x: this.canvas.clientWidth / 2 - NODE_WIDTH / 2,
+      y: this.canvas.clientHeight / 2 - NODE_HEIGHT / 2,
+    })
+  },
+
+  normalizeInsertPosition(position) {
+    const node = {
+      x: Math.round((position?.x || 0) / GRID_SIZE) * GRID_SIZE,
+      y: Math.round((position?.y || 0) / GRID_SIZE) * GRID_SIZE,
+    }
+
+    this.clampNodeToViewport(node)
+    return node
+  },
+
+  getActionDefinitions() {
+    const currentTemplateLabel = this.templateSelect?.selectedOptions?.[0]?.textContent?.trim() || "selected template"
+    const insertActions = NODE_TYPE_DEFINITIONS.map((definition) => ({
+      id: `insert-${definition.type}`,
+      kind: "insert",
+      category: "Insert",
+      title: definition.title,
+      subtitle: definition.subtitle,
+      type: definition.type,
+      keywords: definition.keywords,
+      available: () => this.canInsertType(definition.type),
+      score: (query) => this.scoreInsertAction(definition, query),
+      execute: () => this.addNode(definition.type, { position: this.getInsertPosition() }),
+    }))
+
+    const actionEntries = [
+      {
+        id: "open-create",
+        kind: "action",
+        category: "Authoring",
+        title: "Open Create With AI",
+        subtitle: "Jump to the AI drafting flow.",
+        shortcut: "Create",
+        keywords: ["create", "ai", "draft", "generate"],
+        execute: () => this.openCreateLink?.click(),
+      },
+      {
+        id: "load-template",
+        kind: "action",
+        category: "Authoring",
+        title: "Load Selected Template",
+        subtitle: `Apply ${currentTemplateLabel}.`,
+        keywords: ["template", "preset", "library", "load"],
+        available: () => !!this.templateSelect?.value,
+        execute: () => this.applyTemplate(),
+      },
+      {
+        id: "format-dot",
+        kind: "action",
+        category: "Authoring",
+        title: "Format DOT",
+        subtitle: "Round-trip the current draft through the canonical formatter.",
+        shortcut: "Shift+F",
+        keywords: ["format", "dot", "canonical", "lint"],
+        execute: () => this.runTransform("format"),
+      },
+      {
+        id: "toggle-connect-mode",
+        kind: "action",
+        category: "Canvas",
+        title: this.connectMode ? "Disable Connect Mode" : "Enable Connect Mode",
+        subtitle: "Switch between dragging nodes and drawing edges.",
+        shortcut: "C",
+        keywords: ["connect", "edge", "wiring", "mode"],
+        execute: () => this.toggleConnectMode(),
+      },
+      {
+        id: "fit-view",
+        kind: "action",
+        category: "Canvas",
+        title: "Fit Nodes In View",
+        subtitle: "Recenter the current graph inside the canvas.",
+        shortcut: "F",
+        keywords: ["fit", "view", "recenter", "canvas"],
+        execute: () => this.fitView(),
+      },
+      {
+        id: "open-inspector",
+        kind: "action",
+        category: "Canvas",
+        title: "Open Selected Inspector",
+        subtitle: this.selectedNodeId ? `Inspect ${this.selectedNodeId}.` : "Select a node, then open the inspector.",
+        shortcut: "I",
+        keywords: ["inspector", "properties", "node", "edit"],
+        available: () => !!this.selectedNodeId,
+        execute: () => this.openNodeProperties(this.selectedNodeId),
+      },
+      {
+        id: "delete-selection",
+        kind: "action",
+        category: "Canvas",
+        title: "Delete Selected Node",
+        subtitle: this.selectedNodeId ? `Remove ${this.selectedNodeId} from the canvas.` : "Select a node, then delete it.",
+        shortcut: "Backspace",
+        keywords: ["delete", "remove", "selection", "node"],
+        available: () => !!this.selectedNodeId,
+        execute: () => this.deleteNode(this.selectedNodeId),
+      },
+      {
+        id: "run-pipeline",
+        kind: "action",
+        category: "Run",
+        title: "Run Pipeline",
+        subtitle: "Submit the current builder draft via /run.",
+        shortcut: "Shift+R",
+        keywords: ["run", "execute", "pipeline", "test"],
+        execute: () => this.runPipelineBtn?.click(),
+      },
+      {
+        id: "submit-pipeline",
+        kind: "action",
+        category: "Run",
+        title: "Submit Pipeline via /pipelines",
+        subtitle: "Send the draft to the pipeline endpoint.",
+        keywords: ["submit", "pipelines", "publish"],
+        execute: () => this.submitPipelineBtn?.click(),
+      },
+      {
+        id: "save-library",
+        kind: "action",
+        category: "Run",
+        title: "Save To Library",
+        subtitle: "Store the current builder state as a reusable entry.",
+        keywords: ["save", "library", "preset"],
+        execute: () => this.savePipelineLibraryBtn?.click(),
+      },
+      {
+        id: "open-library",
+        kind: "action",
+        category: "Run",
+        title: "Open Library",
+        subtitle: "Browse saved pipeline entries.",
+        keywords: ["library", "browse", "saved"],
+        execute: () => this.openLibraryLink?.click(),
+      },
+      {
+        id: "open-shortcuts",
+        kind: "action",
+        category: "Help",
+        title: "Open Shortcut Cheat Sheet",
+        subtitle: "Review the keyboard-first builder controls.",
+        shortcut: "?",
+        keywords: ["help", "shortcuts", "cheat sheet", "keyboard"],
+        execute: () => this.openShortcutsDialog(),
+      },
+    ]
+
+    return [...insertActions, ...actionEntries]
+  },
+
+  canInsertType(type) {
+    if (type === "start" || type === "exit") return !this.hasType(type)
+    return true
+  },
+
+  scoreInsertAction(definition, query) {
+    const lowerQuery = (query || "").trim().toLowerCase()
+    const haystack = [definition.title, definition.subtitle, ...(definition.keywords || []), definition.type]
+      .join(" ")
+      .toLowerCase()
+
+    let score = this.commandUsage[`insert-${definition.type}`] || 0
+    if (!this.canInsertType(definition.type)) score -= 1000
+    if (lowerQuery.length === 0) score += 20
+    if (lowerQuery.includes("insert")) score += 8
+    if (lowerQuery.includes(definition.type)) score += 10
+    if (haystack.includes(lowerQuery)) score += 12
+    if ((definition.title || "").toLowerCase().startsWith(lowerQuery)) score += 16
+    return score
+  },
+
+  filterCommandResults(query = "") {
+    const normalized = query.trim().toLowerCase()
+
+    return this.getActionDefinitions()
+      .filter((entry) => (typeof entry.available === "function" ? entry.available() : true))
+      .map((entry) => {
+        const searchable = [entry.title, entry.subtitle, ...(entry.keywords || []), entry.category, entry.type || ""]
+          .join(" ")
+          .toLowerCase()
+
+        let score = this.commandUsage[entry.id] || 0
+        if (typeof entry.score === "function") score += entry.score(normalized)
+        if (normalized.length === 0) score += entry.kind === "insert" ? 6 : 2
+        if (searchable.includes(normalized)) score += 10
+        if ((entry.title || "").toLowerCase().startsWith(normalized)) score += 14
+        if ((entry.type || "").toLowerCase() === normalized) score += 16
+
+        return {...entry, searchable, score}
+      })
+      .filter((entry) => normalized.length === 0 || entry.searchable.includes(normalized) || entry.score > 0)
+      .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title))
+      .slice(0, 12)
+  },
+
+  openCommandPalette(options = {}) {
+    if (!this.commandPaletteDialog) return
+
+    const nextQuery = options.query ?? this.commandSearchInput?.value ?? ""
+    if (!this.commandPaletteDialog.open) this.commandPaletteDialog.showModal()
+    if (this.commandSearchInput) this.commandSearchInput.value = nextQuery
+    this.refreshCommandPalette()
+    window.requestAnimationFrame(() => this.commandSearchInput?.focus())
+  },
+
+  closeCommandPalette() {
+    if (this.commandPaletteDialog?.open) this.commandPaletteDialog.close()
+  },
+
+  handlePaletteClose() {
+    this.commandResults = []
+    this.activeCommandIndex = 0
+    if (this.commandResultsEl) this.commandResultsEl.innerHTML = ""
+    this.commandPaletteBtn?.focus()
+  },
+
+  refreshCommandPalette() {
+    this.commandResults = this.filterCommandResults(this.commandSearchInput?.value || "")
+    this.activeCommandIndex = Math.min(this.activeCommandIndex, Math.max(0, this.commandResults.length - 1))
+    this.renderCommandResults()
+  },
+
+  renderCommandResults() {
+    if (!this.commandResultsEl) return
+
+    if (this.commandEmptyEl) {
+      this.commandEmptyEl.classList.toggle("hidden", this.commandResults.length > 0)
+    }
+
+    this.commandResultsEl.innerHTML = this.commandResults.map((entry, index) => `
+      <button
+        type="button"
+        class="builder-command-result ${index === this.activeCommandIndex ? "is-active" : ""}"
+        data-command-id="${this.escapeHtml(entry.id)}"
+        role="option"
+        aria-selected="${index === this.activeCommandIndex ? "true" : "false"}"
+      >
+        <span class="builder-command-result-meta">
+          <span class="builder-command-result-category">${this.escapeHtml(entry.category)}</span>
+          ${entry.shortcut ? `<span class="builder-shortcut-pill">${this.escapeHtml(entry.shortcut)}</span>` : ""}
+        </span>
+        <span class="builder-command-result-title">${this.escapeHtml(entry.title)}</span>
+        <span class="builder-command-result-subtitle">${this.escapeHtml(entry.subtitle || "")}</span>
+      </button>
+    `).join("")
+
+    this.commandResultsEl.querySelectorAll("[data-command-id]").forEach((element, index) => {
+      element.addEventListener("mouseenter", () => {
+        this.activeCommandIndex = index
+        this.renderCommandResults()
+      })
+      element.addEventListener("click", () => {
+        const actionId = element.getAttribute("data-command-id") || ""
+        this.executeBuilderAction(actionId)
+      })
+    })
+  },
+
+  handleCommandSearchKeydown(event) {
+    if (event.key === "ArrowDown") {
+      event.preventDefault()
+      this.activeCommandIndex = Math.min(this.activeCommandIndex + 1, this.commandResults.length - 1)
+      this.renderCommandResults()
+      return
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault()
+      this.activeCommandIndex = Math.max(this.activeCommandIndex - 1, 0)
+      this.renderCommandResults()
+      return
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault()
+      const entry = this.commandResults[this.activeCommandIndex]
+      if (entry) this.executeBuilderAction(entry.id)
+    }
+  },
+
+  executeBuilderAction(actionId) {
+    const entry = this.getActionDefinitions().find((item) => item.id === actionId)
+    if (!entry) return
+    if (typeof entry.available === "function" && !entry.available()) return
+
+    this.trackCommandUsage(actionId)
+    this.closeCommandPalette()
+    entry.execute()
+  },
+
+  openShortcutsDialog() {
+    if (!this.shortcutsDialog?.open) this.shortcutsDialog?.showModal()
+  },
+
+  closeShortcutsDialog() {
+    if (this.shortcutsDialog?.open) this.shortcutsDialog.close()
   },
 
   async requestJson(url, payload) {
@@ -509,6 +1091,10 @@ const PipelineBuilder = {
         to: edge.to,
         attrs: edge.attrs || {},
       })),
+    }
+
+    if (this.selectedNodeId && !this.state.nodes.some((node) => node.id === this.selectedNodeId)) {
+      this.selectedNodeId = null
     }
 
     if (fit) this.fitNodesInViewport()
@@ -862,21 +1448,22 @@ const PipelineBuilder = {
     })
   },
 
-  addNode(type) {
+  addNode(type, options = {}) {
     if ((type === "start" || type === "exit") && this.hasType(type)) {
       window.alert(`Only one ${type} node is allowed.`)
       return
     }
 
     const id = `${type}_${this.nextId++}`
+    const position = this.getInsertPosition(options.position)
     this.state.nodes.push({
       id,
       type,
       attrs: this.normalizeNodeAttrs({ label: id }, type, id),
-      x: 80 + this.state.nodes.length * 40,
-      y: 60 + this.state.nodes.length * 30,
+      x: position.x,
+      y: position.y,
     })
-    this.fitNodesInViewport()
+    this.selectedNodeId = id
     this.sync({ writeDot: true, canonicalize: true })
   },
 
@@ -889,6 +1476,7 @@ const PipelineBuilder = {
     this.renderEdges()
     this.renderWorkflowSummary()
     this.updateAddButtons()
+    if (this.commandPaletteDialog?.open) this.refreshCommandPalette()
     if (writeDot) this.writeDot()
     if (canonicalize) this.analyzeDot(this.getDraftDot(), { preservePositions: true, fit: false })
   },
@@ -896,6 +1484,20 @@ const PipelineBuilder = {
   syncFromDotInput() {
     const dotText = this.dotEl?.value || ""
     this.analyzeDot(dotText, { preservePositions: true, fit: true })
+  },
+
+  toggleConnectMode(force = null) {
+    this.connectMode = force === null ? !this.connectMode : !!force
+    this.pendingSource = null
+    if (this.connectBtn) {
+      this.connectBtn.dataset.active = this.connectMode ? "true" : "false"
+      this.connectBtn.textContent = this.connectMode ? "Adding Edges..." : "Add Edges"
+    }
+  },
+
+  fitView() {
+    this.fitNodesInViewport()
+    this.sync({ writeDot: true, canonicalize: false })
   },
 
   bindPanelToggles() {
@@ -1068,6 +1670,7 @@ const PipelineBuilder = {
     for (const node of this.state.nodes) {
       const el = document.createElement("div")
       el.className = `builder-node builder-node-${node.type}`
+      if (node.id === this.selectedNodeId) el.classList.add("builder-node-selected")
       el.dataset.id = node.id
       const displayLabel = (node.attrs?.label || node.id).trim()
       el.style.left = `${node.x}px`
@@ -1236,6 +1839,8 @@ const PipelineBuilder = {
   },
 
   handleNodeClick(nodeId) {
+    this.selectedNodeId = nodeId
+
     if (!this.connectMode) return
 
     if (!this.pendingSource) {
@@ -1373,6 +1978,7 @@ const PipelineBuilder = {
     const node = this.state.nodes.find((entry) => entry.id === nodeId)
     if (!node) return
 
+    this.selectedNodeId = nodeId
     const attrs = node.attrs || {}
     this.currentEditingNodeId = nodeId
     this.propId.value = node.id
@@ -1498,6 +2104,7 @@ const PipelineBuilder = {
 
     if (this.currentEditingNodeId === nodeId) this.currentEditingNodeId = null
     if (this.reopenNodePropertiesId === nodeId) this.reopenNodePropertiesId = null
+    if (this.selectedNodeId === nodeId) this.selectedNodeId = null
     if (this.edgeDragSource === nodeId) this.cancelEdgeDrag()
     this.sync({ writeDot: true, canonicalize: true })
   },
