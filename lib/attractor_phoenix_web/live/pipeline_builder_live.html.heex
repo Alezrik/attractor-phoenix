@@ -320,22 +320,99 @@
           phx-update="ignore"
           class="relative h-[74vh] min-h-[460px] overflow-hidden rounded-xl border border-base-300 bg-base-200/40"
         >
-          <svg id="builder-edges" class="absolute inset-0 h-full w-full">
-            <defs>
-              <marker
-                id="builder-arrow"
-                viewBox="0 0 10 10"
-                refX="9"
-                refY="5"
-                markerWidth="6"
-                markerHeight="6"
-                orient="auto-start-reverse"
+          <div id="builder-canvas-grid" class="builder-canvas-grid"></div>
+          <div id="builder-world" class="builder-world">
+            <svg id="builder-edges" class="builder-edges-layer">
+              <defs>
+                <marker
+                  id="builder-arrow"
+                  viewBox="0 0 10 10"
+                  refX="9"
+                  refY="5"
+                  markerWidth="6"
+                  markerHeight="6"
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 0 L 10 5 L 0 10 z" class="fill-base-content/70" />
+                </marker>
+              </defs>
+            </svg>
+            <div id="builder-canvas" class="builder-canvas-layer"></div>
+          </div>
+          <div id="builder-marquee" class="builder-marquee hidden"></div>
+
+          <div id="builder-canvas-controls" class="builder-canvas-controls">
+            <div class="builder-canvas-controls-group">
+              <button id="builder-zoom-in" type="button" class="builder-btn">Zoom In</button>
+              <button id="builder-zoom-out" type="button" class="builder-btn">Zoom Out</button>
+              <button id="builder-fit-view" type="button" class="builder-btn">Fit</button>
+              <button id="builder-reset-view" type="button" class="builder-btn">Reset</button>
+            </div>
+
+            <div class="builder-canvas-controls-group">
+              <button
+                id="builder-interaction-select"
+                type="button"
+                class="builder-btn"
+                data-interaction-mode="select"
               >
-                <path d="M 0 0 L 10 5 L 0 10 z" class="fill-base-content/70" />
-              </marker>
-            </defs>
-          </svg>
-          <div id="builder-canvas" class="absolute inset-0"></div>
+                Select
+              </button>
+              <button
+                id="builder-interaction-pan"
+                type="button"
+                class="builder-btn"
+                data-interaction-mode="pan"
+              >
+                Pan
+              </button>
+              <button id="builder-canvas-connect" type="button" class="builder-btn">
+                Connect
+              </button>
+            </div>
+
+            <div id="builder-viewport-badge" class="builder-viewport-badge">
+              100% · Select
+            </div>
+          </div>
+
+          <div id="builder-selection-toolbar" class="builder-selection-toolbar hidden">
+            <div class="builder-selection-toolbar-copy">
+              <p class="builder-kicker">Selection</p>
+              <p id="builder-selection-count" class="text-sm font-semibold">0 nodes selected</p>
+            </div>
+            <div class="builder-selection-toolbar-actions">
+              <button id="builder-align-horizontal" type="button" class="builder-btn">
+                Align Row
+              </button>
+              <button id="builder-align-vertical" type="button" class="builder-btn">
+                Align Column
+              </button>
+              <button id="builder-distribute-horizontal" type="button" class="builder-btn">
+                Distribute
+              </button>
+              <button id="builder-duplicate-selection" type="button" class="builder-btn">
+                Duplicate
+              </button>
+              <button id="builder-delete-selection" type="button" class="builder-btn">
+                Delete
+              </button>
+            </div>
+          </div>
+
+          <aside id="builder-minimap" class="builder-minimap">
+            <div class="builder-minimap-header">
+              <div>
+                <p class="builder-kicker">Navigator</p>
+                <p class="text-xs font-semibold text-base-content/70">Graph overview</p>
+              </div>
+              <button id="builder-minimap-fit" type="button" class="builder-btn">Fit</button>
+            </div>
+            <div id="builder-minimap-surface" class="builder-minimap-surface">
+              <div id="builder-minimap-nodes" class="builder-minimap-nodes"></div>
+              <div id="builder-minimap-viewport" class="builder-minimap-viewport"></div>
+            </div>
+          </aside>
         </div>
 
         <dialog

@@ -74,6 +74,19 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLiveTest do
     assert html =~ "builder-command-results"
     assert html =~ "builder-shortcut-cheatsheet"
     assert html =~ "builder-shortcuts-dialog"
+    assert html =~ "builder-canvas-controls"
+    assert html =~ "builder-zoom-in"
+    assert html =~ "builder-fit-view"
+    assert html =~ "builder-reset-view"
+    assert html =~ "builder-interaction-select"
+    assert html =~ "builder-interaction-pan"
+    assert html =~ "builder-selection-toolbar"
+    assert html =~ "builder-align-horizontal"
+    assert html =~ "builder-duplicate-selection"
+    assert html =~ "builder-minimap"
+    assert html =~ "builder-minimap-surface"
+    assert html =~ "builder-minimap-viewport"
+    assert html =~ "builder-marquee"
   end
 
   test "builder node type selector covers all runtime node types", %{conn: conn} do
