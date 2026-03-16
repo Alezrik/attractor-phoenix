@@ -44,6 +44,7 @@ defmodule AttractorPhoenixWeb.SetupLive do
             {:noreply,
              socket
              |> assign(settings: settings, setup_form: build_setup_form(settings), error: nil)
+             |> assign(:default_form, build_default_form(settings))
              |> put_flash(:info, "API keys saved.")}
 
           {:error, message} ->
@@ -109,4 +110,46 @@ defmodule AttractorPhoenixWeb.SetupLive do
   end
 
   defp parse_selection(_selection), do: :error
+
+  defp configured_provider_count(settings) do
+    settings.providers
+    |> Map.values()
+    |> Enum.count(&(String.trim(&1.api_key) != "" or &1.mode == "cli"))
+  end
+
+  defp discovered_model_count(settings) do
+    Enum.reduce(settings.providers, 0, fn {_provider, entry}, total ->
+      total + length(entry.models)
+    end)
+  end
+
+  defp provider_health_label(entry) do
+    cond do
+      entry.api_key == "" and entry.mode != "cli" -> "Needs key"
+      entry.last_error != nil -> "Attention"
+      entry.models == [] -> "Pending sync"
+      true -> "Ready"
+    end
+  end
+
+  defp provider_health_tone(entry) do
+    cond do
+      entry.api_key == "" and entry.mode != "cli" -> "setup-health-pill-missing"
+      entry.last_error != nil -> "setup-health-pill-error"
+      entry.models == [] -> "setup-health-pill-waiting"
+      true -> "setup-health-pill-ready"
+    end
+  end
+
+  defp provider_recency(entry) do
+    entry.last_synced_at || "Never synced"
+  end
+
+  defp provider_key_status(entry) do
+    cond do
+      entry.mode == "cli" -> "CLI mode"
+      entry.api_key == "" -> "Not saved"
+      true -> "Saved"
+    end
+  end
 end

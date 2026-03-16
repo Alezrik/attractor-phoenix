@@ -6,9 +6,11 @@ defmodule AttractorPhoenixWeb.BenchmarkLiveTest do
   test "renders the benchmark mission page with scorecard, references, and roadmap", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/benchmark")
 
-    assert html =~ "Mission and competitive benchmark"
+    assert html =~ "Product strategy console"
     assert has_element?(view, "#benchmark-page")
     assert has_element?(view, "#benchmark-score-panel")
+    assert has_element?(view, "#benchmark-blocked-criteria")
+    assert has_element?(view, "#benchmark-route-links")
     assert has_element?(view, "#reference-set")
     assert has_element?(view, "#benchmark-dimensions")
     assert has_element?(view, "#required-evidence")
@@ -30,6 +32,7 @@ defmodule AttractorPhoenixWeb.BenchmarkLiveTest do
     assert html =~ "TheFellow-fkyeah"
     assert html =~ "weighted composite score out of 5.0"
     assert html =~ "4.2"
+    assert html =~ "See score, blockers, and execution routes"
     assert html =~ "Conformance scoreboard"
     assert html =~ "CONF-STATE-001"
     assert html =~ "mix test test/attractor_ex/conformance"

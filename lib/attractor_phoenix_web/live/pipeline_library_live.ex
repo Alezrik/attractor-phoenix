@@ -5,12 +5,14 @@ defmodule AttractorPhoenixWeb.PipelineLibraryLive do
 
   @impl true
   def mount(_params, _session, socket) do
+    entries = PipelineLibrary.list_entries()
+
     socket =
       socket
       |> assign(:page_title, "Pipeline Library")
       |> assign(:error, nil)
       |> assign(:editing_entry, nil)
-      |> assign(:entries, PipelineLibrary.list_entries())
+      |> assign_library_entries(entries)
       |> assign(:form, build_form())
 
     {:ok, socket}
@@ -60,9 +62,11 @@ defmodule AttractorPhoenixWeb.PipelineLibraryLive do
   def handle_event("save", %{"library" => params}, socket) do
     case persist_entry(socket.assigns.live_action, socket.assigns.editing_entry, params) do
       {:ok, _entry, message} ->
+        entries = PipelineLibrary.list_entries()
+
         {:noreply,
          socket
-         |> assign(:entries, PipelineLibrary.list_entries())
+         |> assign_library_entries(entries)
          |> assign(:editing_entry, nil)
          |> assign(:form, build_form())
          |> assign(:error, nil)
@@ -79,8 +83,10 @@ defmodule AttractorPhoenixWeb.PipelineLibraryLive do
     socket =
       case PipelineLibrary.delete_entry(id) do
         :ok ->
+          entries = PipelineLibrary.list_entries()
+
           socket
-          |> assign(:entries, PipelineLibrary.list_entries())
+          |> assign_library_entries(entries)
           |> put_flash(:info, "Library pipeline deleted.")
 
         {:error, :not_found} ->
@@ -119,5 +125,15 @@ defmodule AttractorPhoenixWeb.PipelineLibraryLive do
 
   defp put_page_title(socket, title) do
     assign(socket, :page_title, title)
+  end
+
+  defp assign_library_entries(socket, entries) do
+    recent_entries = Enum.take(entries, 3)
+
+    socket
+    |> assign(:entries, entries)
+    |> assign(:recent_entries, recent_entries)
+    |> assign(:featured_entry, List.first(entries))
+    |> assign(:entry_count, length(entries))
   end
 end

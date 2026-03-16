@@ -14,7 +14,8 @@ defmodule AttractorPhoenixWeb.PipelineLibraryLiveTest do
     {:ok, view, html} = live(conn, ~p"/library")
 
     assert html =~ "Pipeline Library"
-    assert html =~ "New Library Pipeline"
+    assert has_element?(view, "#library-page")
+    assert has_element?(view, "#library-route-links")
     assert has_element?(view, "#library-form")
 
     params = %{
@@ -31,6 +32,7 @@ defmodule AttractorPhoenixWeb.PipelineLibraryLiveTest do
     |> render_submit(params)
 
     assert has_element?(view, "#library-entry-support-intake")
+    assert has_element?(view, "#library-featured-entry")
     assert render(view) =~ "Load in Builder"
 
     {:ok, entry} = PipelineLibrary.get_entry("support-intake")

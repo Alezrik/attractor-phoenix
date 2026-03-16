@@ -29,50 +29,133 @@
     </Layouts.shell_status_item>
   </:status>
   <section class="space-y-8" id="benchmark-page">
-    <section class="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-      <article class="dashboard-panel">
-        <div class="space-y-4">
+    <section class="benchmark-console-grid">
+      <article class="benchmark-console-hero">
+        <div>
+          <p class="dashboard-card-label">Product strategy console</p>
+          <h2 class="mt-3 text-2xl font-semibold sm:text-3xl">
+            See score, blockers, and execution routes before reading the full evidence pack.
+          </h2>
+          <p class="mt-3 max-w-3xl text-sm leading-7 text-base-content/72">
+            This page now leads with the benchmark narrative operators actually need: current
+            posture, what blocks the claim, what to do next, and where to jump inside the product.
+          </p>
+        </div>
+
+        <div class="benchmark-console-summary" id="benchmark-score-panel">
           <div>
-            <p class="dashboard-card-label">Mission Dimensions</p>
-            <h2 class="text-xl font-semibold">
-              Mission and competitive benchmark, implemented as a live scorecard
-            </h2>
+            <p class="dashboard-card-label">Current posture</p>
+            <div class="mt-3 flex items-end justify-between gap-4">
+              <div>
+                <p class="text-5xl font-black tracking-tight">{@benchmark.composite_score}</p>
+                <p class="mt-2 text-sm text-base-content/65">
+                  weighted composite score out of 5.0
+                </p>
+              </div>
+              <span class={[
+                "rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]",
+                if(@benchmark.leadership_ready?,
+                  do: "bg-success/15 text-success",
+                  else: "bg-warning/15 text-warning"
+                )
+              ]}>
+                {if @benchmark.leadership_ready?,
+                  do: "leadership-ready",
+                  else: "not claimable yet"}
+              </span>
+            </div>
           </div>
-          <div class="flex flex-wrap gap-2">
-            <%= for dimension <- @benchmark.mission_dimensions do %>
-              <div class="rounded-full border border-base-300 bg-base-100/80 px-3 py-1.5 text-xs">
-                {dimension}
+
+          <div class="benchmark-console-score-grid">
+            <div class="benchmark-console-score-card">
+              <span class="benchmark-section-title">Strongest dimension</span>
+              <strong>{top_dimension(@benchmark).short_label}</strong>
+              <p class="text-sm text-base-content/68">{top_dimension(@benchmark).status}</p>
+            </div>
+            <div class="benchmark-console-score-card">
+              <span class="benchmark-section-title">Weakest dimension</span>
+              <strong>{weakest_dimension(@benchmark).short_label}</strong>
+              <p class="text-sm text-base-content/68">{weakest_dimension(@benchmark).status}</p>
+            </div>
+          </div>
+
+          <div class="mt-5 space-y-3">
+            <%= for gate <- @benchmark.leadership_gate do %>
+              <div class="flex items-start gap-3 text-sm">
+                <span class="mt-0.5 rounded-full bg-base-200 p-1 text-base-content/70">
+                  <.icon name="hero-check-mini" class="size-4" />
+                </span>
+                <span>{gate}</span>
               </div>
             <% end %>
           </div>
         </div>
       </article>
 
-      <article class="benchmark-score-panel" id="benchmark-score-panel">
-        <p class="dashboard-card-label">Current posture</p>
-        <div class="mt-3 flex items-end justify-between gap-4">
-          <div>
-            <p class="text-5xl font-black tracking-tight">{@benchmark.composite_score}</p>
-            <p class="mt-2 text-sm text-base-content/65">weighted composite score out of 5.0</p>
+      <aside class="benchmark-console-sidebar">
+        <article class="dashboard-panel" id="benchmark-blocked-criteria">
+          <div class="flex items-center justify-between gap-3">
+            <p class="dashboard-card-label">Blocked criteria</p>
+            <span class="text-xs text-base-content/60">
+              {length(blocked_criteria(@benchmark))} open
+            </span>
           </div>
-          <span class={[
-            "rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]",
-            if(@benchmark.leadership_ready?,
-              do: "bg-success/15 text-success",
-              else: "bg-warning/15 text-warning"
-            )
-          ]}>
-            {if @benchmark.leadership_ready?, do: "leadership-ready", else: "not claimable yet"}
+          <div class="mt-4 space-y-3">
+            <%= for criterion <- blocked_criteria(@benchmark) do %>
+              <div class="benchmark-rule-row">
+                <span class="rounded-full bg-warning/12 p-1.5 text-warning">
+                  <.icon name="hero-lock-closed-mini" class="size-4" />
+                </span>
+                <div>
+                  <p class="text-sm font-semibold leading-6">{criterion.criterion}</p>
+                  <p class="mt-1 text-sm leading-6 text-base-content/72">{criterion.blocker}</p>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </article>
+
+        <article class="dashboard-panel" id="benchmark-route-links">
+          <p class="dashboard-card-label">Execution routes</p>
+          <div class="mt-4 grid gap-2">
+            <.link navigate={~p"/"} class="library-route-link">Dashboard</.link>
+            <.link navigate={~p"/builder"} class="library-route-link">Builder</.link>
+            <.link navigate={~p"/setup"} class="library-route-link">Setup</.link>
+          </div>
+        </article>
+      </aside>
+    </section>
+
+    <section class="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+      <article class="dashboard-panel" id="immediate-next-steps">
+        <div class="flex items-center justify-between gap-3">
+          <p class="dashboard-card-label">Immediate next steps</p>
+          <span class="text-xs text-base-content/60">
+            {length(@benchmark.immediate_next_steps)} active paths
           </span>
         </div>
-
-        <div class="mt-5 space-y-3">
-          <%= for gate <- @benchmark.leadership_gate do %>
-            <div class="flex items-start gap-3 text-sm">
-              <span class="mt-0.5 rounded-full bg-base-200 p-1 text-base-content/70">
-                <.icon name="hero-check-mini" class="size-4" />
+        <div class="mt-4 space-y-3">
+          <%= for step <- @benchmark.immediate_next_steps do %>
+            <div class="benchmark-rule-row" id={"next-step-#{step.id}"}>
+              <span class="rounded-full bg-primary/12 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                {step.id}
               </span>
-              <span>{gate}</span>
+              <div>
+                <p class="text-sm font-semibold">{step.label}</p>
+                <p class="mt-1 text-sm leading-6 text-base-content/75">{step.summary}</p>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </article>
+
+      <article class="dashboard-panel" id="suggested-execution-order">
+        <p class="dashboard-card-label">Suggested execution order</p>
+        <div class="mt-4 space-y-3">
+          <%= for {step, index} <- Enum.with_index(@benchmark.suggested_execution_order, 1) do %>
+            <div class="benchmark-priority-row" id={"execution-step-#{index}"}>
+              <span class="benchmark-priority-index">{index}</span>
+              <p class="text-sm font-medium leading-6">{step}</p>
             </div>
           <% end %>
         </div>
@@ -226,8 +309,8 @@
             </div>
           </div>
 
-          <div>
-            <p class="benchmark-section-title">Evidence sources</p>
+          <details class="benchmark-evidence-details">
+            <summary>Evidence sources</summary>
             <div class="mt-3 flex flex-wrap gap-2">
               <%= for evidence <- dimension.evidence do %>
                 <span class="rounded-full bg-base-200/70 px-3 py-1.5 text-xs">
@@ -235,7 +318,7 @@
                 </span>
               <% end %>
             </div>
-          </div>
+          </details>
         </article>
       <% end %>
     </section>
@@ -455,37 +538,6 @@
           <%= for command <- @benchmark.conformance.verification_commands do %>
             <div class="rounded-2xl border border-base-300 bg-base-200/40 px-4 py-3">
               <code class="text-xs sm:text-sm">{command}</code>
-            </div>
-          <% end %>
-        </div>
-      </article>
-    </section>
-
-    <section class="grid gap-4 xl:grid-cols-2">
-      <article class="dashboard-panel" id="suggested-execution-order">
-        <p class="dashboard-card-label">Suggested execution order</p>
-        <div class="mt-4 space-y-3">
-          <%= for {step, index} <- Enum.with_index(@benchmark.suggested_execution_order, 1) do %>
-            <div class="benchmark-priority-row" id={"execution-step-#{index}"}>
-              <span class="benchmark-priority-index">{index}</span>
-              <p class="text-sm font-medium leading-6">{step}</p>
-            </div>
-          <% end %>
-        </div>
-      </article>
-
-      <article class="dashboard-panel" id="immediate-next-steps">
-        <p class="dashboard-card-label">Immediate next steps</p>
-        <div class="mt-4 space-y-3">
-          <%= for step <- @benchmark.immediate_next_steps do %>
-            <div class="benchmark-rule-row" id={"next-step-#{step.id}"}>
-              <span class="rounded-full bg-primary/12 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-                {step.id}
-              </span>
-              <div>
-                <p class="text-sm font-semibold">{step.label}</p>
-                <p class="mt-1 text-sm leading-6 text-base-content/75">{step.summary}</p>
-              </div>
             </div>
           <% end %>
         </div>

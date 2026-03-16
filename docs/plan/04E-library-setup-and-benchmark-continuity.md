@@ -33,7 +33,7 @@ Bring the supporting routes into the same product language as the builder and op
 
 ### UI-04E-01
 
-- status: `todo`
+- status: `done`
 - title: Rework library as a launchpad instead of a CRUD list
 - rationale: The current library route is usable, but it behaves more like an admin page than a workflow launch surface.
 - file targets:
@@ -45,16 +45,23 @@ Bring the supporting routes into the same product language as the builder and op
   - Emphasize preview, last-updated state, and one-click jump into builder.
   - Separate create/edit form density from browse/load density.
   - Add visual cues for templates, recently used entries, and editable drafts if the current data supports it.
+- execution notes:
+  - Reframed the library route as a launchpad with a featured "continue recent work" card, route-to-route links, launch-focused KPIs, and browse-first entry rows.
+  - Kept the create/edit form in a dedicated side panel so library curation does not overpower the main reopen/load workflow.
+  - Added recent and new-draft cues from the existing file-backed metadata without introducing new persistence requirements.
 - verification steps:
   - Browse the library, load an entry into builder, and return back without losing route clarity.
   - Confirm create/edit flows still work.
+- validation results:
+  - `mix test test/attractor_phoenix_web/live/pipeline_library_live_test.exs` passed.
+  - `mix precommit` exited successfully, but repo output still included unrelated `AttractorEx.InterviewerServerTest` failures outside this increment.
 - done criteria:
   - The library reads as a builder accelerator, not just storage.
   - The main call to action is loading or continuing work.
 
 ### UI-04E-02
 
-- status: `todo`
+- status: `done`
 - title: Make setup feel like a provider control room with clearer health states
 - rationale: Setup already surfaces useful information, but state changes and provider health are not visually prioritized enough.
 - file targets:
@@ -66,16 +73,23 @@ Bring the supporting routes into the same product language as the builder and op
   - Reframe provider cards around status, recency, mode, and default-role clarity.
   - Improve hierarchy between credential entry, fetch settings, and default model selection.
   - Keep sensitive values protected while making status easier to scan.
+- execution notes:
+  - Added a setup control-room header with provider coverage, discovered-model, and default-route summaries before the forms.
+  - Reworked provider cards around health state, recency, mode, default-role visibility, and inventory counts while keeping API keys masked.
+  - Split credential controls, default-model controls, and route links into clearer panels so scanning state comes before form work.
 - verification steps:
   - Save keys, fetch settings, and update the default model while reviewing the route at mobile and desktop sizes.
   - Confirm error states remain visible and actionable.
+- validation results:
+  - `mix test test/attractor_phoenix_web/live/setup_live_test.exs` passed.
+  - `mix precommit` exited successfully, but repo output still included unrelated `AttractorEx.InterviewerServerTest` failures outside this increment.
 - done criteria:
   - Provider health is immediately scannable.
   - The route communicates setup state before exposing raw form density.
 
 ### UI-04E-03
 
-- status: `todo`
+- status: `done`
 - title: Tighten benchmark page hierarchy and connect it to execution routes
 - rationale: The benchmark page has strong content, but its current layout is long and uniformly weighted.
 - file targets:
@@ -87,9 +101,16 @@ Bring the supporting routes into the same product language as the builder and op
   - Re-rank sections so current score, blocked criteria, immediate next steps, and execution order are easier to reach.
   - Use denser panels and clearer action links into builder, dashboard, and relevant docs.
   - Keep long-form evidence available, but reduce first-screen overload.
+- execution notes:
+  - Rebuilt the benchmark top section into a strategy console with score posture, blocked criteria, immediate next steps, and execution-route links at the top of the page.
+  - Preserved existing evidence and conformance anchors, but moved them lower in the page and collapsed dimension evidence into details blocks to reduce first-screen overload.
+  - Kept the existing test-facing section IDs intact while changing the narrative order and visual density.
 - verification steps:
   - Review benchmark page from top to bottom and confirm the primary narrative is visible without excessive scrolling.
   - Confirm links into product routes are obvious and functional.
+- validation results:
+  - `mix test test/attractor_phoenix_web/live/benchmark_live_test.exs` passed.
+  - `mix precommit` exited successfully, but repo output still included unrelated `AttractorEx.InterviewerServerTest` failures outside this increment.
 - done criteria:
   - Benchmark reads like a product strategy console, not only a static report.
   - High-priority actions are easier to spot than supporting evidence.
@@ -105,4 +126,3 @@ Bring the supporting routes into the same product language as the builder and op
 - `mix test test/attractor_phoenix_web/live/setup_live_test.exs`
 - `mix test test/attractor_phoenix_web/live/benchmark_live_test.exs`
 - Manual route-to-route continuity review
-

@@ -38,9 +38,10 @@ defmodule AttractorPhoenixWeb.SetupLiveTest do
   test "setup page saves keys, fetches models, and stores a default", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/setup")
 
-    assert html =~ "LLM Providers and Defaults"
+    assert html =~ "Provider control room"
     assert has_element?(view, "#setup-form")
     assert has_element?(view, "#default-model-form")
+    assert has_element?(view, "#setup-summary-grid")
 
     view
     |> element("#setup-form")
@@ -88,7 +89,7 @@ defmodule AttractorPhoenixWeb.SetupLiveTest do
     })
 
     assert render(view) =~ "Provider settings refreshed."
-    assert render(view) =~ "Codex CLI"
+    assert render(view) =~ "Provider Credentials"
     assert render(view) =~ "codex-5.3"
 
     settings = LLMSetup.get_settings()
