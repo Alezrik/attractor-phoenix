@@ -1,80 +1,102 @@
-<Layouts.app flash={@flash} current_scope={assigns[:current_scope]} current_path={~p"/"}>
+<Layouts.app
+  flash={@flash}
+  current_scope={assigns[:current_scope]}
+  current_path={~p"/"}
+  page_title={@page_title}
+  page_kicker="Operator Control"
+  page_subtitle="Queue health, endpoint coverage, and triage actions stay anchored in one operator shell instead of repeating a hero block on every route."
+>
+  <:actions>
+    <.link navigate={~p"/builder"} class="builder-btn">Open Builder</.link>
+    <.link patch={~p"/?status=fail"} id="shell-filter-fail-runs" class="builder-btn">
+      Review Failures
+    </.link>
+  </:actions>
+  <:status>
+    <Layouts.shell_status_item>
+      <span class="shell-status-label">Connection</span>
+      <span class={Layouts.route_connection_tone(@connection_state)}>
+        {Layouts.route_connection_label(@connection_state)}
+      </span>
+      <span class="shell-status-note">
+        {OperatorRunData.connection_detail(@connection_state, @update_mode)}
+      </span>
+    </Layouts.shell_status_item>
+    <Layouts.shell_status_item>
+      <span class="shell-status-label">Run Pressure</span>
+      <span class="shell-status-value">{@running_pipelines} live</span>
+      <span class="shell-status-note">
+        {@failed_pipelines + @cancelled_pipelines} require review
+      </span>
+    </Layouts.shell_status_item>
+    <Layouts.shell_status_item>
+      <span class="shell-status-label">Human Queue</span>
+      <span class="shell-status-value">{@total_questions} open prompts</span>
+      <span class="shell-status-note">`wait.human` questions across tracked runs</span>
+    </Layouts.shell_status_item>
+    <Layouts.shell_status_item>
+      <span class="shell-status-label">Last Refresh</span>
+      <span class="shell-status-value">{Layouts.shell_timestamp(@last_updated_at)}</span>
+      <span class="shell-status-note">
+        {if @update_mode == :subscription, do: "Subscription feed", else: "Polling fallback"}
+      </span>
+    </Layouts.shell_status_item>
+  </:status>
   <section
     id="dashboard-page"
     class="space-y-8"
     phx-hook="OperatorConnection"
     data-update-mode={@update_mode}
   >
-    <div class="dashboard-hero">
-      <div class="space-y-4">
-        <div class="space-y-3">
-          <p class="dashboard-kicker">Operator Surface</p>
-          <h1 class="max-w-3xl text-4xl font-black tracking-tight sm:text-5xl">
-            Run topology and live status in one operator overview.
-          </h1>
-          <p class="max-w-2xl text-sm leading-6 text-base-content/70 sm:text-base">
-            The overview stays focused on queue health, failed runs, pending human work, and fast
-            navigation into a dedicated run page.
-          </p>
+    <section class="dashboard-panel space-y-5">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="space-y-2">
+          <p class="dashboard-card-label">Runtime Endpoints</p>
+          <h2 class="text-xl font-semibold">
+            Operator surfaces stay tied to the live runtime contract
+          </h2>
         </div>
-
-        <div class="flex flex-wrap gap-2">
-          <%= for endpoint <- OperatorRunData.endpoint_catalog() do %>
-            <div class="rounded-full border border-base-300 bg-base-100/80 px-3 py-1.5 text-xs">
-              <span class="font-bold text-primary">{endpoint.method}</span>
-              <span class="mx-1 text-base-content/45">•</span>
-              <span class="font-mono">{endpoint.path}</span>
-              <span class="mx-1 text-base-content/45">•</span>
-              <span class="text-base-content/70">{endpoint.label}</span>
-            </div>
-          <% end %>
-        </div>
-      </div>
-
-      <div class="dashboard-status-panel" id="dashboard-connection-panel">
-        <div class="dashboard-status-row">
-          <span>Mode</span>
+        <div id="dashboard-connection-panel" class="run-connection-badge">
           <strong>{OperatorRunData.default_connection_label(@connection_state)}</strong>
-        </div>
-        <div class="dashboard-status-row">
-          <span>Updates</span>
-          <strong>
-            {if @update_mode == :subscription, do: "Subscriptions", else: "Polling"}
-          </strong>
-        </div>
-        <p class="mt-4 text-sm leading-6 text-base-content/70">
-          {OperatorRunData.connection_detail(@connection_state, @update_mode)}
-        </p>
-        <div class="dashboard-meter">
-          <div
-            class="dashboard-meter-segment bg-info"
-            style={"width: #{if @total_pipelines > 0, do: Float.round(@running_pipelines / @total_pipelines * 100, 1), else: 0}%"}
-          >
-          </div>
-          <div
-            class="dashboard-meter-segment bg-success"
-            style={"width: #{if @total_pipelines > 0, do: Float.round(@successful_pipelines / @total_pipelines * 100, 1), else: 0}%"}
-          >
-          </div>
-          <div
-            class="dashboard-meter-segment bg-error"
-            style={"width: #{if @total_pipelines > 0, do: Float.round(@failed_pipelines / @total_pipelines * 100, 1), else: 0}%"}
-          >
-          </div>
-          <div
-            class="dashboard-meter-segment bg-warning"
-            style={"width: #{if @total_pipelines > 0, do: Float.round(@cancelled_pipelines / @total_pipelines * 100, 1), else: 0}%"}
-          >
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-3 text-xs text-base-content/70">
-          <div>Running: {@running_pipelines}</div>
-          <div>Success: {@successful_pipelines}</div>
-          <div>Fail: {@failed_pipelines}</div>
-          <div>Cancelled: {@cancelled_pipelines}</div>
+          <span>{OperatorRunData.connection_detail(@connection_state, @update_mode)}</span>
         </div>
       </div>
-    </div>
+
+      <div class="flex flex-wrap gap-2">
+        <%= for endpoint <- OperatorRunData.endpoint_catalog() do %>
+          <div class="rounded-full border border-base-300 bg-base-100/80 px-3 py-1.5 text-xs">
+            <span class="font-bold text-primary">{endpoint.method}</span>
+            <span class="mx-1 text-base-content/45">•</span>
+            <span class="font-mono">{endpoint.path}</span>
+            <span class="mx-1 text-base-content/45">•</span>
+            <span class="text-base-content/70">{endpoint.label}</span>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="dashboard-meter">
+        <div
+          class="dashboard-meter-segment bg-info"
+          style={"width: #{if @total_pipelines > 0, do: Float.round(@running_pipelines / @total_pipelines * 100, 1), else: 0}%"}
+        >
+        </div>
+        <div
+          class="dashboard-meter-segment bg-success"
+          style={"width: #{if @total_pipelines > 0, do: Float.round(@successful_pipelines / @total_pipelines * 100, 1), else: 0}%"}
+        >
+        </div>
+        <div
+          class="dashboard-meter-segment bg-error"
+          style={"width: #{if @total_pipelines > 0, do: Float.round(@failed_pipelines / @total_pipelines * 100, 1), else: 0}%"}
+        >
+        </div>
+        <div
+          class="dashboard-meter-segment bg-warning"
+          style={"width: #{if @total_pipelines > 0, do: Float.round(@cancelled_pipelines / @total_pipelines * 100, 1), else: 0}%"}
+        >
+        </div>
+      </div>
+    </section>
 
     <div class="grid gap-4 lg:grid-cols-4">
       <article class="dashboard-card">
@@ -101,14 +123,12 @@
       </article>
     </div>
 
-    <%= if @error do %>
-      <div
-        id="dashboard-error"
-        class="rounded-2xl border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
-      >
-        {@error}
-      </div>
-    <% end %>
+    <.inline_error
+      :if={@error}
+      id="dashboard-error"
+      title="Dashboard refresh failed"
+      message={@error}
+    />
 
     <div class="dashboard-shell">
       <aside class="dashboard-sidebar">
@@ -191,11 +211,23 @@
           </div>
 
           <div id="pipeline-list" class="mt-4 space-y-3" phx-update="stream">
-            <div
-              id="pipeline-list-empty"
-              class="hidden rounded-2xl border border-dashed border-base-300 px-4 py-6 text-sm text-base-content/60 only:block"
-            >
-              No runs match the current filters.
+            <div id="pipeline-list-empty" class="hidden only:block">
+              <.empty_state
+                title="No runs match the current filters"
+                message="Clear the queue filters or jump into Builder to launch another workflow."
+                icon="hero-funnel"
+              >
+                <:actions>
+                  <button
+                    id="clear-dashboard-filters-empty"
+                    type="button"
+                    class="builder-btn"
+                    phx-click="clear_filters"
+                  >
+                    Clear Filters
+                  </button>
+                </:actions>
+              </.empty_state>
             </div>
 
             <article

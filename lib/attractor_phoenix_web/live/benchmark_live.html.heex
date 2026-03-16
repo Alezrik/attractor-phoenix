@@ -1,28 +1,52 @@
-<Layouts.app flash={@flash} current_scope={assigns[:current_scope]} current_path={~p"/benchmark"}>
+<Layouts.app
+  flash={@flash}
+  current_scope={assigns[:current_scope]}
+  current_path={~p"/benchmark"}
+  page_title={@page_title}
+  page_kicker="Leadership Contract"
+  page_subtitle="Benchmark posture, anti-claim rules, and verification commands now inherit the same shell language as the operator and builder routes."
+>
+  <:actions>
+    <.link navigate={~p"/"} class="builder-btn">Open Dashboard</.link>
+    <.link navigate={~p"/builder"} class="builder-btn">Open Builder</.link>
+  </:actions>
+  <:status>
+    <Layouts.shell_status_item>
+      <span class="shell-status-label">Composite Score</span>
+      <span class="shell-status-value">{@benchmark.composite_score} / 5.0</span>
+      <span class="shell-status-note">Weighted across leadership dimensions</span>
+    </Layouts.shell_status_item>
+    <Layouts.shell_status_item>
+      <span class="shell-status-label">Claim Status</span>
+      <span class={
+        if @benchmark.leadership_ready?,
+          do: "shell-status-value shell-status-value-success",
+          else: "shell-status-value shell-status-value-warning"
+      }>
+        {if @benchmark.leadership_ready?, do: "Leadership-ready", else: "Not claimable yet"}
+      </span>
+      <span class="shell-status-note">{length(@benchmark.leadership_gate)} gates tracked</span>
+    </Layouts.shell_status_item>
+  </:status>
   <section class="space-y-8" id="benchmark-page">
-    <div class="benchmark-hero">
-      <div class="space-y-4">
-        <div class="space-y-3">
-          <p class="dashboard-kicker">Leadership Contract</p>
-          <h1 class="max-w-4xl text-4xl font-black tracking-tight sm:text-5xl">
-            Mission and competitive benchmark, implemented as a live product scorecard.
-          </h1>
-          <p class="max-w-3xl text-sm leading-6 text-base-content/70 sm:text-base">
-            This page turns `docs/01-mission-and-competitive-benchmark.md` and
-            `docs/07-premium-features-and-leadership-criteria.md` into an operator-facing benchmark
-            contract: what leadership means, where the repo stands now, which premium features are
-            still gated, and which gaps still block a credible claim.
-          </p>
+    <section class="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+      <article class="dashboard-panel">
+        <div class="space-y-4">
+          <div>
+            <p class="dashboard-card-label">Mission Dimensions</p>
+            <h2 class="text-xl font-semibold">
+              Mission and competitive benchmark, implemented as a live scorecard
+            </h2>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <%= for dimension <- @benchmark.mission_dimensions do %>
+              <div class="rounded-full border border-base-300 bg-base-100/80 px-3 py-1.5 text-xs">
+                {dimension}
+              </div>
+            <% end %>
+          </div>
         </div>
-
-        <div class="flex flex-wrap gap-2">
-          <%= for dimension <- @benchmark.mission_dimensions do %>
-            <div class="rounded-full border border-base-300 bg-base-100/80 px-3 py-1.5 text-xs">
-              {dimension}
-            </div>
-          <% end %>
-        </div>
-      </div>
+      </article>
 
       <article class="benchmark-score-panel" id="benchmark-score-panel">
         <p class="dashboard-card-label">Current posture</p>
@@ -53,7 +77,7 @@
           <% end %>
         </div>
       </article>
-    </div>
+    </section>
 
     <section class="grid gap-4 xl:grid-cols-4">
       <%= for dimension <- @benchmark.dimensions do %>

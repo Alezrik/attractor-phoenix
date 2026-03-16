@@ -2,7 +2,38 @@
   flash={@flash}
   current_scope={assigns[:current_scope]}
   current_path={if @live_action == :create, do: ~p"/create", else: ~p"/builder"}
+  page_title={@page_title}
+  page_kicker={if @live_action == :create, do: "AI Drafting", else: "Graph Studio"}
+  page_subtitle="The shell now carries route identity, actions, and state while the builder stays focused on graph authoring, validation, and execution."
 >
+  <:actions>
+    <.link navigate={~p"/create"} id="open-create-dialog" class="builder-btn">
+      Create with AI
+    </.link>
+    <.link navigate={~p"/library"} class="builder-btn">Open Library</.link>
+  </:actions>
+  <:status>
+    <Layouts.shell_status_item>
+      <span class="shell-status-label">Workspace</span>
+      <span class="shell-status-value">
+        {if @live_action == :create, do: "Create dialog open", else: "Canvas editing"}
+      </span>
+      <span class="shell-status-note">
+        DOT and graph JSON stay paired in one authoring surface
+      </span>
+    </Layouts.shell_status_item>
+    <Layouts.shell_status_item>
+      <span class="shell-status-label">Library Context</span>
+      <span class="shell-status-value">
+        {if @loaded_library_entry, do: @loaded_library_entry.name, else: "Scratch graph"}
+      </span>
+      <span class="shell-status-note">
+        {if @loaded_library_entry,
+          do: @loaded_library_entry.id,
+          else: "Nothing loaded from saved presets"}
+      </span>
+    </Layouts.shell_status_item>
+  </:status>
   <%= if @live_action == :create do %>
     <dialog
       id="create-dialog"
@@ -126,19 +157,15 @@
   <% end %>
 
   <section class="space-y-6" id="pipeline-builder-page">
-    <div class="rounded-[1.75rem] border border-base-300/70 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.18),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.94),rgba(248,250,252,0.92))] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.12),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.92),rgba(15,23,42,0.84))]">
-      <p class="builder-kicker">Graph Studio</p>
-      <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+    <section class="dashboard-panel">
+      <div class="flex flex-wrap items-center justify-between gap-4">
         <div class="space-y-2">
-          <h1 class="text-3xl font-bold tracking-tight md:text-4xl">Pipeline Builder</h1>
-          <p class="max-w-2xl text-sm leading-6 text-base-content/70">
-            Design, connect, and run `AttractorEx` workflows in a lighter-touch visual editor.
-          </p>
+          <p class="dashboard-card-label">Authoring Contract</p>
+          <h2 class="text-xl font-semibold">
+            Visual graph editing without losing the canonical DOT loop
+          </h2>
         </div>
         <div class="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em] text-base-content/55">
-          <.link navigate={~p"/create"} id="open-create-dialog" class="builder-btn">
-            Create with AI
-          </.link>
           <span class="rounded-full border border-base-300/80 px-3 py-1">
             visual graph editing
           </span>
@@ -148,7 +175,7 @@
           </span>
         </div>
       </div>
-    </div>
+    </section>
 
     <div id="builder-shell" class="builder-shell">
       <aside id="builder-left-panel" class="builder-side builder-left">
@@ -943,14 +970,7 @@
       </aside>
     </div>
 
-    <%= if @error do %>
-      <div
-        id="run-error"
-        class="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700"
-      >
-        {@error}
-      </div>
-    <% end %>
+    <.inline_error :if={@error} id="run-error" title="Pipeline action failed" message={@error} />
 
     <%= if @result do %>
       <div id="run-result" class="space-y-3 rounded-xl border border-base-300 bg-base-200/50 p-4">

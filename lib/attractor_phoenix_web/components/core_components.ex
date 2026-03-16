@@ -1,30 +1,6 @@
 defmodule AttractorPhoenixWeb.CoreComponents do
   @moduledoc """
-  Provides core UI components.
-
-  At first glance, this module may seem daunting, but its goal is to provide
-  core building blocks for your application, such as tables, forms, and
-  inputs. The components consist mostly of markup and are well-documented
-  with doc strings and declarative assigns. You may customize and style
-  them in any way you want, based on your application growth and needs.
-
-  The foundation for styling is Tailwind CSS, a utility-first CSS framework,
-  augmented with daisyUI, a Tailwind CSS plugin that provides UI components
-  and themes. Here are useful references:
-
-    * [daisyUI](https://daisyui.com/docs/intro/) - a good place to get
-      started and see the available components.
-
-    * [Tailwind CSS](https://tailwindcss.com) - the foundational framework
-      we build on. You will use it for layout, sizing, flexbox, grid, and
-      spacing.
-
-    * [Heroicons](https://heroicons.com) - see `icon/1` for usage.
-
-    * [Phoenix.Component](https://hexdocs.pm/phoenix_live_view/Phoenix.Component.html) -
-      the component system used by Phoenix. Some components, such as `<.link>`
-      and `<.form>`, are defined there.
-
+  Shared UI primitives for the product shell.
   """
   use Phoenix.Component
   use Gettext, backend: AttractorPhoenixWeb.Gettext
@@ -33,11 +9,6 @@ defmodule AttractorPhoenixWeb.CoreComponents do
 
   @doc """
   Renders flash notices.
-
-  ## Examples
-
-      <.flash kind={:info} flash={@flash} />
-      <.flash kind={:info} phx-mounted={show("#flash")}>Welcome Back!</.flash>
   """
   attr :id, :string, doc: "the optional id of flash container"
   attr :flash, :map, default: %{}, doc: "the map of flash messages to display"
@@ -48,7 +19,16 @@ defmodule AttractorPhoenixWeb.CoreComponents do
   slot :inner_block, doc: "the optional inner block that renders the flash message"
 
   def flash(assigns) do
-    assigns = assign_new(assigns, :id, fn -> "flash-#{assigns.kind}" end)
+    assigns =
+      assigns
+      |> assign_new(:id, fn -> "flash-#{assigns.kind}" end)
+      |> assign(
+        :tone,
+        case assigns.kind do
+          :info -> "ui-flash-card ui-flash-info"
+          :error -> "ui-flash-card ui-flash-error"
+        end
+      )
 
     ~H"""
     <div
@@ -56,23 +36,20 @@ defmodule AttractorPhoenixWeb.CoreComponents do
       id={@id}
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
       role="alert"
-      class="toast toast-top toast-end z-50"
+      class="ui-flash"
       {@rest}
     >
-      <div class={[
-        "alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap",
-        @kind == :info && "alert-info",
-        @kind == :error && "alert-error"
-      ]}>
-        <.icon :if={@kind == :info} name="hero-information-circle" class="size-5 shrink-0" />
-        <.icon :if={@kind == :error} name="hero-exclamation-circle" class="size-5 shrink-0" />
-        <div>
-          <p :if={@title} class="font-semibold">{@title}</p>
-          <p>{msg}</p>
+      <div class={@tone}>
+        <div class="ui-flash-icon">
+          <.icon :if={@kind == :info} name="hero-information-circle" class="size-5 shrink-0" />
+          <.icon :if={@kind == :error} name="hero-exclamation-triangle" class="size-5 shrink-0" />
         </div>
-        <div class="flex-1" />
-        <button type="button" class="group self-start cursor-pointer" aria-label={gettext("close")}>
-          <.icon name="hero-x-mark" class="size-5 opacity-40 group-hover:opacity-70" />
+        <div class="min-w-0 flex-1">
+          <p :if={@title} class="ui-flash-title">{@title}</p>
+          <p class="ui-flash-message">{msg}</p>
+        </div>
+        <button type="button" class="ui-flash-close" aria-label={gettext("close")}>
+          <.icon name="hero-x-mark" class="size-5" />
         </button>
       </div>
     </div>
@@ -81,24 +58,24 @@ defmodule AttractorPhoenixWeb.CoreComponents do
 
   @doc """
   Renders a button with navigation support.
-
-  ## Examples
-
-      <.button>Send!</.button>
-      <.button phx-click="go" variant="primary">Send!</.button>
-      <.button navigate={~p"/"}>Home</.button>
   """
   attr :rest, :global, include: ~w(href navigate patch method download name value disabled)
   attr :class, :any
-  attr :variant, :string, values: ~w(primary)
+  attr :variant, :string, values: ~w(primary secondary ghost danger)
   slot :inner_block, required: true
 
   def button(%{rest: rest} = assigns) do
-    variants = %{"primary" => "btn-primary", nil => "btn-primary btn-soft"}
+    variants = %{
+      "primary" => "ui-button ui-button-primary",
+      "secondary" => "ui-button ui-button-secondary",
+      "ghost" => "ui-button ui-button-ghost",
+      "danger" => "ui-button ui-button-danger",
+      nil => "ui-button ui-button-secondary"
+    }
 
     assigns =
       assign_new(assigns, :class, fn ->
-        ["btn", Map.fetch!(variants, assigns[:variant])]
+        [Map.fetch!(variants, assigns[:variant])]
       end)
 
     if rest[:href] || rest[:navigate] || rest[:patch] do
@@ -118,43 +95,6 @@ defmodule AttractorPhoenixWeb.CoreComponents do
 
   @doc """
   Renders an input with label and error messages.
-
-  A `Phoenix.HTML.FormField` may be passed as argument,
-  which is used to retrieve the input name, id, and values.
-  Otherwise all attributes may be passed explicitly.
-
-  ## Types
-
-  This function accepts all HTML input types, considering that:
-
-    * You may also set `type="select"` to render a `<select>` tag
-
-    * `type="checkbox"` is used exclusively to render boolean values
-
-    * For live file uploads, see `Phoenix.Component.live_file_input/1`
-
-  See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input
-  for more information. Unsupported types, such as radio, are best
-  written directly in your templates.
-
-  ## Examples
-
-  ```heex
-  <.input field={@form[:email]} type="email" />
-  <.input name="my-input" errors={["oh no!"]} />
-  ```
-
-  ## Select type
-
-  When using `type="select"`, you must pass the `options` and optionally
-  a `value` to mark which option should be preselected.
-
-  ```heex
-  <.input field={@form[:user_type]} type="select" options={["Admin": "admin", "User": "user"]} />
-  ```
-
-  For more information on what kind of data can be passed to `options` see
-  [`options_for_select`](https://hexdocs.pm/phoenix_html/Phoenix.HTML.Form.html#options_for_select/2).
   """
   attr :id, :any, default: nil
   attr :name, :any
@@ -205,8 +145,8 @@ defmodule AttractorPhoenixWeb.CoreComponents do
       end)
 
     ~H"""
-    <div class="fieldset mb-2">
-      <label>
+    <div class="ui-field">
+      <label class="ui-checkbox-wrap">
         <input
           type="hidden"
           name={@name}
@@ -214,17 +154,16 @@ defmodule AttractorPhoenixWeb.CoreComponents do
           disabled={@rest[:disabled]}
           form={@rest[:form]}
         />
-        <span class="label">
-          <input
-            type="checkbox"
-            id={@id}
-            name={@name}
-            value="true"
-            checked={@checked}
-            class={@class || "checkbox checkbox-sm"}
-            {@rest}
-          />{@label}
-        </span>
+        <input
+          type="checkbox"
+          id={@id}
+          name={@name}
+          value="true"
+          checked={@checked}
+          class={@class || "ui-checkbox"}
+          {@rest}
+        />
+        <span class="ui-checkbox-label">{@label}</span>
       </label>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
@@ -233,20 +172,23 @@ defmodule AttractorPhoenixWeb.CoreComponents do
 
   def input(%{type: "select"} = assigns) do
     ~H"""
-    <div class="fieldset mb-2">
-      <label>
-        <span :if={@label} class="label mb-1">{@label}</span>
+    <div class="ui-field">
+      <label :if={@label} class="ui-label" for={@id}>{@label}</label>
+      <div class="ui-input-shell">
         <select
           id={@id}
           name={@name}
-          class={[@class || "w-full select", @errors != [] && (@error_class || "select-error")]}
+          class={[
+            @class || "ui-input ui-select",
+            @errors != [] && (@error_class || "ui-input-error")
+          ]}
           multiple={@multiple}
           {@rest}
         >
           <option :if={@prompt} value="">{@prompt}</option>
           {Phoenix.HTML.Form.options_for_select(@options, @value)}
         </select>
-      </label>
+      </div>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
     """
@@ -254,54 +196,112 @@ defmodule AttractorPhoenixWeb.CoreComponents do
 
   def input(%{type: "textarea"} = assigns) do
     ~H"""
-    <div class="fieldset mb-2">
-      <label>
-        <span :if={@label} class="label mb-1">{@label}</span>
+    <div class="ui-field">
+      <label :if={@label} class="ui-label" for={@id}>{@label}</label>
+      <div class="ui-input-shell">
         <textarea
           id={@id}
           name={@name}
           class={[
-            @class || "w-full textarea",
-            @errors != [] && (@error_class || "textarea-error")
+            @class || "ui-input ui-textarea",
+            @errors != [] && (@error_class || "ui-input-error")
           ]}
           {@rest}
         >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
-      </label>
+      </div>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
     """
   end
 
-  # All other inputs text, datetime-local, url, password, etc. are handled here...
   def input(assigns) do
     ~H"""
-    <div class="fieldset mb-2">
-      <label>
-        <span :if={@label} class="label mb-1">{@label}</span>
+    <div class="ui-field">
+      <label :if={@label} class="ui-label" for={@id}>{@label}</label>
+      <div class="ui-input-shell">
         <input
           type={@type}
           name={@name}
           id={@id}
           value={Phoenix.HTML.Form.normalize_value(@type, @value)}
           class={[
-            @class || "w-full input",
-            @errors != [] && (@error_class || "input-error")
+            @class || "ui-input",
+            @errors != [] && (@error_class || "ui-input-error")
           ]}
           {@rest}
         />
-      </label>
+      </div>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
     """
   end
 
-  # Helper used by inputs to generate form errors
+  slot :inner_block, required: true
+
   defp error(assigns) do
     ~H"""
-    <p class="mt-1.5 flex gap-2 items-center text-sm text-error">
-      <.icon name="hero-exclamation-circle" class="size-5" />
-      {render_slot(@inner_block)}
+    <p class="ui-error">
+      <.icon name="hero-exclamation-circle" class="size-4" />
+      <span>{render_slot(@inner_block)}</span>
     </p>
+    """
+  end
+
+  @doc """
+  Renders a compact inline error surface.
+  """
+  attr :id, :string, required: true
+  attr :title, :string, default: "Attention"
+  attr :message, :string, required: true
+
+  def inline_error(assigns) do
+    ~H"""
+    <div id={@id} class="ui-inline-error" role="alert">
+      <div class="ui-inline-error-icon">
+        <.icon name="hero-exclamation-triangle" class="size-5" />
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="ui-inline-error-title">{@title}</p>
+        <p class="ui-inline-error-message">{@message}</p>
+      </div>
+    </div>
+    """
+  end
+
+  @doc """
+  Renders a standard empty state.
+  """
+  attr :id, :string, default: nil
+  attr :title, :string, required: true
+  attr :message, :string, required: true
+  attr :icon, :string, default: "hero-inbox-stack"
+  slot :actions
+
+  def empty_state(assigns) do
+    ~H"""
+    <div id={@id} class="ui-empty-state">
+      <div class="ui-empty-state-icon">
+        <.icon name={@icon} class="size-6" />
+      </div>
+      <div class="space-y-2">
+        <p class="ui-empty-state-title">{@title}</p>
+        <p class="ui-empty-state-message">{@message}</p>
+      </div>
+      <div :if={@actions != []} class="ui-empty-state-actions">
+        {render_slot(@actions)}
+      </div>
+    </div>
+    """
+  end
+
+  @doc """
+  Renders a lightweight loading skeleton block.
+  """
+  attr :class, :string, default: nil
+
+  def skeleton(assigns) do
+    ~H"""
+    <div class={["ui-skeleton", @class]} aria-hidden="true"></div>
     """
   end
 
@@ -314,34 +314,25 @@ defmodule AttractorPhoenixWeb.CoreComponents do
 
   def header(assigns) do
     ~H"""
-    <header class={[@actions != [] && "flex items-center justify-between gap-6", "pb-4"]}>
+    <header class={[@actions != [] && "flex items-center justify-between gap-6", "ui-section-header"]}>
       <div>
-        <h1 class="text-lg font-semibold leading-8">
-          {render_slot(@inner_block)}
-        </h1>
-        <p :if={@subtitle != []} class="text-sm text-base-content/70">
+        <h2 class="ui-section-title">{render_slot(@inner_block)}</h2>
+        <p :if={@subtitle != []} class="ui-section-subtitle">
           {render_slot(@subtitle)}
         </p>
       </div>
-      <div class="flex-none">{render_slot(@actions)}</div>
+      <div :if={@actions != []} class="flex-none">{render_slot(@actions)}</div>
     </header>
     """
   end
 
   @doc """
-  Renders a table with generic styling.
-
-  ## Examples
-
-      <.table id="users" rows={@users}>
-        <:col :let={user} label="id">{user.id}</:col>
-        <:col :let={user} label="username">{user.username}</:col>
-      </.table>
+  Renders a table with shared styling.
   """
   attr :id, :string, required: true
-  attr :rows, :list, required: true
-  attr :row_id, :any, default: nil, doc: "the function for generating the row id"
-  attr :row_click, :any, default: nil, doc: "the function for handling phx-click on each row"
+  attr :rows, :any, required: true
+  attr :row_id, :any, default: nil
+  attr :row_click, :any, default: nil
 
   attr :row_item, :any,
     default: &Function.identity/1,
@@ -351,7 +342,7 @@ defmodule AttractorPhoenixWeb.CoreComponents do
     attr :label, :string
   end
 
-  slot :action, doc: "the slot for showing user actions in the last table column"
+  slot :action
 
   def table(assigns) do
     assigns =
@@ -360,46 +351,41 @@ defmodule AttractorPhoenixWeb.CoreComponents do
       end
 
     ~H"""
-    <table class="table table-zebra">
-      <thead>
-        <tr>
-          <th :for={col <- @col}>{col[:label]}</th>
-          <th :if={@action != []}>
-            <span class="sr-only">{gettext("Actions")}</span>
-          </th>
-        </tr>
-      </thead>
-      <tbody id={@id} phx-update={is_struct(@rows, Phoenix.LiveView.LiveStream) && "stream"}>
-        <tr :for={row <- @rows} id={@row_id && @row_id.(row)}>
-          <td
-            :for={col <- @col}
-            phx-click={@row_click && @row_click.(row)}
-            class={@row_click && "hover:cursor-pointer"}
-          >
-            {render_slot(col, @row_item.(row))}
-          </td>
-          <td :if={@action != []} class="w-0 font-semibold">
-            <div class="flex gap-4">
-              <%= for action <- @action do %>
-                {render_slot(action, @row_item.(row))}
-              <% end %>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="ui-table-shell">
+      <table class="ui-table">
+        <thead>
+          <tr>
+            <th :for={col <- @col}>{col[:label]}</th>
+            <th :if={@action != []}>
+              <span class="sr-only">{gettext("Actions")}</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody id={@id} phx-update={is_struct(@rows, Phoenix.LiveView.LiveStream) && "stream"}>
+          <tr :for={row <- @rows} id={@row_id && @row_id.(row)}>
+            <td
+              :for={col <- @col}
+              phx-click={@row_click && @row_click.(row)}
+              class={@row_click && "cursor-pointer"}
+            >
+              {render_slot(col, @row_item.(row))}
+            </td>
+            <td :if={@action != []} class="ui-table-actions">
+              <div class="flex gap-3">
+                <%= for action <- @action do %>
+                  {render_slot(action, @row_item.(row))}
+                <% end %>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
     """
   end
 
   @doc """
   Renders a data list.
-
-  ## Examples
-
-      <.list>
-        <:item title="Title">{@post.title}</:item>
-        <:item title="Views">{@post.views}</:item>
-      </.list>
   """
   slot :item, required: true do
     attr :title, :string, required: true
@@ -407,34 +393,17 @@ defmodule AttractorPhoenixWeb.CoreComponents do
 
   def list(assigns) do
     ~H"""
-    <ul class="list">
-      <li :for={item <- @item} class="list-row">
-        <div class="list-col-grow">
-          <div class="font-bold">{item.title}</div>
-          <div>{render_slot(item)}</div>
-        </div>
-      </li>
-    </ul>
+    <div class="ui-list">
+      <div :for={item <- @item} class="ui-list-row">
+        <div class="ui-list-title">{item.title}</div>
+        <div class="ui-list-value">{render_slot(item)}</div>
+      </div>
+    </div>
     """
   end
 
   @doc """
-  Renders a [Heroicon](https://heroicons.com).
-
-  Heroicons come in three styles – outline, solid, and mini.
-  By default, the outline style is used, but solid and mini may
-  be applied by using the `-solid` and `-mini` suffix.
-
-  You can customize the size and colors of the icons by setting
-  width, height, and background color classes.
-
-  Icons are extracted from the `deps/heroicons` directory and bundled within
-  your compiled app.css by the plugin in `assets/vendor/heroicons.js`.
-
-  ## Examples
-
-      <.icon name="hero-x-mark" />
-      <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
+  Renders a Heroicon.
   """
   attr :name, :string, required: true
   attr :class, :any, default: "size-4"
@@ -444,8 +413,6 @@ defmodule AttractorPhoenixWeb.CoreComponents do
     <span class={[@name, @class]} />
     """
   end
-
-  ## JS Commands
 
   def show(js \\ %JS{}, selector) do
     JS.show(js,
@@ -472,16 +439,6 @@ defmodule AttractorPhoenixWeb.CoreComponents do
   Translates an error message using gettext.
   """
   def translate_error({msg, opts}) do
-    # When using gettext, we typically pass the strings we want
-    # to translate as a static argument:
-    #
-    #     # Translate the number of files with plural rules
-    #     dngettext("errors", "1 file", "%{count} files", count)
-    #
-    # However the error messages in our forms and APIs are generated
-    # dynamically, so we need to translate them by calling Gettext
-    # with our gettext backend as first argument. Translations are
-    # available in the errors.po file (as we use the "errors" domain).
     if count = opts[:count] do
       Gettext.dngettext(AttractorPhoenixWeb.Gettext, "errors", msg, msg, count, opts)
     else
