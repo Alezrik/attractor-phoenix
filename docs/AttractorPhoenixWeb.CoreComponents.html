@@ -12,7 +12,7 @@
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
-    <script defer src="dist/sidebar_items-EFB495BC.js"></script>
+    <script defer src="dist/sidebar_items-B78E6AC9.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-YU4BZFVS.js"></script>
 
@@ -118,18 +118,7 @@ attractor_phoenix
 
 
     <section id="moduledoc">
-<p>Provides core UI components.</p><p>At first glance, this module may seem daunting, but its goal is to provide
-core building blocks for your application, such as tables, forms, and
-inputs. The components consist mostly of markup and are well-documented
-with doc strings and declarative assigns. You may customize and style
-them in any way you want, based on your application growth and needs.</p><p>The foundation for styling is Tailwind CSS, a utility-first CSS framework,
-augmented with daisyUI, a Tailwind CSS plugin that provides UI components
-and themes. Here are useful references:</p><ul><li><p><a href="https://daisyui.com/docs/intro/">daisyUI</a> - a good place to get
-started and see the available components.</p></li><li><p><a href="https://tailwindcss.com">Tailwind CSS</a> - the foundational framework
-we build on. You will use it for layout, sizing, flexbox, grid, and
-spacing.</p></li><li><p><a href="https://heroicons.com">Heroicons</a> - see <a href="#icon/1"><code class="inline">icon/1</code></a> for usage.</p></li><li><p><a href="https://hexdocs.pm/phoenix_live_view/Phoenix.Component.html">Phoenix.Component</a> -
-the component system used by Phoenix. Some components, such as <code class="inline">&lt;.link&gt;</code>
-and <code class="inline">&lt;.form&gt;</code>, are defined there.</p></li></ul>
+<p>Shared UI primitives for the product shell.</p>
     </section>
 
 </div>
@@ -153,6 +142,16 @@ and <code class="inline">&lt;.form&gt;</code>, are defined there.</p></li></ul>
       </div>
 
         <div class="summary-synopsis"><p>Renders a button with navigation support.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#empty_state/1" data-no-tooltip="" translate="no">empty_state(assigns)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Renders a standard empty state.</p></div>
 
     </div>
 
@@ -190,7 +189,17 @@ and <code class="inline">&lt;.form&gt;</code>, are defined there.</p></li></ul>
 
       </div>
 
-        <div class="summary-synopsis"><p>Renders a <a href="https://heroicons.com">Heroicon</a>.</p></div>
+        <div class="summary-synopsis"><p>Renders a Heroicon.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#inline_error/1" data-no-tooltip="" translate="no">inline_error(assigns)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Renders a compact inline error surface.</p></div>
 
     </div>
 
@@ -224,11 +233,21 @@ and <code class="inline">&lt;.form&gt;</code>, are defined there.</p></li></ul>
 
     <div class="summary-row">
       <div class="summary-signature">
+        <a href="#skeleton/1" data-no-tooltip="" translate="no">skeleton(assigns)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Renders a lightweight loading skeleton block.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
         <a href="#table/1" data-no-tooltip="" translate="no">table(assigns)</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Renders a table with generic styling.</p></div>
+        <div class="summary-synopsis"><p>Renders a table with shared styling.</p></div>
 
     </div>
 
@@ -276,7 +295,7 @@ and <code class="inline">&lt;.form&gt;</code>, are defined there.</p></li></ul>
       <h1 class="signature" translate="no">button(assigns)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L96" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L67" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -285,9 +304,29 @@ and <code class="inline">&lt;.form&gt;</code>, are defined there.</p></li></ul>
 
   <section class="docstring">
 
-<p>Renders a button with navigation support.</p><h2 id="button/1-examples" class="section-heading"><a href="#button/1-examples" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Examples</span></h2><pre><code class="makeup elixir" translate="no"><span class="o">&lt;</span><span class="o">.</span><span class="n">button</span><span class="o">&gt;</span><span class="nc">Send</span><span class="o">!</span><span class="o">&lt;</span><span class="o">/</span><span class="o">.</span><span class="n">button</span><span class="o">&gt;</span><span class="w">
-</span><span class="o">&lt;</span><span class="o">.</span><span class="n">button</span><span class="w"> </span><span class="n">phx</span><span class="o">-</span><span class="n">click</span><span class="o">=</span><span class="s">&quot;go&quot;</span><span class="w"> </span><span class="n">variant</span><span class="o">=</span><span class="s">&quot;primary&quot;</span><span class="o">&gt;</span><span class="nc">Send</span><span class="o">!</span><span class="o">&lt;</span><span class="o">/</span><span class="o">.</span><span class="n">button</span><span class="o">&gt;</span><span class="w">
-</span><span class="o">&lt;</span><span class="o">.</span><span class="n">button</span><span class="w"> </span><span class="n">navigate</span><span class="o">=</span><span class="p" data-group-id="9419635789-1">{</span><span class="sx">~p&quot;/&quot;</span><span class="p" data-group-id="9419635789-1">}</span><span class="o">&gt;</span><span class="nc">Home</span><span class="o">&lt;</span><span class="o">/</span><span class="o">.</span><span class="n">button</span><span class="o">&gt;</span></code></pre><h2 id="button/1-attributes" class="section-heading"><a href="#button/1-attributes" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Attributes</span></h2><ul><li><code class="inline">class</code> (<code class="inline">:any</code>)</li><li><code class="inline">variant</code> (<code class="inline">:string</code>) - Must be one of <code class="inline">&quot;primary&quot;</code>.</li><li>Global attributes are accepted. Supports all globals plus: <code class="inline">[&quot;href&quot;, &quot;navigate&quot;, &quot;patch&quot;, &quot;method&quot;, &quot;download&quot;, &quot;name&quot;, &quot;value&quot;, &quot;disabled&quot;]</code>.</li></ul><h2 id="button/1-slots" class="section-heading"><a href="#button/1-slots" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Slots</span></h2><ul><li><code class="inline">inner_block</code> (required)</li></ul>
+<p>Renders a button with navigation support.</p><h2 id="button/1-attributes" class="section-heading"><a href="#button/1-attributes" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Attributes</span></h2><ul><li><code class="inline">class</code> (<code class="inline">:any</code>)</li><li><code class="inline">variant</code> (<code class="inline">:string</code>) - Must be one of <code class="inline">&quot;primary&quot;</code>, <code class="inline">&quot;secondary&quot;</code>, <code class="inline">&quot;ghost&quot;</code>, or <code class="inline">&quot;danger&quot;</code>.</li><li>Global attributes are accepted. Supports all globals plus: <code class="inline">[&quot;href&quot;, &quot;navigate&quot;, &quot;patch&quot;, &quot;method&quot;, &quot;download&quot;, &quot;name&quot;, &quot;value&quot;, &quot;disabled&quot;]</code>.</li></ul><h2 id="button/1-slots" class="section-heading"><a href="#button/1-slots" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Slots</span></h2><ul><li><code class="inline">inner_block</code> (required)</li></ul>
+  </section>
+</section>
+<section class="detail" id="empty_state/1">
+
+  <div class="detail-header">
+    <a href="#empty_state/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">empty_state(assigns)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L280" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>Renders a standard empty state.</p><h2 id="empty_state/1-attributes" class="section-heading"><a href="#empty_state/1-attributes" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Attributes</span></h2><ul><li><code class="inline">id</code> (<code class="inline">:string</code>) - Defaults to <code class="inline">nil</code>.</li><li><code class="inline">title</code> (<code class="inline">:string</code>) (required)</li><li><code class="inline">message</code> (<code class="inline">:string</code>) (required)</li><li><code class="inline">icon</code> (<code class="inline">:string</code>) - Defaults to <code class="inline">&quot;hero-inbox-stack&quot;</code>.</li></ul><h2 id="empty_state/1-slots" class="section-heading"><a href="#empty_state/1-slots" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Slots</span></h2><ul><li><code class="inline">actions</code></li></ul>
   </section>
 </section>
 <section class="detail" id="flash/1">
@@ -300,7 +339,7 @@ and <code class="inline">&lt;.form&gt;</code>, are defined there.</p></li></ul>
       <h1 class="signature" translate="no">flash(assigns)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L50" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L21" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -309,8 +348,7 @@ and <code class="inline">&lt;.form&gt;</code>, are defined there.</p></li></ul>
 
   <section class="docstring">
 
-<p>Renders flash notices.</p><h2 id="flash/1-examples" class="section-heading"><a href="#flash/1-examples" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Examples</span></h2><pre><code class="makeup elixir" translate="no"><span class="o">&lt;</span><span class="o">.</span><span class="n">flash</span><span class="w"> </span><span class="n">kind</span><span class="o">=</span><span class="p" data-group-id="0461470472-1">{</span><span class="ss">:info</span><span class="p" data-group-id="0461470472-1">}</span><span class="w"> </span><span class="n">flash</span><span class="o">=</span><span class="p" data-group-id="0461470472-2">{</span><span class="na">@flash</span><span class="p" data-group-id="0461470472-2">}</span><span class="w"> </span><span class="o">/</span><span class="o">&gt;</span><span class="w">
-</span><span class="o">&lt;</span><span class="o">.</span><span class="n">flash</span><span class="w"> </span><span class="n">kind</span><span class="o">=</span><span class="p" data-group-id="0461470472-3">{</span><span class="ss">:info</span><span class="p" data-group-id="0461470472-3">}</span><span class="w"> </span><span class="n">phx</span><span class="o">-</span><span class="n">mounted</span><span class="o">=</span><span class="p" data-group-id="0461470472-4">{</span><span class="n">show</span><span class="p" data-group-id="0461470472-5">(</span><span class="s">&quot;#flash&quot;</span><span class="p" data-group-id="0461470472-5">)</span><span class="p" data-group-id="0461470472-4">}</span><span class="o">&gt;</span><span class="nc">Welcome</span><span class="w"> </span><span class="nc">Back</span><span class="o">!</span><span class="o">&lt;</span><span class="o">/</span><span class="o">.</span><span class="n">flash</span><span class="o">&gt;</span></code></pre><h2 id="flash/1-attributes" class="section-heading"><a href="#flash/1-attributes" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Attributes</span></h2><ul><li><code class="inline">id</code> (<code class="inline">:string</code>) - the optional id of flash container.</li><li><code class="inline">flash</code> (<code class="inline">:map</code>) - the map of flash messages to display. Defaults to <code class="inline">%{}</code>.</li><li><code class="inline">title</code> (<code class="inline">:string</code>) - Defaults to <code class="inline">nil</code>.</li><li><code class="inline">kind</code> (<code class="inline">:atom</code>) - used for styling and flash lookup. Must be one of <code class="inline">:info</code>, or <code class="inline">:error</code>.</li><li>Global attributes are accepted. the arbitrary HTML attributes to add to the flash container.</li></ul><h2 id="flash/1-slots" class="section-heading"><a href="#flash/1-slots" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Slots</span></h2><ul><li><code class="inline">inner_block</code> - the optional inner block that renders the flash message.</li></ul>
+<p>Renders flash notices.</p><h2 id="flash/1-attributes" class="section-heading"><a href="#flash/1-attributes" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Attributes</span></h2><ul><li><code class="inline">id</code> (<code class="inline">:string</code>) - the optional id of flash container.</li><li><code class="inline">flash</code> (<code class="inline">:map</code>) - the map of flash messages to display. Defaults to <code class="inline">%{}</code>.</li><li><code class="inline">title</code> (<code class="inline">:string</code>) - Defaults to <code class="inline">nil</code>.</li><li><code class="inline">kind</code> (<code class="inline">:atom</code>) - used for styling and flash lookup. Must be one of <code class="inline">:info</code>, or <code class="inline">:error</code>.</li><li>Global attributes are accepted. the arbitrary HTML attributes to add to the flash container.</li></ul><h2 id="flash/1-slots" class="section-heading"><a href="#flash/1-slots" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Slots</span></h2><ul><li><code class="inline">inner_block</code> - the optional inner block that renders the flash message.</li></ul>
   </section>
 </section>
 <section class="detail" id="header/1">
@@ -347,7 +385,7 @@ and <code class="inline">&lt;.form&gt;</code>, are defined there.</p></li></ul>
       <h1 class="signature" translate="no">hide(js \\ %JS{}, selector)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L461" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L428" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -369,7 +407,7 @@ and <code class="inline">&lt;.form&gt;</code>, are defined there.</p></li></ul>
       <h1 class="signature" translate="no">icon(assigns)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L442" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L411" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -378,12 +416,29 @@ and <code class="inline">&lt;.form&gt;</code>, are defined there.</p></li></ul>
 
   <section class="docstring">
 
-<p>Renders a <a href="https://heroicons.com">Heroicon</a>.</p><p>Heroicons come in three styles – outline, solid, and mini.
-By default, the outline style is used, but solid and mini may
-be applied by using the <code class="inline">-solid</code> and <code class="inline">-mini</code> suffix.</p><p>You can customize the size and colors of the icons by setting
-width, height, and background color classes.</p><p>Icons are extracted from the <code class="inline">deps/heroicons</code> directory and bundled within
-your compiled app.css by the plugin in <code class="inline">assets/vendor/heroicons.js</code>.</p><h2 id="icon/1-examples" class="section-heading"><a href="#icon/1-examples" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Examples</span></h2><pre><code class="makeup elixir" translate="no"><span class="o">&lt;</span><span class="o">.</span><span class="n">icon</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s">&quot;hero-x-mark&quot;</span><span class="w"> </span><span class="o">/</span><span class="o">&gt;</span><span class="w">
-</span><span class="o">&lt;</span><span class="o">.</span><span class="n">icon</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s">&quot;hero-arrow-path&quot;</span><span class="w"> </span><span class="n">class</span><span class="o">=</span><span class="s">&quot;ml-1 size-3 motion-safe:animate-spin&quot;</span><span class="w"> </span><span class="o">/</span><span class="o">&gt;</span></code></pre><h2 id="icon/1-attributes" class="section-heading"><a href="#icon/1-attributes" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Attributes</span></h2><ul><li><code class="inline">name</code> (<code class="inline">:string</code>) (required)</li><li><code class="inline">class</code> (<code class="inline">:any</code>) - Defaults to <code class="inline">&quot;size-4&quot;</code>.</li></ul>
+<p>Renders a Heroicon.</p><h2 id="icon/1-attributes" class="section-heading"><a href="#icon/1-attributes" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Attributes</span></h2><ul><li><code class="inline">name</code> (<code class="inline">:string</code>) (required)</li><li><code class="inline">class</code> (<code class="inline">:any</code>) - Defaults to <code class="inline">&quot;size-4&quot;</code>.</li></ul>
+  </section>
+</section>
+<section class="detail" id="inline_error/1">
+
+  <div class="detail-header">
+    <a href="#inline_error/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">inline_error(assigns)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L257" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>Renders a compact inline error surface.</p><h2 id="inline_error/1-attributes" class="section-heading"><a href="#inline_error/1-attributes" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Attributes</span></h2><ul><li><code class="inline">id</code> (<code class="inline">:string</code>) (required)</li><li><code class="inline">title</code> (<code class="inline">:string</code>) - Defaults to <code class="inline">&quot;Attention&quot;</code>.</li><li><code class="inline">message</code> (<code class="inline">:string</code>) (required)</li></ul>
   </section>
 </section>
 <section class="detail" id="input/1">
@@ -396,7 +451,7 @@ your compiled app.css by the plugin in <code class="inline">assets/vendor/heroic
       <h1 class="signature" translate="no">input(assigns)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L184" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L124" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -405,14 +460,7 @@ your compiled app.css by the plugin in <code class="inline">assets/vendor/heroic
 
   <section class="docstring">
 
-<p>Renders an input with label and error messages.</p><p>A <a href="https://hexdocs.pm/phoenix_html/4.3.0/Phoenix.HTML.FormField.html"><code class="inline">Phoenix.HTML.FormField</code></a> may be passed as argument,
-which is used to retrieve the input name, id, and values.
-Otherwise all attributes may be passed explicitly.</p><h2 id="input/1-types" class="section-heading"><a href="#input/1-types" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Types</span></h2><p>This function accepts all HTML input types, considering that:</p><ul><li><p>You may also set <code class="inline">type=&quot;select&quot;</code> to render a <code class="inline">&lt;select&gt;</code> tag</p></li><li><p><code class="inline">type=&quot;checkbox&quot;</code> is used exclusively to render boolean values</p></li><li><p>For live file uploads, see <a href="https://hexdocs.pm/phoenix_live_view/1.1.26/Phoenix.Component.html#live_file_input/1"><code class="inline">Phoenix.Component.live_file_input/1</code></a></p></li></ul><p>See <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input">https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input</a>
-for more information. Unsupported types, such as radio, are best
-written directly in your templates.</p><h2 id="input/1-examples" class="section-heading"><a href="#input/1-examples" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Examples</span></h2><pre><code class="heex">&lt;.input field={@form[:email]} type=&quot;email&quot; /&gt;
-&lt;.input name=&quot;my-input&quot; errors={[&quot;oh no!&quot;]} /&gt;</code></pre><h2 id="input/1-select-type" class="section-heading"><a href="#input/1-select-type" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Select type</span></h2><p>When using <code class="inline">type=&quot;select&quot;</code>, you must pass the <code class="inline">options</code> and optionally
-a <code class="inline">value</code> to mark which option should be preselected.</p><pre><code class="heex">&lt;.input field={@form[:user_type]} type=&quot;select&quot; options={[&quot;Admin&quot;: &quot;admin&quot;, &quot;User&quot;: &quot;user&quot;]} /&gt;</code></pre><p>For more information on what kind of data can be passed to <code class="inline">options</code> see
-<a href="https://hexdocs.pm/phoenix_html/Phoenix.HTML.Form.html#options_for_select/2"><code class="inline">options_for_select</code></a>.</p><h2 id="input/1-attributes" class="section-heading"><a href="#input/1-attributes" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Attributes</span></h2><ul><li><code class="inline">id</code> (<code class="inline">:any</code>) - Defaults to <code class="inline">nil</code>.</li><li><code class="inline">name</code> (<code class="inline">:any</code>)</li><li><code class="inline">label</code> (<code class="inline">:string</code>) - Defaults to <code class="inline">nil</code>.</li><li><code class="inline">value</code> (<code class="inline">:any</code>)</li><li><code class="inline">type</code> (<code class="inline">:string</code>) - Defaults to <code class="inline">&quot;text&quot;</code>. Must be one of <code class="inline">&quot;checkbox&quot;</code>, <code class="inline">&quot;color&quot;</code>, <code class="inline">&quot;date&quot;</code>, <code class="inline">&quot;datetime-local&quot;</code>, <code class="inline">&quot;email&quot;</code>, <code class="inline">&quot;file&quot;</code>, <code class="inline">&quot;month&quot;</code>, <code class="inline">&quot;number&quot;</code>, <code class="inline">&quot;password&quot;</code>, <code class="inline">&quot;search&quot;</code>, <code class="inline">&quot;select&quot;</code>, <code class="inline">&quot;tel&quot;</code>, <code class="inline">&quot;text&quot;</code>, <code class="inline">&quot;textarea&quot;</code>, <code class="inline">&quot;time&quot;</code>, <code class="inline">&quot;url&quot;</code>, <code class="inline">&quot;week&quot;</code>, or <code class="inline">&quot;hidden&quot;</code>.</li><li><code class="inline">field</code> (<a href="https://hexdocs.pm/phoenix_html/4.3.0/Phoenix.HTML.FormField.html"><code class="inline">Phoenix.HTML.FormField</code></a>) - a form field struct retrieved from the form, for example: @form[:email].</li><li><code class="inline">errors</code> (<code class="inline">:list</code>) - Defaults to <code class="inline">[]</code>.</li><li><code class="inline">checked</code> (<code class="inline">:boolean</code>) - the checked flag for checkbox inputs.</li><li><code class="inline">prompt</code> (<code class="inline">:string</code>) - the prompt for select inputs. Defaults to <code class="inline">nil</code>.</li><li><code class="inline">options</code> (<code class="inline">:list</code>) - the options to pass to Phoenix.HTML.Form.options_for_select/2.</li><li><code class="inline">multiple</code> (<code class="inline">:boolean</code>) - the multiple flag for select inputs. Defaults to <code class="inline">false</code>.</li><li><code class="inline">class</code> (<code class="inline">:any</code>) - the input class to use over defaults. Defaults to <code class="inline">nil</code>.</li><li><code class="inline">error_class</code> (<code class="inline">:any</code>) - the input error class to use over defaults. Defaults to <code class="inline">nil</code>.</li><li>Global attributes are accepted. Supports all globals plus: <code class="inline">[&quot;accept&quot;, &quot;autocomplete&quot;, &quot;capture&quot;, &quot;cols&quot;, &quot;disabled&quot;, &quot;form&quot;, &quot;list&quot;, &quot;max&quot;, &quot;maxlength&quot;, &quot;min&quot;, &quot;minlength&quot;, &quot;multiple&quot;, &quot;pattern&quot;, &quot;placeholder&quot;, &quot;readonly&quot;, &quot;required&quot;, &quot;rows&quot;, &quot;size&quot;, &quot;step&quot;]</code>.</li></ul>
+<p>Renders an input with label and error messages.</p><h2 id="input/1-attributes" class="section-heading"><a href="#input/1-attributes" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Attributes</span></h2><ul><li><code class="inline">id</code> (<code class="inline">:any</code>) - Defaults to <code class="inline">nil</code>.</li><li><code class="inline">name</code> (<code class="inline">:any</code>)</li><li><code class="inline">label</code> (<code class="inline">:string</code>) - Defaults to <code class="inline">nil</code>.</li><li><code class="inline">value</code> (<code class="inline">:any</code>)</li><li><code class="inline">type</code> (<code class="inline">:string</code>) - Defaults to <code class="inline">&quot;text&quot;</code>. Must be one of <code class="inline">&quot;checkbox&quot;</code>, <code class="inline">&quot;color&quot;</code>, <code class="inline">&quot;date&quot;</code>, <code class="inline">&quot;datetime-local&quot;</code>, <code class="inline">&quot;email&quot;</code>, <code class="inline">&quot;file&quot;</code>, <code class="inline">&quot;month&quot;</code>, <code class="inline">&quot;number&quot;</code>, <code class="inline">&quot;password&quot;</code>, <code class="inline">&quot;search&quot;</code>, <code class="inline">&quot;select&quot;</code>, <code class="inline">&quot;tel&quot;</code>, <code class="inline">&quot;text&quot;</code>, <code class="inline">&quot;textarea&quot;</code>, <code class="inline">&quot;time&quot;</code>, <code class="inline">&quot;url&quot;</code>, <code class="inline">&quot;week&quot;</code>, or <code class="inline">&quot;hidden&quot;</code>.</li><li><code class="inline">field</code> (<a href="https://hexdocs.pm/phoenix_html/4.3.0/Phoenix.HTML.FormField.html"><code class="inline">Phoenix.HTML.FormField</code></a>) - a form field struct retrieved from the form, for example: @form[:email].</li><li><code class="inline">errors</code> (<code class="inline">:list</code>) - Defaults to <code class="inline">[]</code>.</li><li><code class="inline">checked</code> (<code class="inline">:boolean</code>) - the checked flag for checkbox inputs.</li><li><code class="inline">prompt</code> (<code class="inline">:string</code>) - the prompt for select inputs. Defaults to <code class="inline">nil</code>.</li><li><code class="inline">options</code> (<code class="inline">:list</code>) - the options to pass to Phoenix.HTML.Form.options_for_select/2.</li><li><code class="inline">multiple</code> (<code class="inline">:boolean</code>) - the multiple flag for select inputs. Defaults to <code class="inline">false</code>.</li><li><code class="inline">class</code> (<code class="inline">:any</code>) - the input class to use over defaults. Defaults to <code class="inline">nil</code>.</li><li><code class="inline">error_class</code> (<code class="inline">:any</code>) - the input error class to use over defaults. Defaults to <code class="inline">nil</code>.</li><li>Global attributes are accepted. Supports all globals plus: <code class="inline">[&quot;accept&quot;, &quot;autocomplete&quot;, &quot;capture&quot;, &quot;cols&quot;, &quot;disabled&quot;, &quot;form&quot;, &quot;list&quot;, &quot;max&quot;, &quot;maxlength&quot;, &quot;min&quot;, &quot;minlength&quot;, &quot;multiple&quot;, &quot;pattern&quot;, &quot;placeholder&quot;, &quot;readonly&quot;, &quot;required&quot;, &quot;rows&quot;, &quot;size&quot;, &quot;step&quot;]</code>.</li></ul>
   </section>
 </section>
 <section class="detail" id="list/1">
@@ -425,7 +473,7 @@ a <code class="inline">value</code> to mark which option should be preselected.<
       <h1 class="signature" translate="no">list(assigns)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L408" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L394" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -434,10 +482,7 @@ a <code class="inline">value</code> to mark which option should be preselected.<
 
   <section class="docstring">
 
-<p>Renders a data list.</p><h2 id="list/1-examples" class="section-heading"><a href="#list/1-examples" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Examples</span></h2><pre><code class="makeup elixir" translate="no"><span class="o">&lt;</span><span class="o">.</span><span class="n">list</span><span class="o">&gt;</span><span class="w">
-  </span><span class="o">&lt;</span><span class="ss">:item</span><span class="w"> </span><span class="n">title</span><span class="o">=</span><span class="s">&quot;Title&quot;</span><span class="o">&gt;</span><span class="p" data-group-id="9510315526-1">{</span><span class="na">@post</span><span class="o">.</span><span class="n">title</span><span class="p" data-group-id="9510315526-1">}</span><span class="o">&lt;</span><span class="o">/</span><span class="ss">:item</span><span class="o">&gt;</span><span class="w">
-  </span><span class="o">&lt;</span><span class="ss">:item</span><span class="w"> </span><span class="n">title</span><span class="o">=</span><span class="s">&quot;Views&quot;</span><span class="o">&gt;</span><span class="p" data-group-id="9510315526-2">{</span><span class="na">@post</span><span class="o">.</span><span class="n">views</span><span class="p" data-group-id="9510315526-2">}</span><span class="o">&lt;</span><span class="o">/</span><span class="ss">:item</span><span class="o">&gt;</span><span class="w">
-</span><span class="o">&lt;</span><span class="o">/</span><span class="o">.</span><span class="n">list</span><span class="o">&gt;</span></code></pre><h2 id="list/1-slots" class="section-heading"><a href="#list/1-slots" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Slots</span></h2><ul><li><code class="inline">item</code> (required) - Accepts attributes:<ul><li><code class="inline">title</code> (<code class="inline">:string</code>) (required)</li></ul></li></ul>
+<p>Renders a data list.</p><h2 id="list/1-slots" class="section-heading"><a href="#list/1-slots" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Slots</span></h2><ul><li><code class="inline">item</code> (required) - Accepts attributes:<ul><li><code class="inline">title</code> (<code class="inline">:string</code>) (required)</li></ul></li></ul>
   </section>
 </section>
 <section class="detail" id="show/2">
@@ -452,7 +497,7 @@ a <code class="inline">value</code> to mark which option should be preselected.<
       <h1 class="signature" translate="no">show(js \\ %JS{}, selector)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L450" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L417" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -462,6 +507,28 @@ a <code class="inline">value</code> to mark which option should be preselected.<
   <section class="docstring">
 
 
+  </section>
+</section>
+<section class="detail" id="skeleton/1">
+
+  <div class="detail-header">
+    <a href="#skeleton/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">skeleton(assigns)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L302" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>Renders a lightweight loading skeleton block.</p><h2 id="skeleton/1-attributes" class="section-heading"><a href="#skeleton/1-attributes" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Attributes</span></h2><ul><li><code class="inline">class</code> (<code class="inline">:string</code>) - Defaults to <code class="inline">nil</code>.</li></ul>
   </section>
 </section>
 <section class="detail" id="table/1">
@@ -474,7 +541,7 @@ a <code class="inline">value</code> to mark which option should be preselected.<
       <h1 class="signature" translate="no">table(assigns)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L356" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L347" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -483,10 +550,7 @@ a <code class="inline">value</code> to mark which option should be preselected.<
 
   <section class="docstring">
 
-<p>Renders a table with generic styling.</p><h2 id="table/1-examples" class="section-heading"><a href="#table/1-examples" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Examples</span></h2><pre><code class="makeup elixir" translate="no"><span class="o">&lt;</span><span class="o">.</span><span class="n">table</span><span class="w"> </span><span class="n">id</span><span class="o">=</span><span class="s">&quot;users&quot;</span><span class="w"> </span><span class="n">rows</span><span class="o">=</span><span class="p" data-group-id="3183948978-1">{</span><span class="na">@users</span><span class="p" data-group-id="3183948978-1">}</span><span class="o">&gt;</span><span class="w">
-  </span><span class="o">&lt;</span><span class="ss">:col</span><span class="w"> </span><span class="ss">:let</span><span class="o">=</span><span class="p" data-group-id="3183948978-2">{</span><span class="n">user</span><span class="p" data-group-id="3183948978-2">}</span><span class="w"> </span><span class="n">label</span><span class="o">=</span><span class="s">&quot;id&quot;</span><span class="o">&gt;</span><span class="p" data-group-id="3183948978-3">{</span><span class="n">user</span><span class="o">.</span><span class="n">id</span><span class="p" data-group-id="3183948978-3">}</span><span class="o">&lt;</span><span class="o">/</span><span class="ss">:col</span><span class="o">&gt;</span><span class="w">
-  </span><span class="o">&lt;</span><span class="ss">:col</span><span class="w"> </span><span class="ss">:let</span><span class="o">=</span><span class="p" data-group-id="3183948978-4">{</span><span class="n">user</span><span class="p" data-group-id="3183948978-4">}</span><span class="w"> </span><span class="n">label</span><span class="o">=</span><span class="s">&quot;username&quot;</span><span class="o">&gt;</span><span class="p" data-group-id="3183948978-5">{</span><span class="n">user</span><span class="o">.</span><span class="n">username</span><span class="p" data-group-id="3183948978-5">}</span><span class="o">&lt;</span><span class="o">/</span><span class="ss">:col</span><span class="o">&gt;</span><span class="w">
-</span><span class="o">&lt;</span><span class="o">/</span><span class="o">.</span><span class="n">table</span><span class="o">&gt;</span></code></pre><h2 id="table/1-attributes" class="section-heading"><a href="#table/1-attributes" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Attributes</span></h2><ul><li><code class="inline">id</code> (<code class="inline">:string</code>) (required)</li><li><code class="inline">rows</code> (<code class="inline">:list</code>) (required)</li><li><code class="inline">row_id</code> (<code class="inline">:any</code>) - the function for generating the row id. Defaults to <code class="inline">nil</code>.</li><li><code class="inline">row_click</code> (<code class="inline">:any</code>) - the function for handling phx-click on each row. Defaults to <code class="inline">nil</code>.</li><li><code class="inline">row_item</code> (<code class="inline">:any</code>) - the function for mapping each row before calling the :col and :action slots. Defaults to <code class="inline">&amp;Function.identity/1</code>.</li></ul><h2 id="table/1-slots" class="section-heading"><a href="#table/1-slots" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Slots</span></h2><ul><li><code class="inline">col</code> (required) - Accepts attributes:<ul><li><code class="inline">label</code> (<code class="inline">:string</code>)</li></ul></li><li><code class="inline">action</code> - the slot for showing user actions in the last table column.</li></ul>
+<p>Renders a table with shared styling.</p><h2 id="table/1-attributes" class="section-heading"><a href="#table/1-attributes" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Attributes</span></h2><ul><li><code class="inline">id</code> (<code class="inline">:string</code>) (required)</li><li><code class="inline">rows</code> (<code class="inline">:any</code>) (required)</li><li><code class="inline">row_id</code> (<code class="inline">:any</code>) - Defaults to <code class="inline">nil</code>.</li><li><code class="inline">row_click</code> (<code class="inline">:any</code>) - Defaults to <code class="inline">nil</code>.</li><li><code class="inline">row_item</code> (<code class="inline">:any</code>) - the function for mapping each row before calling the :col and :action slots. Defaults to <code class="inline">&amp;Function.identity/1</code>.</li></ul><h2 id="table/1-slots" class="section-heading"><a href="#table/1-slots" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Slots</span></h2><ul><li><code class="inline">col</code> (required) - Accepts attributes:<ul><li><code class="inline">label</code> (<code class="inline">:string</code>)</li></ul></li><li><code class="inline">action</code></li></ul>
   </section>
 </section>
 <section class="detail" id="translate_error/1">
@@ -499,7 +563,7 @@ a <code class="inline">value</code> to mark which option should be preselected.<
       <h1 class="signature" translate="no">translate_error(arg)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L474" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L441" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -521,7 +585,7 @@ a <code class="inline">value</code> to mark which option should be preselected.<
       <h1 class="signature" translate="no">translate_errors(errors, field)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L495" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/core_components.ex#L452" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 

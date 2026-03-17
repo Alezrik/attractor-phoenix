@@ -12,7 +12,7 @@
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
-    <script defer src="dist/sidebar_items-EFB495BC.js"></script>
+    <script defer src="dist/sidebar_items-B78E6AC9.js"></script>
     <script defer src="docs_config.js"></script>
     <script defer src="dist/html-YU4BZFVS.js"></script>
 
@@ -118,8 +118,7 @@ attractor_phoenix
 
 
     <section id="moduledoc">
-<p>This module holds layouts and related functionality
-used by your application.</p>
+<p>Shared layout primitives for the application shell.</p>
     </section>
 
 </div>
@@ -142,7 +141,7 @@ used by your application.</p>
 
       </div>
 
-        <div class="summary-synopsis"><p>Renders your app layout.</p></div>
+        <div class="summary-synopsis"><p>Renders the shared product shell around each LiveView.</p></div>
 
     </div>
 
@@ -152,7 +151,7 @@ used by your application.</p>
 
       </div>
 
-        <div class="summary-synopsis"><p>Shows the flash group with standard titles and content.</p></div>
+        <div class="summary-synopsis"></div>
 
     </div>
 
@@ -166,11 +165,45 @@ used by your application.</p>
 
     <div class="summary-row">
       <div class="summary-signature">
+        <a href="#route_connection_label/1" data-no-tooltip="" translate="no">route_connection_label(state)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#route_connection_tone/1" data-no-tooltip="" translate="no">route_connection_tone(state)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#shell_status_item/1" data-no-tooltip="" translate="no">shell_status_item(assigns)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Standard status card used inside the shell status rail.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#shell_timestamp/1" data-no-tooltip="" translate="no">shell_timestamp(value)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
         <a href="#theme_toggle/1" data-no-tooltip="" translate="no">theme_toggle(assigns)</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Provides dark vs light theme toggle based on themes defined in app.css.</p></div>
+        <div class="summary-synopsis"><p>Theme toggle aligned with the shared product shell.</p></div>
 
     </div>
 
@@ -198,7 +231,7 @@ used by your application.</p>
       <h1 class="signature" translate="no">app(assigns)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/layouts.ex#L38" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/layouts.ex#L31" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -207,11 +240,7 @@ used by your application.</p>
 
   <section class="docstring">
 
-<p>Renders your app layout.</p><p>This function is typically invoked from every template,
-and it often contains your application menu, sidebar,
-or similar.</p><h2 id="app/1-examples" class="section-heading"><a href="#app/1-examples" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Examples</span></h2><pre><code class="makeup elixir" translate="no"><span class="o">&lt;</span><span class="nc">Layouts</span><span class="o">.</span><span class="n">app</span><span class="w"> </span><span class="n">flash</span><span class="o">=</span><span class="p" data-group-id="2546794898-1">{</span><span class="na">@flash</span><span class="p" data-group-id="2546794898-1">}</span><span class="o">&gt;</span><span class="w">
-  </span><span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;</span><span class="nc">Content</span><span class="o">&lt;</span><span class="o">/</span><span class="n">h1</span><span class="o">&gt;</span><span class="w">
-</span><span class="o">&lt;</span><span class="o">/</span><span class="nc">Layouts</span><span class="o">.</span><span class="n">app</span><span class="o">&gt;</span></code></pre><h2 id="app/1-attributes" class="section-heading"><a href="#app/1-attributes" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Attributes</span></h2><ul><li><code class="inline">flash</code> (<code class="inline">:map</code>) (required) - the map of flash messages.</li><li><code class="inline">current_scope</code> (<code class="inline">:map</code>) - the current <a href="https://hexdocs.pm/phoenix/scopes.html">scope</a>. Defaults to <code class="inline">nil</code>.</li><li><code class="inline">current_path</code> (<code class="inline">:string</code>) - the current request path. Defaults to <code class="inline">nil</code>.</li></ul><h2 id="app/1-slots" class="section-heading"><a href="#app/1-slots" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Slots</span></h2><ul><li><code class="inline">inner_block</code> (required)</li></ul>
+<p>Renders the shared product shell around each LiveView.</p><h2 id="app/1-attributes" class="section-heading"><a href="#app/1-attributes" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Attributes</span></h2><ul><li><code class="inline">flash</code> (<code class="inline">:map</code>) (required) - the map of flash messages.</li><li><code class="inline">current_scope</code> (<code class="inline">:map</code>) - the current <a href="https://hexdocs.pm/phoenix/scopes.html">scope</a>. Defaults to <code class="inline">nil</code>.</li><li><code class="inline">current_path</code> (<code class="inline">:string</code>) - the current request path. Defaults to <code class="inline">nil</code>.</li><li><code class="inline">page_title</code> (<code class="inline">:string</code>) - Defaults to <code class="inline">nil</code>.</li><li><code class="inline">page_kicker</code> (<code class="inline">:string</code>) - Defaults to <code class="inline">nil</code>.</li><li><code class="inline">page_subtitle</code> (<code class="inline">:string</code>) - Defaults to <code class="inline">nil</code>.</li></ul><h2 id="app/1-slots" class="section-heading"><a href="#app/1-slots" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Slots</span></h2><ul><li><code class="inline">actions</code></li><li><code class="inline">status</code></li><li><code class="inline">shell_meta</code></li><li><code class="inline">mobile_nav_footer</code></li><li><code class="inline">inner_block</code> (required)</li></ul>
   </section>
 </section>
 <section class="detail" id="flash_group/1">
@@ -224,7 +253,7 @@ or similar.</p><h2 id="app/1-examples" class="section-heading"><a href="#app/1-e
       <h1 class="signature" translate="no">flash_group(assigns)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/layouts.ex#L107" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/layouts.ex#L173" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -233,7 +262,7 @@ or similar.</p><h2 id="app/1-examples" class="section-heading"><a href="#app/1-e
 
   <section class="docstring">
 
-<p>Shows the flash group with standard titles and content.</p><h2 id="flash_group/1-examples" class="section-heading"><a href="#flash_group/1-examples" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Examples</span></h2><pre><code class="makeup elixir" translate="no"><span class="o">&lt;</span><span class="o">.</span><span class="n">flash_group</span><span class="w"> </span><span class="n">flash</span><span class="o">=</span><span class="p" data-group-id="9236135424-1">{</span><span class="na">@flash</span><span class="p" data-group-id="9236135424-1">}</span><span class="w"> </span><span class="o">/</span><span class="o">&gt;</span></code></pre><h2 id="flash_group/1-attributes" class="section-heading"><a href="#flash_group/1-attributes" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Attributes</span></h2><ul><li><code class="inline">flash</code> (<code class="inline">:map</code>) (required) - the map of flash messages.</li><li><code class="inline">id</code> (<code class="inline">:string</code>) - the optional id of flash container. Defaults to <code class="inline">&quot;flash-group&quot;</code>.</li></ul>
+<h2 id="flash_group/1-attributes" class="section-heading"><a href="#flash_group/1-attributes" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Attributes</span></h2><ul><li><code class="inline">flash</code> (<code class="inline">:map</code>) (required) - the map of flash messages.</li><li><code class="inline">id</code> (<code class="inline">:string</code>) - the optional id of flash container. Defaults to <code class="inline">&quot;flash-group&quot;</code>.</li></ul>
   </section>
 </section>
 <section class="detail" id="root/1">
@@ -246,7 +275,95 @@ or similar.</p><h2 id="app/1-examples" class="section-heading"><a href="#app/1-e
       <h1 class="signature" translate="no">root(assigns)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/layouts.ex#L12" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/layouts.ex#L9" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+
+  </section>
+</section>
+<section class="detail" id="route_connection_label/1">
+
+  <div class="detail-header">
+    <a href="#route_connection_label/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">route_connection_label(state)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/layouts.ex#L270" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+
+  </section>
+</section>
+<section class="detail" id="route_connection_tone/1">
+
+  <div class="detail-header">
+    <a href="#route_connection_tone/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">route_connection_tone(state)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/layouts.ex#L260" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+
+  </section>
+</section>
+<section class="detail" id="shell_status_item/1">
+
+  <div class="detail-header">
+    <a href="#shell_status_item/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">shell_status_item(assigns)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/layouts.ex#L211" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+<p>Standard status card used inside the shell status rail.</p><h2 id="shell_status_item/1-slots" class="section-heading"><a href="#shell_status_item/1-slots" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Slots</span></h2><ul><li><code class="inline">inner_block</code> (required)</li></ul>
+  </section>
+</section>
+<section class="detail" id="shell_timestamp/1">
+
+  <div class="detail-header">
+    <a href="#shell_timestamp/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">shell_timestamp(value)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/layouts.ex#L272" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -268,7 +385,7 @@ or similar.</p><h2 id="app/1-examples" class="section-heading"><a href="#app/1-e
       <h1 class="signature" translate="no">theme_toggle(assigns)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/layouts.ex#L145" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/layouts.ex#L222" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -277,7 +394,7 @@ or similar.</p><h2 id="app/1-examples" class="section-heading"><a href="#app/1-e
 
   <section class="docstring">
 
-<p>Provides dark vs light theme toggle based on themes defined in app.css.</p><p>See &lt;head&gt; in root.html.heex which applies the theme before page load.</p>
+<p>Theme toggle aligned with the shared product shell.</p>
   </section>
 </section>
 
