@@ -5,24 +5,32 @@ defmodule AttractorPhoenixWeb.RunLiveTest do
 
   import Phoenix.LiveViewTest
 
-  test "run detail shows explicit state and checkpoint truth for failed runs", %{conn: conn} do
+  test "run detail shows recovery truth for failed runs with checkpoint context", %{conn: conn} do
     pipeline_id = "run_detail_failed_#{System.unique_integer([:positive])}"
 
     assert {:ok, %{"pipeline_id" => ^pipeline_id}} =
-             AttractorAPI.create_pipeline(success_dot(), %{}, pipeline_id: pipeline_id)
+             AttractorAPI.create_pipeline(fail_dot(), %{}, pipeline_id: pipeline_id)
 
-    wait_for_pipeline_status(pipeline_id, "success")
-    assert {:ok, %{"status" => "cancelled"}} = AttractorAPI.cancel_pipeline(pipeline_id)
-    wait_for_pipeline_status(pipeline_id, "cancelled")
+    wait_for_pipeline_status(pipeline_id, "fail")
 
     {:ok, view, _html} = live(conn, ~p"/runs/#{pipeline_id}")
 
     assert has_element?(view, "#run-state-summary")
-    assert has_element?(view, "#run-current-state", "Interrupted")
+    assert has_element?(view, "#run-current-state", "Failed")
     assert has_element?(view, "#run-latest-update")
     assert has_element?(view, "#run-checkpoint-summary")
     assert has_element?(view, "#run-checkpoint-detail")
-    assert render(view) =~ "checkpoint"
+    assert has_element?(view, "#run-recovery-summary")
+    assert has_element?(view, "#run-recovery-label", "Failure with checkpoint context")
+
+    assert has_element?(
+             view,
+             "#run-recovery-next-step",
+             "Compare checkpoint and failure timeline"
+           )
+
+    assert has_element?(view, "#run-recovery-effect", "does not resume the run")
+    assert has_element?(view, "#run-cancel-effect", "already terminal")
   end
 
   test "run detail makes human-gate ownership and next action explicit", %{conn: conn} do
@@ -39,6 +47,10 @@ defmodule AttractorPhoenixWeb.RunLiveTest do
     assert has_element?(view, "#run-current-state", "Awaiting human action")
     assert has_element?(view, "#run-human-gate-owner", "Operator review required")
     assert has_element?(view, "#run-human-gate-action", "Approve release?")
+    assert has_element?(view, "#run-human-gate-effect", "does not retry, replay, or resume")
+    assert has_element?(view, "#run-recovery-summary")
+    assert has_element?(view, "#run-recovery-label", "Human gate blocks progress")
+    assert has_element?(view, "#run-recovery-next-step", "Approve release?")
 
     assert has_element?(
              view,
@@ -47,14 +59,13 @@ defmodule AttractorPhoenixWeb.RunLiveTest do
            )
   end
 
-  defp success_dot do
+  defp fail_dot do
     """
     digraph attractor {
       start [shape=Mdiamond]
-      hello [shape=parallelogram, tool_command="echo hello from run live"]
+      task [shape=box, prompt="Task", retry_target="done"]
       done [shape=Msquare]
-      start -> hello
-      hello -> done
+      start -> task
     }
     """
   end

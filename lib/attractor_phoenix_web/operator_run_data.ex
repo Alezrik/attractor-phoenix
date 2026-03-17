@@ -90,51 +90,13 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
   end
 
   def failure_review_signal(pipeline) do
-    status = normalize_status(pipeline["status"])
-    pending_questions = pipeline["pending_questions"] || 0
-    has_checkpoint = pipeline["has_checkpoint"] == true
+    summary = recovery_summary(pipeline)
 
-    cond do
-      pending_questions > 0 ->
-        %{
-          label: "Human gate is still open",
-          detail:
-            "#{pending_questions} pending question(s) still block the run, so review should start with the waiting prompt before event-level diagnosis.",
-          tone: "run-status-question"
-        }
-
-      status == :cancelled and has_checkpoint ->
-        %{
-          label: "Interrupted after checkpoint",
-          detail:
-            "The run ended in cancelled state, but a checkpoint snapshot is available for debugger review and possible recovery planning.",
-          tone: "run-status-cancelled"
-        }
-
-      status == :cancelled ->
-        %{
-          label: "Interrupted before completion",
-          detail:
-            "The run ended in cancelled state without a surfaced checkpoint, so the next step is timeline inspection in the debugger.",
-          tone: "run-status-cancelled"
-        }
-
-      status == :fail and has_checkpoint ->
-        %{
-          label: "Runtime failure with checkpoint",
-          detail:
-            "The run reported failure after checkpointable progress, so operators can compare the last saved state against the failure timeline.",
-          tone: "run-status-fail"
-        }
-
-      status == :fail ->
-        %{
-          label: "Runtime failure without checkpoint",
-          detail:
-            "The run reported failure and no checkpoint snapshot is currently advertised, so diagnosis should start from run detail and failure events.",
-          tone: "run-status-fail"
-        }
-    end
+    %{
+      label: summary.label,
+      detail: summary.detail,
+      tone: summary.tone
+    }
   end
 
   def run_state_label(pipeline) do
@@ -176,6 +138,151 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
 
       true ->
         "The run is still active, so state and recent events should be monitored before intervention."
+    end
+  end
+
+  def recovery_summary(pipeline, questions \\ [])
+
+  def recovery_summary(nil, _questions), do: nil
+
+  def recovery_summary(pipeline, questions) do
+    status = normalize_status(pipeline["status"])
+    pending_questions = max(pipeline["pending_questions"] || 0, length(questions))
+    has_checkpoint = pipeline["has_checkpoint"] == true
+    first_question = List.first(questions)
+
+    cond do
+      pending_questions > 0 ->
+        %{
+          label: "Human gate blocks progress",
+          tone: "run-status-question",
+          mode: "Action-taking route",
+          owner: "Operator review required",
+          action:
+            if(is_map(first_question),
+              do: question_prompt(first_question),
+              else: "Answer pending human gate"
+            ),
+          detail:
+            "#{pending_questions} pending question(s) still block the run, so the truthful recovery path starts with a human answer rather than automatic retry or resume.",
+          next_step:
+            if is_map(first_question) do
+              "Answer the pending question on this route or inspect the debugger before responding."
+            else
+              "Open run detail or debugger to inspect the waiting prompt before responding."
+            end,
+          effect:
+            "Submitting an answer advances the waiting gate. It does not retry, replay, or resume the run by itself.",
+          unavailable:
+            "Retry, replay, and resume are not exposed as safe operator actions on this route yet."
+        }
+
+      status == :fail and has_checkpoint ->
+        %{
+          label: "Failure with checkpoint context",
+          tone: "run-status-fail",
+          mode: "Inspection-first route",
+          owner: "Operator diagnosis",
+          action: "Compare checkpoint and failure timeline",
+          detail:
+            "The run failed after checkpointable progress, so the truthful next step is debugger inspection before any recovery claim.",
+          next_step:
+            "Inspect the debugger timeline and checkpoint diff before planning any restart or resume work.",
+          effect:
+            "Checkpoint inspection helps compare the last saved state against the failure path. It does not resume the run from this route.",
+          unavailable: "Resume, retry, and replay are not exposed here as safe operator actions."
+        }
+
+      status == :fail ->
+        %{
+          label: "Failure without checkpoint context",
+          tone: "run-status-fail",
+          mode: "Inspection-first route",
+          owner: "Operator diagnosis",
+          action: "Inspect latest failure events",
+          detail:
+            "The run failed without a surfaced checkpoint snapshot, so the truthful next step is event-level diagnosis rather than recovery promises.",
+          next_step:
+            "Open run detail or debugger and inspect the latest failure events before deciding follow-up.",
+          effect:
+            "Inspection clarifies where the run failed. It does not unlock retry, replay, or resume from this route.",
+          unavailable:
+            "Retry, replay, and resume remain unavailable until a stronger runtime-safe recovery path exists."
+        }
+
+      status == :cancelled and has_checkpoint ->
+        %{
+          label: "Interrupted with checkpoint context",
+          tone: "run-status-cancelled",
+          mode: "Inspection and planning route",
+          owner: "Operator decision",
+          action: "Inspect checkpoint boundary",
+          detail:
+            "The run ended in cancelled state after checkpointable progress, so operators can inspect the saved boundary before deciding what work to restart elsewhere.",
+          next_step:
+            "Use the debugger to compare the checkpoint snapshot and recent events before planning recovery.",
+          effect:
+            "Checkpoint comparison supports recovery planning. It does not resume the cancelled run from this route.",
+          unavailable: "Resume, retry, and replay are not exposed here as safe operator actions."
+        }
+
+      status == :cancelled ->
+        %{
+          label: "Interrupted without checkpoint context",
+          tone: "run-status-cancelled",
+          mode: "Inspection-only route",
+          owner: "Operator decision",
+          action: "Inspect interruption timeline",
+          detail:
+            "The run ended in cancelled state without a surfaced checkpoint snapshot, so the truthful next step is timeline inspection.",
+          next_step:
+            "Inspect recent events and failure context before deciding whether to rerun work outside this route.",
+          effect:
+            "Timeline inspection explains where work stopped. It does not reopen the cancelled run.",
+          unavailable: "Resume, retry, and replay are not exposed here as safe operator actions."
+        }
+
+      status == :success ->
+        %{
+          label: "Completed without recovery work",
+          tone: "run-status-success",
+          mode: "Inspection-only route",
+          owner: "No operator action required",
+          action: "Review run artifacts only",
+          detail:
+            "The run completed successfully, so this route is for inspection and audit rather than recovery.",
+          next_step:
+            "Review artifacts, context, or timeline only if deeper inspection is needed.",
+          effect:
+            "Inspection preserves context. No state-changing recovery action is required from this route.",
+          unavailable: "Recovery controls are not exposed for completed runs."
+        }
+
+      true ->
+        %{
+          label: "Active run under observation",
+          tone: "run-status-running",
+          mode: "Observation with stop control",
+          owner: "Operator monitoring",
+          action: "Monitor state and stop only if necessary",
+          detail:
+            "The run is still active, so the truthful next step is observation unless the operator needs to halt execution.",
+          next_step:
+            "Monitor recent events and current state. Use cancel only when the current run should stop.",
+          effect:
+            "Cancel stops further execution and moves the run into cancelled state. It does not preserve a new recovery checkpoint by itself.",
+          unavailable: "Resume, retry, and replay are not exposed here while the run is active."
+        }
+    end
+  end
+
+  def cancel_action_detail(nil), do: "Cancel is unavailable until a run is loaded."
+
+  def cancel_action_detail(pipeline) do
+    if terminal_status?(pipeline["status"]) do
+      "Cancel is disabled because the run is already terminal. Use this route for inspection, not further state changes."
+    else
+      "Cancel is the only state-changing control on this route. It stops active work and does not answer a human gate or resume from checkpoint."
     end
   end
 
@@ -234,7 +341,9 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
       action: question_prompt(question),
       detail:
         "Answer the open question on run detail or continue into the debugger inbox for timeline and checkpoint context.",
-      provenance: question_provenance(question)
+      provenance: question_provenance(question),
+      effect:
+        "Submitting an answer advances the waiting gate. It does not retry, replay, or resume the run by itself."
     }
   end
 
