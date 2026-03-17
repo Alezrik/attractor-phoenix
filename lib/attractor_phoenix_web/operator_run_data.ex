@@ -137,6 +137,107 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
     end
   end
 
+  def run_state_label(pipeline) do
+    status = normalize_status(pipeline["status"])
+    pending_questions = pipeline["pending_questions"] || 0
+
+    cond do
+      pending_questions > 0 -> "Awaiting human action"
+      status == :fail -> "Failed"
+      status == :cancelled -> "Interrupted"
+      status == :success -> "Completed"
+      true -> "Running"
+    end
+  end
+
+  def run_state_detail(pipeline) do
+    status = normalize_status(pipeline["status"])
+    pending_questions = pipeline["pending_questions"] || 0
+    has_checkpoint = pipeline["has_checkpoint"] == true
+
+    cond do
+      pending_questions > 0 ->
+        "#{pending_questions} pending question(s) still block this run, so operator input is required before progress can continue."
+
+      status == :fail and has_checkpoint ->
+        "The run is in failed state, but a checkpoint snapshot is available for comparison before any recovery decision."
+
+      status == :fail ->
+        "The run is in failed state without a surfaced checkpoint snapshot, so diagnosis should start from the latest run and debugger evidence."
+
+      status == :cancelled and has_checkpoint ->
+        "The run ended in cancelled state after checkpointable progress, so operators can inspect the saved boundary before deciding next steps."
+
+      status == :cancelled ->
+        "The run ended in cancelled state without a surfaced checkpoint snapshot."
+
+      status == :success ->
+        "The run completed successfully and no operator action is currently required."
+
+      true ->
+        "The run is still active, so state and recent events should be monitored before intervention."
+    end
+  end
+
+  def latest_update_summary([]), do: "Waiting for runtime events"
+
+  def latest_update_summary(events) do
+    event = List.first(recent_events(events, 1))
+
+    case event do
+      nil ->
+        "Waiting for runtime events"
+
+      event ->
+        [
+          event_summary(event),
+          event_timestamp(event)
+        ]
+        |> Enum.reject(&blank?/1)
+        |> Enum.join(" at ")
+    end
+  end
+
+  def checkpoint_summary(nil), do: "No checkpoint published"
+
+  def checkpoint_summary(checkpoint) do
+    node =
+      checkpoint["current_node"] ||
+        get_in(checkpoint, ["context", "current_node"]) ||
+        checkpoint["node_id"]
+
+    if blank?(node), do: "Checkpoint available", else: "Checkpoint at #{node}"
+  end
+
+  def checkpoint_detail(nil),
+    do: "No checkpoint snapshot is currently advertised for this run."
+
+  def checkpoint_detail(checkpoint) do
+    inserted_at = checkpoint["inserted_at"] || checkpoint["timestamp"]
+
+    cond do
+      present?(inserted_at) ->
+        "Latest checkpoint snapshot recorded at #{inserted_at}."
+
+      true ->
+        "A checkpoint snapshot is available for debugger comparison."
+    end
+  end
+
+  def human_gate_summary([]), do: nil
+
+  def human_gate_summary(questions) do
+    question = List.first(questions)
+
+    %{
+      owner: "Operator review required",
+      action: question_prompt(question),
+      detail:
+        "Answer the open question on run detail or continue into the debugger inbox for timeline and checkpoint context.",
+      provenance: question_provenance(question)
+    }
+  end
+
   def graph_markup(nil), do: nil
   def graph_markup(svg), do: HTML.raw(svg)
 
