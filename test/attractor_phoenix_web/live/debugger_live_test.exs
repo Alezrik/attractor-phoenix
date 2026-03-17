@@ -20,8 +20,14 @@ defmodule AttractorPhoenixWeb.DebuggerLiveTest do
     assert has_element?(view, "#debugger-latest-update")
     assert has_element?(view, "#debugger-checkpoint-detail")
     assert has_element?(view, "#debugger-human-gate-owner", "Operator review required")
+    assert has_element?(view, "#debugger-recovery-summary")
+    assert has_element?(view, "#debugger-recovery-label", "Human gate blocks progress")
+    assert has_element?(view, "#debugger-recovery-next-step", "Approve release?")
+    assert has_element?(view, "#debugger-recovery-effect", "does not retry, replay, or resume")
     assert has_element?(view, "#debugger-human-gate-summary")
     assert has_element?(view, "#debugger-human-gate-action", "Approve release?")
+    assert has_element?(view, "#debugger-human-gate-effect", "does not retry, replay, or resume")
+    assert has_element?(view, "#debugger-cancel-effect", "stops active work")
     assert has_element?(view, "a[href='/runs/#{pipeline_id}']", "Return to run detail")
   end
 
@@ -47,6 +53,7 @@ defmodule AttractorPhoenixWeb.DebuggerLiveTest do
 
     assert has_element?(debugger_view, "#run-debugger-page")
     assert has_element?(debugger_view, "#debugger-human-gate-summary")
+    assert has_element?(debugger_view, "#debugger-recovery-summary")
   end
 
   defp wait_human_dot do

@@ -54,6 +54,9 @@
             Cancel Run
           </button>
         </div>
+        <p id="debugger-cancel-effect" class="text-xs text-base-content/60">
+          {OperatorRunData.cancel_action_detail(@selected_pipeline)}
+        </p>
       </div>
 
       <div class="debugger-status-stack">
@@ -330,6 +333,62 @@
             </article>
 
             <article class="dashboard-panel">
+              <% recovery =
+                OperatorRunData.recovery_summary(@selected_pipeline, @selected_questions) %>
+              <div
+                :if={recovery}
+                id="debugger-recovery-summary"
+                class="mb-4 rounded-2xl bg-base-200/70 px-4 py-3"
+              >
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p class="dashboard-card-label">Recovery Truth</p>
+                    <h2 id="debugger-recovery-label" class="mt-2 text-lg font-semibold">
+                      {recovery.label}
+                    </h2>
+                  </div>
+                  <span class={["run-status-pill", recovery.tone]}>{recovery.mode}</span>
+                </div>
+                <p
+                  id="debugger-recovery-detail"
+                  class="mt-3 text-sm leading-6 text-base-content/70"
+                >
+                  {recovery.detail}
+                </p>
+                <div class="mt-3 grid gap-3 text-sm lg:grid-cols-3">
+                  <div>
+                    <p class="dashboard-card-label">Action owner</p>
+                    <p id="debugger-recovery-owner" class="mt-1 text-base-content/80">
+                      {recovery.owner}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="dashboard-card-label">Truthful next step</p>
+                    <p id="debugger-recovery-next-step" class="mt-1 text-base-content/80">
+                      {recovery.action}
+                    </p>
+                    <p
+                      id="debugger-recovery-next-step-detail"
+                      class="mt-1 text-xs text-base-content/60"
+                    >
+                      {recovery.next_step}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="dashboard-card-label">Action consequence</p>
+                    <p id="debugger-recovery-effect" class="mt-1 text-base-content/80">
+                      {recovery.effect}
+                    </p>
+                    <p
+                      id="debugger-recovery-unavailable"
+                      class="mt-1 text-xs text-base-content/60"
+                    >
+                      {recovery.unavailable}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p class="dashboard-card-label">Human-Gate Inbox</p>
@@ -367,6 +426,12 @@
                     class="mt-2 text-sm leading-6 text-base-content/65"
                   >
                     {human_gate.detail}
+                  </p>
+                  <p
+                    id="debugger-human-gate-effect"
+                    class="mt-2 text-sm leading-6 text-base-content/65"
+                  >
+                    {human_gate.effect}
                   </p>
                 </div>
               <% end %>

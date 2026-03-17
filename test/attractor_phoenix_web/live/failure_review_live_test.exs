@@ -7,10 +7,14 @@ defmodule AttractorPhoenixWeb.FailureReviewLiveTest do
 
   test "failure review loads directly and only shows failed or cancelled runs", %{conn: conn} do
     cancelled_id = "failure_cancelled_#{System.unique_integer([:positive])}"
+    failed_id = "failure_failed_#{System.unique_integer([:positive])}"
     success_id = "failure_success_#{System.unique_integer([:positive])}"
 
     assert {:ok, %{"pipeline_id" => ^cancelled_id}} =
              AttractorAPI.create_pipeline(wait_human_dot(), %{}, pipeline_id: cancelled_id)
+
+    assert {:ok, %{"pipeline_id" => ^failed_id}} =
+             AttractorAPI.create_pipeline(fail_dot(), %{}, pipeline_id: failed_id)
 
     assert {:ok, %{"pipeline_id" => ^success_id}} =
              AttractorAPI.create_pipeline(success_dot(), %{}, pipeline_id: success_id)
@@ -18,6 +22,7 @@ defmodule AttractorPhoenixWeb.FailureReviewLiveTest do
     wait_for_questions(cancelled_id)
     assert {:ok, %{"status" => "cancelled"}} = AttractorAPI.cancel_pipeline(cancelled_id)
     wait_for_pipeline_status(cancelled_id, "cancelled")
+    wait_for_pipeline_status(failed_id, "fail")
     wait_for_pipeline_status(success_id, "success")
 
     {:ok, view, _html} = live(conn, ~p"/failures")
@@ -29,12 +34,33 @@ defmodule AttractorPhoenixWeb.FailureReviewLiveTest do
     assert has_element?(
              view,
              "#failure-signal-#{cancelled_id}",
-             "Human gate is still open"
+             "Human gate blocks progress"
            )
 
     assert has_element?(
              view,
              "#open-failure-debugger-#{cancelled_id}[href='/runs/#{cancelled_id}/debugger?focus=failures']"
+           )
+
+    assert has_element?(
+             view,
+             "#failure-recovery-label-#{cancelled_id}",
+             "Human gate blocks progress"
+           )
+
+    assert has_element?(
+             view,
+             "#failure-recovery-effect-#{cancelled_id}",
+             "does not retry, replay, or resume"
+           )
+
+    assert has_element?(view, "#open-failure-run-#{failed_id}")
+    assert has_element?(view, "#failure-signal-#{failed_id}", "Failure with checkpoint context")
+
+    assert has_element?(
+             view,
+             "#failure-recovery-next-step-#{failed_id}",
+             "Inspect the debugger timeline and checkpoint diff"
            )
 
     refute has_element?(view, "#open-failure-run-#{success_id}")
@@ -92,6 +118,12 @@ defmodule AttractorPhoenixWeb.FailureReviewLiveTest do
     {:ok, view, _html} = live(conn, ~p"/failures?status=cancelled&questions=clear")
 
     assert has_element?(view, "#failure-signal-#{cancelled_id}", "Interrupted")
+
+    assert has_element?(
+             view,
+             "#failure-recovery-label-#{cancelled_id}",
+             "Interrupted with checkpoint context"
+           )
   end
 
   test "dashboard review-failures controls navigate to the dedicated route", %{conn: conn} do
@@ -124,6 +156,17 @@ defmodule AttractorPhoenixWeb.FailureReviewLiveTest do
       gate -> done [label="[A] Approve"]
       gate -> retry [label="[R] Retry"]
       retry -> done
+    }
+    """
+  end
+
+  defp fail_dot do
+    """
+    digraph attractor {
+      start [shape=Mdiamond]
+      task [shape=box, prompt="Task", retry_target="done"]
+      done [shape=Msquare]
+      start -> task
     }
     """
   end
