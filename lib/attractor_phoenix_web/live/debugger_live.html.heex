@@ -14,6 +14,8 @@
         <div class="flex flex-wrap items-center gap-2">
           <.link navigate={~p"/"} class="dashboard-kicker">Operator Overview</.link>
           <span class="text-base-content/35">/</span>
+          <.link navigate={~p"/failures"} class="dashboard-kicker">Failure Review</.link>
+          <span class="text-base-content/35">/</span>
           <.link :if={@run_id} navigate={~p"/runs/#{@run_id}"} class="dashboard-kicker">
             Run Overview
           </.link>
@@ -32,6 +34,9 @@
         </div>
 
         <div class="flex flex-wrap gap-2">
+          <.link navigate={~p"/failures"} class="builder-btn">
+            Failure Review
+          </.link>
           <.link :if={@run_id} navigate={~p"/runs/#{@run_id}"} class="builder-btn">
             Run Overview
           </.link>

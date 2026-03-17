@@ -1,0 +1,207 @@
+<Layouts.app
+  flash={@flash}
+  current_scope={assigns[:current_scope]}
+  current_path={~p"/failures"}
+  page_title={@page_title}
+  page_kicker="Failure Review"
+  page_subtitle="A dedicated triage route for failed and cancelled runs, with direct paths into run detail and debugger instead of an implied dashboard shortcut."
+>
+  <:actions>
+    <.link navigate={~p"/"} class="builder-btn">Operator Overview</.link>
+    <.link navigate={~p"/builder"} class="builder-btn">Open Builder</.link>
+  </:actions>
+  <:status>
+    <Layouts.shell_status_item>
+      <span class="shell-status-label">Failure Queue</span>
+      <span class="shell-status-value">{@total_failures} runs</span>
+      <span class="shell-status-note">Failed and cancelled runs surfaced for review</span>
+    </Layouts.shell_status_item>
+    <Layouts.shell_status_item>
+      <span class="shell-status-label">Human Follow-Up</span>
+      <span class="shell-status-value">{@total_questions} open prompts</span>
+      <span class="shell-status-note">Pending questions across the triage queue</span>
+    </Layouts.shell_status_item>
+    <Layouts.shell_status_item>
+      <span class="shell-status-label">Last Refresh</span>
+      <span class="shell-status-value">{Layouts.shell_timestamp(@last_updated_at)}</span>
+      <span class="shell-status-note">Queue snapshot from the current runtime view</span>
+    </Layouts.shell_status_item>
+  </:status>
+  <section id="failure-review-page" class="space-y-8">
+    <.inline_error
+      :if={@error}
+      id="failure-review-error"
+      title="Failure queue refresh failed"
+      message={@error}
+    />
+
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="space-y-4">
+          <div>
+            <p class="dashboard-card-label">Failure Queue</p>
+            <h2 class="text-lg font-semibold">Triage by status, human work, or run id</h2>
+          </div>
+
+          <.form for={@filter_form} id="failure-review-filter-form" phx-change="filter_failures">
+            <div class="space-y-3">
+              <.input
+                field={@filter_form[:search]}
+                id="failure-review-search"
+                type="text"
+                label="Search by run id"
+                placeholder="run-123"
+              />
+
+              <.input
+                field={@filter_form[:status]}
+                id="failure-review-status-filter"
+                type="select"
+                label="Failure status"
+                options={[
+                  {"All failure states", "all"},
+                  {"Failed only", "fail"},
+                  {"Cancelled only", "cancelled"}
+                ]}
+              />
+
+              <.input
+                field={@filter_form[:questions]}
+                id="failure-review-question-filter"
+                type="select"
+                label="Human work"
+                options={[
+                  {"All failure runs", "all"},
+                  {"Has questions", "open"},
+                  {"No questions", "clear"}
+                ]}
+              />
+            </div>
+          </.form>
+
+          <div class="flex flex-wrap gap-2">
+            <button
+              id="clear-failure-review-filters"
+              type="button"
+              class="builder-btn"
+              phx-click="clear_filters"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <div class="space-y-4">
+        <section class="dashboard-panel">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="dashboard-card-label">Review Surface</p>
+              <h2 class="text-xl font-semibold">
+                Failed and cancelled runs with direct next steps
+              </h2>
+            </div>
+            <p class="text-sm text-base-content/60">{@total_failures} runs shown</p>
+          </div>
+
+          <div id="failure-review-list" class="mt-4 space-y-3" phx-update="stream">
+            <div id="failure-review-empty" class="hidden only:block">
+              <.empty_state
+                title="No runs currently need failure review"
+                message="The failure queue is clear or the current filters matched nothing."
+                icon="hero-exclamation-triangle"
+              >
+                <:actions>
+                  <button
+                    id="clear-failure-review-filters-empty"
+                    type="button"
+                    class="builder-btn"
+                    phx-click="clear_filters"
+                  >
+                    Clear Filters
+                  </button>
+                </:actions>
+              </.empty_state>
+            </div>
+
+            <article
+              :for={{dom_id, pipeline} <- @streams.pipelines}
+              id={dom_id}
+              class="dashboard-run-row"
+            >
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <div class="space-y-2">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="font-semibold">{pipeline["pipeline_id"]}</h3>
+                    <span class={[
+                      "run-status-pill",
+                      OperatorRunData.status_tone(pipeline["status"])
+                    ]}>
+                      {pipeline["status"]}
+                    </span>
+                    <span
+                      :if={(pipeline["pending_questions"] || 0) > 0}
+                      class="run-status-pill run-status-question"
+                    >
+                      {pipeline["pending_questions"] || 0} questions
+                    </span>
+                    <span
+                      :if={pipeline["has_checkpoint"]}
+                      class="run-status-pill run-status-running"
+                    >
+                      checkpoint ready
+                    </span>
+                  </div>
+                  <div class="grid gap-2 text-xs text-base-content/65 sm:grid-cols-4">
+                    <span>{pipeline["event_count"]} events</span>
+                    <span>updated {pipeline["updated_at"]}</span>
+                    <span>logs {pipeline["logs_root"]}</span>
+                    <span>
+                      {if (pipeline["pending_questions"] || 0) > 0,
+                        do: "human action required",
+                        else: "inspect route and failure state"}
+                    </span>
+                  </div>
+                  <div
+                    id={"failure-signal-#{pipeline["pipeline_id"]}"}
+                    class="failure-signal-card"
+                  >
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span class="failure-signal-label">Likely signal</span>
+                      <span class={["run-status-pill", pipeline["failure_signal"].tone]}>
+                        {pipeline["failure_signal"].label}
+                      </span>
+                    </div>
+                    <p class="failure-signal-detail">{pipeline["failure_signal"].detail}</p>
+                  </div>
+                  <p class="text-xs font-semibold uppercase tracking-[0.14em] text-base-content/55">
+                    next step: {if (pipeline["pending_questions"] || 0) > 0,
+                      do: "open debugger to answer or inspect",
+                      else: "open run overview, then debugger for timeline diagnosis"}
+                  </p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                  <.link
+                    navigate={~p"/runs/#{pipeline["pipeline_id"]}"}
+                    id={"open-failure-run-#{pipeline["pipeline_id"]}"}
+                    class="builder-btn"
+                  >
+                    Run Overview
+                  </.link>
+                  <.link
+                    navigate={~p"/runs/#{pipeline["pipeline_id"]}/debugger?focus=failures"}
+                    id={"open-failure-debugger-#{pipeline["pipeline_id"]}"}
+                    class="builder-btn"
+                  >
+                    Open Debugger
+                  </.link>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+      </div>
+    </div>
+  </section>
+</Layouts.app>

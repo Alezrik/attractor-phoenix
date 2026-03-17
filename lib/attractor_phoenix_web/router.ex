@@ -18,6 +18,7 @@ defmodule AttractorPhoenixWeb.Router do
     pipe_through :browser
 
     live "/", DashboardLive
+    live "/failures", FailureReviewLive
     live "/runs/:id", RunLive
     live "/runs/:id/debugger", DebuggerLive
     live "/benchmark", BenchmarkLive
