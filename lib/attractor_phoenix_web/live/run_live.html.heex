@@ -22,6 +22,9 @@
       </div>
 
       <div class="flex flex-wrap items-start gap-3">
+        <.link navigate={~p"/failures"} class="builder-btn">
+          Failure Review
+        </.link>
         <.link :if={@run_id} navigate={~p"/runs/#{@run_id}/debugger"} class="builder-btn">
           Open Debugger
         </.link>

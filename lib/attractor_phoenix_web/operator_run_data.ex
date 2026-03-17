@@ -89,6 +89,54 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
     end
   end
 
+  def failure_review_signal(pipeline) do
+    status = normalize_status(pipeline["status"])
+    pending_questions = pipeline["pending_questions"] || 0
+    has_checkpoint = pipeline["has_checkpoint"] == true
+
+    cond do
+      pending_questions > 0 ->
+        %{
+          label: "Human gate is still open",
+          detail:
+            "#{pending_questions} pending question(s) still block the run, so review should start with the waiting prompt before event-level diagnosis.",
+          tone: "run-status-question"
+        }
+
+      status == :cancelled and has_checkpoint ->
+        %{
+          label: "Interrupted after checkpoint",
+          detail:
+            "The run ended in cancelled state, but a checkpoint snapshot is available for debugger review and possible recovery planning.",
+          tone: "run-status-cancelled"
+        }
+
+      status == :cancelled ->
+        %{
+          label: "Interrupted before completion",
+          detail:
+            "The run ended in cancelled state without a surfaced checkpoint, so the next step is timeline inspection in the debugger.",
+          tone: "run-status-cancelled"
+        }
+
+      status == :fail and has_checkpoint ->
+        %{
+          label: "Runtime failure with checkpoint",
+          detail:
+            "The run reported failure after checkpointable progress, so operators can compare the last saved state against the failure timeline.",
+          tone: "run-status-fail"
+        }
+
+      status == :fail ->
+        %{
+          label: "Runtime failure without checkpoint",
+          detail:
+            "The run reported failure and no checkpoint snapshot is currently advertised, so diagnosis should start from run detail and failure events.",
+          tone: "run-status-fail"
+        }
+    end
+  end
+
   def graph_markup(nil), do: nil
   def graph_markup(svg), do: HTML.raw(svg)
 

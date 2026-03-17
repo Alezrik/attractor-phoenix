@@ -8,7 +8,7 @@
 >
   <:actions>
     <.link navigate={~p"/builder"} class="builder-btn">Open Builder</.link>
-    <.link patch={~p"/?status=fail"} id="shell-filter-fail-runs" class="builder-btn">
+    <.link navigate={~p"/failures"} id="shell-filter-fail-runs" class="builder-btn">
       Review Failures
     </.link>
   </:actions>
@@ -180,7 +180,7 @@
           </.form>
 
           <div class="flex flex-wrap gap-2">
-            <.link patch={~p"/?status=fail"} id="filter-fail-runs" class="builder-btn">
+            <.link navigate={~p"/failures"} id="filter-fail-runs" class="builder-btn">
               Failures
             </.link>
             <.link patch={~p"/?questions=open"} id="filter-question-runs" class="builder-btn">

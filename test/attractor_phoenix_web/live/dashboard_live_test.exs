@@ -74,6 +74,7 @@ defmodule AttractorPhoenixWeb.DashboardLiveTest do
     {:ok, view, _html} = live(conn, ~p"/runs/#{pipeline_id}")
 
     assert has_element?(view, "#run-detail-page")
+    assert has_element?(view, "a[href='/failures']")
     assert has_element?(view, "#answer-form-gate")
     assert has_element?(view, "#answer-form-gate select[name='response[choice]']")
 
@@ -113,6 +114,7 @@ defmodule AttractorPhoenixWeb.DashboardLiveTest do
       live(conn, ~p"/runs/#{pipeline_id}/debugger?focus=questions&search=Approve")
 
     assert has_element?(view, "#run-debugger-page")
+    assert has_element?(view, "a[href='/failures']")
     assert has_element?(view, "#debugger-filter-form")
     assert has_element?(view, "#debugger-search[value='Approve']")
     assert has_element?(view, "#debugger-focus-filter option[selected][value='questions']")
