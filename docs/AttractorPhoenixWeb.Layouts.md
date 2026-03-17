@@ -1,39 +1,29 @@
 # `AttractorPhoenixWeb.Layouts`
 [🔗](https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix_web/components/layouts.ex#L1)
 
-This module holds layouts and related functionality
-used by your application.
+Shared layout primitives for the application shell.
 
 # `app`
 
-Renders your app layout.
-
-This function is typically invoked from every template,
-and it often contains your application menu, sidebar,
-or similar.
-
-## Examples
-
-    <Layouts.app flash={@flash}>
-      <h1>Content</h1>
-    </Layouts.app>
+Renders the shared product shell around each LiveView.
 
 ## Attributes
 
 * `flash` (`:map`) (required) - the map of flash messages.
 * `current_scope` (`:map`) - the current [scope](https://hexdocs.pm/phoenix/scopes.html). Defaults to `nil`.
 * `current_path` (`:string`) - the current request path. Defaults to `nil`.
+* `page_title` (`:string`) - Defaults to `nil`.
+* `page_kicker` (`:string`) - Defaults to `nil`.
+* `page_subtitle` (`:string`) - Defaults to `nil`.
 ## Slots
 
+* `actions`
+* `status`
+* `shell_meta`
+* `mobile_nav_footer`
 * `inner_block` (required)
 
 # `flash_group`
-
-Shows the flash group with standard titles and content.
-
-## Examples
-
-    <.flash_group flash={@flash} />
 
 ## Attributes
 
@@ -42,11 +32,23 @@ Shows the flash group with standard titles and content.
 
 # `root`
 
+# `route_connection_label`
+
+# `route_connection_tone`
+
+# `shell_status_item`
+
+Standard status card used inside the shell status rail.
+
+## Slots
+
+* `inner_block` (required)
+
+# `shell_timestamp`
+
 # `theme_toggle`
 
-Provides dark vs light theme toggle based on themes defined in app.css.
-
-See <head> in root.html.heex which applies the theme before page load.
+Theme toggle aligned with the shared product shell.
 
 ---
 

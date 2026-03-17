@@ -331,6 +331,8 @@ defmodule AttractorPhoenix.LLMAdapters.Anthropic do
 
   defp stringify_map_keys(value), do: value
 
+  defp blank_to_nil(nil), do: nil
+
   defp blank_to_nil(value) do
     trimmed = value |> to_string() |> String.trim()
     if trimmed == "", do: nil, else: trimmed

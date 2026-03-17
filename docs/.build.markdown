@@ -93,9 +93,11 @@ AttractorPhoenixWeb.AuthoringController.md
 AttractorPhoenixWeb.BenchmarkLive.md
 AttractorPhoenixWeb.CoreComponents.md
 AttractorPhoenixWeb.DashboardLive.md
+AttractorPhoenixWeb.DebuggerLive.md
 AttractorPhoenixWeb.Endpoint.md
 AttractorPhoenixWeb.ErrorHTML.md
 AttractorPhoenixWeb.ErrorJSON.md
+AttractorPhoenixWeb.FailureReviewLive.md
 AttractorPhoenixWeb.Gettext.md
 AttractorPhoenixWeb.Layouts.md
 AttractorPhoenixWeb.PageController.md
@@ -103,6 +105,7 @@ AttractorPhoenixWeb.PageHTML.md
 AttractorPhoenixWeb.PipelineBuilderLive.md
 AttractorPhoenixWeb.PipelineLibraryLive.md
 AttractorPhoenixWeb.Router.md
+AttractorPhoenixWeb.RunLive.md
 AttractorPhoenixWeb.SetupLive.md
 AttractorPhoenixWeb.Telemetry.md
 AttractorPhoenixWeb.UserSocket.md

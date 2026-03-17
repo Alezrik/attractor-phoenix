@@ -94,9 +94,11 @@ AttractorPhoenixWeb.AuthoringController.html
 AttractorPhoenixWeb.BenchmarkLive.html
 AttractorPhoenixWeb.CoreComponents.html
 AttractorPhoenixWeb.DashboardLive.html
+AttractorPhoenixWeb.DebuggerLive.html
 AttractorPhoenixWeb.Endpoint.html
 AttractorPhoenixWeb.ErrorHTML.html
 AttractorPhoenixWeb.ErrorJSON.html
+AttractorPhoenixWeb.FailureReviewLive.html
 AttractorPhoenixWeb.Gettext.html
 AttractorPhoenixWeb.Layouts.html
 AttractorPhoenixWeb.PageController.html
@@ -104,6 +106,7 @@ AttractorPhoenixWeb.PageHTML.html
 AttractorPhoenixWeb.PipelineBuilderLive.html
 AttractorPhoenixWeb.PipelineLibraryLive.html
 AttractorPhoenixWeb.Router.html
+AttractorPhoenixWeb.RunLive.html
 AttractorPhoenixWeb.SetupLive.html
 AttractorPhoenixWeb.Telemetry.html
 AttractorPhoenixWeb.UserSocket.html
@@ -121,8 +124,8 @@ dist/lato-latin-700-normal-2XVSBPG4.woff2
 dist/lato-latin-ext-400-normal-N27NCBWW.woff2
 dist/lato-latin-ext-700-normal-Q2L5DVMW.woff2
 dist/remixicon-ZWU5GQ4X.woff2
-dist/search_data-F9FDB8D5.js
-dist/sidebar_items-EFB495BC.js
+dist/search_data-75C2BBE1.js
+dist/sidebar_items-B78E6AC9.js
 http-api.html
 human-in-the-loop.html
 index.html
