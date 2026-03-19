@@ -193,6 +193,20 @@
                       <span class={["run-status-pill", recovery.tone]}>{recovery.mode}</span>
                     </div>
                     <p
+                      id={"failure-recovery-owner-#{pipeline["pipeline_id"]}"}
+                      class="mt-2 text-base-content/75"
+                    >
+                      <span class="dashboard-card-label">Action owner</span>
+                      <span class="ml-2">{recovery.owner}</span>
+                    </p>
+                    <p
+                      id={"failure-recovery-action-#{pipeline["pipeline_id"]}"}
+                      class="mt-2 text-base-content/75"
+                    >
+                      <span class="dashboard-card-label">Required next action</span>
+                      <span class="ml-2">{recovery.action}</span>
+                    </p>
+                    <p
                       id={"failure-recovery-next-step-#{pipeline["pipeline_id"]}"}
                       class="mt-2 text-base-content/70"
                     >
@@ -211,14 +225,27 @@
                       {recovery.unavailable}
                     </p>
                   </div>
-                  <p class="text-xs font-semibold uppercase tracking-[0.14em] text-base-content/55">
-                    next step: {if (pipeline["pending_questions"] || 0) > 0,
-                      do: "open debugger to answer or inspect",
-                      else: "open run overview, then debugger for timeline diagnosis"}
+                  <p
+                    id={"failure-route-mode-#{pipeline["pipeline_id"]}"}
+                    class="text-xs font-semibold uppercase tracking-[0.14em] text-base-content/55"
+                  >
+                    {if (pipeline["pending_questions"] || 0) > 0,
+                      do:
+                        "action-taking route: open the human-gate debugger, answer the prompt, then confirm the queue clears",
+                      else:
+                        "inspection-first route: open run overview or debugger to diagnose the failure state"}
                   </p>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">
+                  <.link
+                    :if={(pipeline["pending_questions"] || 0) > 0}
+                    navigate={~p"/runs/#{pipeline["pipeline_id"]}/debugger?focus=questions"}
+                    id={"open-failure-question-debugger-#{pipeline["pipeline_id"]}"}
+                    class="builder-btn"
+                  >
+                    Answer Human Gate
+                  </.link>
                   <.link
                     navigate={~p"/runs/#{pipeline["pipeline_id"]}"}
                     id={"open-failure-run-#{pipeline["pipeline_id"]}"}
@@ -231,7 +258,7 @@
                     id={"open-failure-debugger-#{pipeline["pipeline_id"]}"}
                     class="builder-btn"
                   >
-                    Open Debugger
+                    Inspect Failure Timeline
                   </.link>
                 </div>
               </div>
