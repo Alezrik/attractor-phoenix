@@ -25,6 +25,7 @@ defmodule AttractorPhoenixWeb.RunLive do
         selected_graphs: %{},
         answer_forms: %{},
         question_lookup: %{},
+        last_question_receipt: nil,
         connection_state: if(connected?(socket), do: :live, else: :idle),
         update_mode: :subscription,
         error: nil,
@@ -41,7 +42,7 @@ defmodule AttractorPhoenixWeb.RunLive do
   def handle_params(%{"id" => run_id}, _uri, socket) do
     socket =
       socket
-      |> assign(run_id: run_id)
+      |> assign(run_id: run_id, last_question_receipt: nil)
       |> refresh_run()
 
     {:noreply, socket}
@@ -72,8 +73,21 @@ defmodule AttractorPhoenixWeb.RunLive do
 
     socket =
       case AttractorAPI.answer_question(socket.assigns.run_id, question_id, answer) do
-        {:ok, _payload} -> refresh_run(socket)
-        {:error, message} -> assign(socket, error: message)
+        {:ok, _payload} ->
+          refreshed_socket = refresh_run(socket)
+
+          assign(
+            refreshed_socket,
+            :last_question_receipt,
+            OperatorRunData.question_resolution_summary(
+              question,
+              refreshed_socket.assigns.selected_pipeline,
+              refreshed_socket.assigns.selected_questions
+            )
+          )
+
+        {:error, message} ->
+          assign(socket, error: message)
       end
 
     {:noreply, socket}
