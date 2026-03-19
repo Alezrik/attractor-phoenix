@@ -264,6 +264,14 @@
 
                 <div class="flex items-center gap-2">
                   <.link
+                    :if={(pipeline["pending_questions"] || 0) > 0}
+                    navigate={~p"/runs/#{pipeline["pipeline_id"]}/debugger?focus=questions"}
+                    id={"open-human-gate-#{pipeline["pipeline_id"]}"}
+                    class="builder-btn"
+                  >
+                    Human-Gate Debugger
+                  </.link>
+                  <.link
                     navigate={~p"/runs/#{pipeline["pipeline_id"]}"}
                     id={"open-run-#{pipeline["pipeline_id"]}"}
                     class="builder-btn"
@@ -272,6 +280,14 @@
                   </.link>
                 </div>
               </div>
+
+              <p
+                :if={(pipeline["pending_questions"] || 0) > 0}
+                id={"dashboard-next-step-#{pipeline["pipeline_id"]}"}
+                class="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-base-content/55"
+              >
+                Next step: open the human-gate debugger to review and answer the waiting prompt.
+              </p>
             </article>
           </div>
         </section>

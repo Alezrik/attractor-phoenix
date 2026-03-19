@@ -56,6 +56,65 @@ defmodule AttractorPhoenixWeb.DebuggerLiveTest do
     assert has_element?(debugger_view, "#debugger-recovery-summary")
   end
 
+  test "human-gate answer flow leaves explicit post-answer confirmation across debugger and run detail",
+       %{conn: conn} do
+    pipeline_id = "debugger_resolution_#{System.unique_integer([:positive])}"
+
+    assert {:ok, %{"pipeline_id" => ^pipeline_id}} =
+             AttractorAPI.create_pipeline(wait_human_dot(), %{}, pipeline_id: pipeline_id)
+
+    wait_for_questions(pipeline_id)
+
+    {:ok, run_view, _html} = live(conn, ~p"/runs/#{pipeline_id}")
+
+    assert has_element?(
+             run_view,
+             "a[href='/runs/#{pipeline_id}/debugger?focus=questions']",
+             "Open Human-Gate Debugger"
+           )
+
+    {:ok, debugger_view, _html} = live(conn, ~p"/runs/#{pipeline_id}/debugger?focus=questions")
+
+    debugger_view
+    |> element("#debugger-answer-form-gate")
+    |> render_submit(%{"question_id" => "gate", "response" => %{"choice" => "A"}})
+
+    wait_for_pipeline_status(pipeline_id, "success")
+
+    refute has_element?(debugger_view, "#debugger-answer-form-gate")
+    assert has_element?(debugger_view, "#debugger-run-state", "Completed")
+    assert has_element?(debugger_view, "#debugger-human-gate-resolution")
+
+    assert has_element?(
+             debugger_view,
+             "#debugger-human-gate-resolution-label",
+             "Question answered"
+           )
+
+    assert has_element?(
+             debugger_view,
+             "#debugger-human-gate-resolution-question",
+             "Approve release?"
+           )
+
+    assert has_element?(
+             debugger_view,
+             "#debugger-human-gate-resolution-detail",
+             "No pending human-gate questions remain on this route."
+           )
+
+    {:ok, resolved_run_view, _html} = live(conn, ~p"/runs/#{pipeline_id}")
+
+    refute has_element?(resolved_run_view, "#answer-form-gate")
+    assert has_element?(resolved_run_view, "#run-current-state", "Completed")
+
+    assert has_element?(
+             resolved_run_view,
+             "#run-questions-empty",
+             "No open human-in-the-loop questions."
+           )
+  end
+
   defp wait_human_dot do
     """
     digraph attractor {
@@ -84,6 +143,23 @@ defmodule AttractorPhoenixWeb.DebuggerLiveTest do
         receive do
         after
           20 -> wait_for_questions(pipeline_id, attempts - 1)
+        end
+    end
+  end
+
+  defp wait_for_pipeline_status(pipeline_id, status, attempts \\ 100)
+
+  defp wait_for_pipeline_status(_pipeline_id, _status, 0), do: flunk("expected pipeline status")
+
+  defp wait_for_pipeline_status(pipeline_id, status, attempts) do
+    case AttractorAPI.get_pipeline(pipeline_id) do
+      {:ok, %{"status" => ^status}} ->
+        :ok
+
+      _ ->
+        receive do
+        after
+          20 -> wait_for_pipeline_status(pipeline_id, status, attempts - 1)
         end
     end
   end

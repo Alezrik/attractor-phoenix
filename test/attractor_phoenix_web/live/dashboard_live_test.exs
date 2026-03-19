@@ -159,6 +159,33 @@ defmodule AttractorPhoenixWeb.DashboardLiveTest do
     refute has_element?(view, "#debugger-answer-form-gate")
   end
 
+  test "dashboard filtered to human work exposes a direct debugger path for pending questions", %{
+    conn: conn
+  } do
+    pipeline_id = "dashboard_human_gate_#{System.unique_integer([:positive])}"
+
+    assert {:ok, %{"pipeline_id" => ^pipeline_id}} =
+             AttractorAPI.create_pipeline(wait_human_dot(), %{}, pipeline_id: pipeline_id)
+
+    wait_for_questions(pipeline_id)
+
+    {:ok, view, _html} = live(conn, ~p"/?questions=open&search=#{pipeline_id}")
+
+    assert has_element?(view, "#open-human-gate-#{pipeline_id}")
+
+    assert has_element?(
+             view,
+             "#open-human-gate-#{pipeline_id}[href='/runs/#{pipeline_id}/debugger?focus=questions']",
+             "Human-Gate Debugger"
+           )
+
+    assert has_element?(
+             view,
+             "#dashboard-next-step-#{pipeline_id}",
+             "Next step: open the human-gate debugger to review and answer the waiting prompt."
+           )
+  end
+
   defp success_dot do
     """
     digraph attractor {

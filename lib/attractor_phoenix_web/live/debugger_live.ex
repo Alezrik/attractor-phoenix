@@ -28,6 +28,7 @@ defmodule AttractorPhoenixWeb.DebuggerLive do
         selected_questions: [],
         question_lookup: %{},
         answer_forms: %{},
+        last_question_receipt: nil,
         all_events: [],
         filtered_events: [],
         selected_event: nil,
@@ -55,7 +56,8 @@ defmodule AttractorPhoenixWeb.DebuggerLive do
         run_id: run_id,
         filters: filters,
         filter_form: to_form(filters, as: :filters),
-        selected_event_sequence: params["event"]
+        selected_event_sequence: params["event"],
+        last_question_receipt: nil
       )
       |> refresh_run()
 
@@ -113,8 +115,21 @@ defmodule AttractorPhoenixWeb.DebuggerLive do
 
     socket =
       case AttractorAPI.answer_question(socket.assigns.run_id, question_id, answer) do
-        {:ok, _payload} -> refresh_run(socket)
-        {:error, message} -> assign(socket, error: message)
+        {:ok, _payload} ->
+          refreshed_socket = refresh_run(socket)
+
+          assign(
+            refreshed_socket,
+            :last_question_receipt,
+            OperatorRunData.question_resolution_summary(
+              question,
+              refreshed_socket.assigns.selected_pipeline,
+              refreshed_socket.assigns.selected_questions
+            )
+          )
+
+        {:error, message} ->
+          assign(socket, error: message)
       end
 
     {:noreply, socket}

@@ -347,6 +347,43 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
     }
   end
 
+  def question_resolution_summary(nil, _pipeline, _questions), do: nil
+  def question_resolution_summary(_question, nil, _questions), do: nil
+
+  def question_resolution_summary(question, pipeline, questions) when is_map(pipeline) do
+    pending_questions = max(pipeline["pending_questions"] || 0, length(questions))
+    state_label = run_state_label(pipeline)
+
+    detail =
+      cond do
+        pending_questions > 0 ->
+          "#{pending_questions} pending question(s) still remain, so human-gate work is reduced but not fully cleared."
+
+        true ->
+          "No pending human-gate questions remain on this route. The run now reads as #{String.downcase(state_label)}."
+      end
+
+    next_step =
+      cond do
+        pending_questions > 0 ->
+          "Continue reviewing the remaining human-gate prompts before claiming the operator path is clear."
+
+        terminal_status?(pipeline["status"]) ->
+          "Use the current route for inspection and proof review rather than additional state-changing claims."
+
+        true ->
+          "Keep monitoring the run timeline and state summary while the post-answer execution path continues."
+      end
+
+    %{
+      label: "Question answered",
+      question: question_prompt(question),
+      owner: "Operator response accepted",
+      detail: detail,
+      next_step: next_step
+    }
+  end
+
   def graph_markup(nil), do: nil
   def graph_markup(svg), do: HTML.raw(svg)
 
