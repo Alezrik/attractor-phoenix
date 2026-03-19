@@ -39,7 +39,24 @@ defmodule AttractorPhoenixWeb.FailureReviewLiveTest do
 
     assert has_element?(
              view,
+             "#open-failure-question-debugger-#{cancelled_id}[href='/runs/#{cancelled_id}/debugger?focus=questions']"
+           )
+
+    assert has_element?(
+             view,
              "#open-failure-debugger-#{cancelled_id}[href='/runs/#{cancelled_id}/debugger?focus=failures']"
+           )
+
+    assert has_element?(
+             view,
+             "#failure-recovery-owner-#{cancelled_id}",
+             "Operator review required"
+           )
+
+    assert has_element?(
+             view,
+             "#failure-recovery-action-#{cancelled_id}",
+             "Answer pending human gate"
            )
 
     assert has_element?(
@@ -54,6 +71,12 @@ defmodule AttractorPhoenixWeb.FailureReviewLiveTest do
              "does not retry, replay, or resume"
            )
 
+    assert has_element?(
+             view,
+             "#failure-route-mode-#{cancelled_id}",
+             "action-taking route"
+           )
+
     assert has_element?(view, "#open-failure-run-#{failed_id}")
     assert has_element?(view, "#failure-signal-#{failed_id}", "Failure with checkpoint context")
 
@@ -61,6 +84,12 @@ defmodule AttractorPhoenixWeb.FailureReviewLiveTest do
              view,
              "#failure-recovery-next-step-#{failed_id}",
              "Inspect the debugger timeline and checkpoint diff"
+           )
+
+    assert has_element?(
+             view,
+             "#failure-route-mode-#{failed_id}",
+             "inspection-first route"
            )
 
     refute has_element?(view, "#open-failure-run-#{success_id}")
@@ -124,6 +153,55 @@ defmodule AttractorPhoenixWeb.FailureReviewLiveTest do
              "#failure-recovery-label-#{cancelled_id}",
              "Interrupted with checkpoint context"
            )
+  end
+
+  test "failure review route can clear a cancelled run's pending human gate without implying resume",
+       %{conn: conn} do
+    pipeline_id = "failure_route_answer_#{System.unique_integer([:positive])}"
+
+    assert {:ok, %{"pipeline_id" => ^pipeline_id}} =
+             AttractorAPI.create_pipeline(wait_human_dot(), %{}, pipeline_id: pipeline_id)
+
+    wait_for_questions(pipeline_id)
+    assert {:ok, %{"status" => "cancelled"}} = AttractorAPI.cancel_pipeline(pipeline_id)
+    wait_for_pipeline_status(pipeline_id, "cancelled")
+
+    {:ok, failure_view, _html} = live(conn, ~p"/failures?questions=open&search=#{pipeline_id}")
+
+    assert has_element?(
+             failure_view,
+             "#open-failure-question-debugger-#{pipeline_id}[href='/runs/#{pipeline_id}/debugger?focus=questions']"
+           )
+
+    {:ok, debugger_view, _html} = live(conn, ~p"/runs/#{pipeline_id}/debugger?focus=questions")
+
+    debugger_view
+    |> element("#debugger-answer-form-gate")
+    |> render_submit(%{"question_id" => "gate", "response" => %{"choice" => "A"}})
+
+    wait_for_questions_to_clear(pipeline_id)
+    wait_for_failure_queue_question_clear(pipeline_id)
+
+    refute has_element?(debugger_view, "#debugger-answer-form-gate")
+    assert has_element?(debugger_view, "#debugger-run-state", "Interrupted")
+    assert has_element?(debugger_view, "#debugger-human-gate-resolution")
+
+    assert has_element?(
+             debugger_view,
+             "#debugger-human-gate-resolution-detail",
+             "No pending human-gate questions remain on this route."
+           )
+
+    {:ok, cleared_failure_view, _html} =
+      live(conn, ~p"/failures?questions=open&search=#{pipeline_id}")
+
+    assert has_element?(
+             cleared_failure_view,
+             "#failure-review-empty",
+             "No runs currently need failure review"
+           )
+
+    assert render(cleared_failure_view) =~ "0 runs shown"
   end
 
   test "dashboard review-failures controls navigate to the dedicated route", %{conn: conn} do
@@ -201,6 +279,52 @@ defmodule AttractorPhoenixWeb.FailureReviewLiveTest do
         receive do
         after
           20 -> wait_for_pipeline_status(pipeline_id, status, attempts - 1)
+        end
+    end
+  end
+
+  defp wait_for_questions_to_clear(pipeline_id, attempts \\ 100)
+
+  defp wait_for_questions_to_clear(_pipeline_id, 0),
+    do: flunk("expected pending questions to clear")
+
+  defp wait_for_questions_to_clear(pipeline_id, attempts) do
+    case AttractorAPI.get_pipeline_questions(pipeline_id) do
+      {:ok, %{"questions" => []}} ->
+        :ok
+
+      _ ->
+        receive do
+        after
+          20 -> wait_for_questions_to_clear(pipeline_id, attempts - 1)
+        end
+    end
+  end
+
+  defp wait_for_failure_queue_question_clear(pipeline_id, attempts \\ 100)
+
+  defp wait_for_failure_queue_question_clear(_pipeline_id, 0) do
+    flunk("expected failure queue question summary to clear")
+  end
+
+  defp wait_for_failure_queue_question_clear(pipeline_id, attempts) do
+    case AttractorAPI.list_pipelines() do
+      {:ok, %{"pipelines" => pipelines}} ->
+        case Enum.find(pipelines, &(&1["pipeline_id"] == pipeline_id)) do
+          %{"pending_questions" => 0} ->
+            :ok
+
+          _ ->
+            receive do
+            after
+              20 -> wait_for_failure_queue_question_clear(pipeline_id, attempts - 1)
+            end
+        end
+
+      _ ->
+        receive do
+        after
+          20 -> wait_for_failure_queue_question_clear(pipeline_id, attempts - 1)
         end
     end
   end
