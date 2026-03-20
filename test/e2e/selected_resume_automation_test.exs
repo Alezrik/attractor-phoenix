@@ -16,7 +16,8 @@ defmodule AttractorPhoenixWeb.E2E.SelectedResumeAutomationTest do
   test "selected operator journey exposes resume receipt through the UI" do
     base_url = AttractorPhoenixWeb.Endpoint.url()
 
-    output = run_playwright_script!("test/e2e/scripts/selected_resume_operator_journey.mjs", base_url)
+    output =
+      run_playwright_script!("test/e2e/scripts/selected_resume_operator_journey.mjs", base_url)
 
     assert output =~ "SABLE_OPERATOR_JOURNEY_OK"
     assert output =~ "dashboard_seen=true"
