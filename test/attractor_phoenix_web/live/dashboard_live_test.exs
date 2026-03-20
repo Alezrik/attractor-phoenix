@@ -186,6 +186,36 @@ defmodule AttractorPhoenixWeb.DashboardLiveTest do
            )
   end
 
+  test "dashboard keeps the cancelled human-gate packet inspection-first before failure review",
+       %{
+         conn: conn
+       } do
+    pipeline_id = "dashboard_cancelled_packet_#{System.unique_integer([:positive])}"
+
+    assert {:ok, %{"pipeline_id" => ^pipeline_id}} =
+             AttractorAPI.create_pipeline(wait_human_dot(), %{}, pipeline_id: pipeline_id)
+
+    wait_for_questions(pipeline_id)
+    assert {:ok, %{"status" => "cancelled"}} = AttractorAPI.cancel_pipeline(pipeline_id)
+    wait_for_pipeline_status(pipeline_id, "cancelled")
+
+    {:ok, view, _html} = live(conn, ~p"/?status=cancelled&questions=open&search=#{pipeline_id}")
+
+    assert has_element?(view, "#open-run-#{pipeline_id}", "Inspect Run")
+
+    assert has_element?(
+             view,
+             "#dashboard-next-step-#{pipeline_id}",
+             "Inspect this run first, then continue into the run-scoped failure review before opening the human-gate debugger."
+           )
+
+    assert has_element?(
+             view,
+             "#dashboard-route-limit-#{pipeline_id}",
+             "does not imply retry, replay, resume, or broader operator continuity"
+           )
+  end
+
   defp success_dot do
     """
     digraph attractor {
