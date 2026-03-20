@@ -3,7 +3,7 @@
     "lib/attractor_phoenix",
     "lib/attractor_phoenix_web",
     "lib/mix/tasks/attractor.api.ex",
-    "test/support/e2e_case.ex"
+    "test/support"
   ],
   "coverage_options": {
     "minimum_coverage": 90
