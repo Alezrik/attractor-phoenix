@@ -29,6 +29,7 @@ defmodule AttractorPhoenixWeb.DebuggerLive do
         question_lookup: %{},
         answer_forms: %{},
         last_question_receipt: nil,
+        last_recovery_receipt: nil,
         all_events: [],
         filtered_events: [],
         selected_event: nil,
@@ -57,7 +58,8 @@ defmodule AttractorPhoenixWeb.DebuggerLive do
         filters: filters,
         filter_form: to_form(filters, as: :filters),
         selected_event_sequence: params["event"],
-        last_question_receipt: nil
+        last_question_receipt: nil,
+        last_recovery_receipt: nil
       )
       |> refresh_run()
 
@@ -100,6 +102,25 @@ defmodule AttractorPhoenixWeb.DebuggerLive do
       case AttractorAPI.cancel_pipeline(socket.assigns.run_id) do
         {:ok, _payload} -> refresh_run(socket)
         {:error, message} -> assign(socket, error: message)
+      end
+
+    {:noreply, socket}
+  end
+
+  def handle_event("resume_pipeline", _params, %{assigns: %{run_id: nil}} = socket) do
+    {:noreply, socket}
+  end
+
+  def handle_event("resume_pipeline", _params, socket) do
+    socket =
+      case AttractorAPI.resume_pipeline(socket.assigns.run_id) do
+        {:ok, _payload} ->
+          socket
+          |> refresh_run()
+          |> assign(last_recovery_receipt: OperatorRunData.recovery_resume_receipt(), error: nil)
+
+        {:error, message} ->
+          assign(socket, error: message)
       end
 
     {:noreply, socket}

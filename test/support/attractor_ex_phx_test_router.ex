@@ -68,6 +68,16 @@ defmodule AttractorExPhxTest.Router do
     json(conn, 202, %{"pipeline_id" => id, "cancelled" => true})
   end
 
+  post "/pipelines/:id/resume" do
+    notify({:post, conn.request_path, "", conn.body_params})
+
+    json(conn, 202, %{
+      "pipeline_id" => id,
+      "status" => "running",
+      "recovery_action" => "checkpoint_resume"
+    })
+  end
+
   post "/pipelines/:id/questions/:question_id/answer" do
     notify({:post, conn.request_path, "", conn.body_params})
     json(conn, 202, %{"pipeline_id" => id, "question_id" => question_id, "accepted" => true})

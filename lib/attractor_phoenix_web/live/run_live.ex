@@ -26,6 +26,7 @@ defmodule AttractorPhoenixWeb.RunLive do
         answer_forms: %{},
         question_lookup: %{},
         last_question_receipt: nil,
+        last_recovery_receipt: nil,
         connection_state: if(connected?(socket), do: :live, else: :idle),
         update_mode: :subscription,
         error: nil,
@@ -42,7 +43,7 @@ defmodule AttractorPhoenixWeb.RunLive do
   def handle_params(%{"id" => run_id}, _uri, socket) do
     socket =
       socket
-      |> assign(run_id: run_id, last_question_receipt: nil)
+      |> assign(run_id: run_id, last_question_receipt: nil, last_recovery_receipt: nil)
       |> refresh_run()
 
     {:noreply, socket}
@@ -58,6 +59,25 @@ defmodule AttractorPhoenixWeb.RunLive do
       case AttractorAPI.cancel_pipeline(socket.assigns.run_id) do
         {:ok, _payload} -> refresh_run(socket)
         {:error, message} -> assign(socket, error: message)
+      end
+
+    {:noreply, socket}
+  end
+
+  def handle_event("resume_pipeline", _params, %{assigns: %{run_id: nil}} = socket) do
+    {:noreply, socket}
+  end
+
+  def handle_event("resume_pipeline", _params, socket) do
+    socket =
+      case AttractorAPI.resume_pipeline(socket.assigns.run_id) do
+        {:ok, _payload} ->
+          socket
+          |> refresh_run()
+          |> assign(last_recovery_receipt: OperatorRunData.recovery_resume_receipt(), error: nil)
+
+        {:error, message} ->
+          assign(socket, error: message)
       end
 
     {:noreply, socket}

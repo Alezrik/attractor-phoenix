@@ -4,8 +4,8 @@
 Plug router exposing the AttractorEx HTTP API.
 
 The router supports pipeline creation, status polling, SSE event streams, graph
-renderings, question answering, cancellation, checkpoint inspection, and context
-inspection.
+renderings, question answering, cancellation, one explicit checkpoint-backed resume
+action for admitted cancelled runs, checkpoint inspection, and context inspection.
 
 # `call`
 

@@ -56,6 +56,13 @@ defmodule AttractorExPhx.ClientTest do
     assert_receive {:adapter_request, {:get, "/pipelines/pipeline-1/graph", "", %{}}}
   end
 
+  test "supports the explicit checkpoint resume control-plane action" do
+    assert {:ok, %{"pipeline_id" => "pipeline-1", "recovery_action" => "checkpoint_resume"}} =
+             Client.resume_pipeline("pipeline-1")
+
+    assert_receive {:adapter_request, {:post, "/pipelines/pipeline-1/resume", "", %{}}}
+  end
+
   test "returns formatted http errors from the adapter client" do
     assert {:error, "HTTP 400: boom"} = Client.get_pipeline("error")
   end

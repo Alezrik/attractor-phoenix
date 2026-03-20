@@ -373,6 +373,15 @@
                     >
                       {recovery.next_step}
                     </p>
+                    <button
+                      :if={OperatorRunData.resume_ready?(@selected_pipeline)}
+                      id="debugger-resume-pipeline"
+                      type="button"
+                      class="builder-btn mt-3"
+                      phx-click="resume_pipeline"
+                    >
+                      Resume From Checkpoint
+                    </button>
                   </div>
                   <div>
                     <p class="dashboard-card-label">Action consequence</p>
@@ -475,6 +484,43 @@
                     class="mt-2 text-sm leading-6 text-base-content/65"
                   >
                     {@last_question_receipt.known_limit}
+                  </p>
+                </div>
+              <% end %>
+
+              <%= if @last_recovery_receipt do %>
+                <div
+                  id="debugger-recovery-receipt"
+                  class="mt-4 rounded-2xl bg-base-200/70 px-4 py-3"
+                >
+                  <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p class="dashboard-card-label">Recovery Action</p>
+                      <p id="debugger-recovery-receipt-label" class="mt-2 font-semibold">
+                        {@last_recovery_receipt.label}
+                      </p>
+                    </div>
+                    <span class="run-status-pill run-status-running">
+                      {@last_recovery_receipt.owner}
+                    </span>
+                  </div>
+                  <p
+                    id="debugger-recovery-receipt-detail"
+                    class="mt-2 text-sm leading-6 text-base-content/80"
+                  >
+                    {@last_recovery_receipt.detail}
+                  </p>
+                  <p
+                    id="debugger-recovery-receipt-next-step"
+                    class="mt-2 text-sm leading-6 text-base-content/65"
+                  >
+                    {@last_recovery_receipt.next_step}
+                  </p>
+                  <p
+                    id="debugger-recovery-receipt-known-limit"
+                    class="mt-2 text-sm leading-6 text-base-content/65"
+                  >
+                    {@last_recovery_receipt.known_limit}
                   </p>
                 </div>
               <% end %>

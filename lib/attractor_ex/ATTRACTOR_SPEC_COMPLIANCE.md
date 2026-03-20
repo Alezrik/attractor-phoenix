@@ -148,6 +148,7 @@ Implemented:
 - Immediate pending-question registration before `InterviewStarted`
 - Answer payload metadata on completion events
 - Day-based timeout suffix parsing such as `1d`
+- Durable server-side answer persistence into run context and checkpoint-backed context when available
 
 ### `7. Validation and Linting` — `implemented`
 
@@ -267,6 +268,7 @@ Implemented:
   - pipeline status
   - SSE events
   - cancellation
+  - explicit checkpoint-backed resume
   - question and answer
   - checkpoint
   - context
@@ -291,6 +293,7 @@ Implemented:
   - `GET /pipelines/:id/events?after=<sequence>` replay windows
   - Phoenix PubSub replay-filtered snapshots via `after_sequence`
   - boot-time reload and recovery of incomplete HTTP-managed runs
+  - explicit `POST /pipelines/:id/resume` admission only for cancelled runs with checkpoint, cleared questions, and a recorded human answer
 
 ### `10. Condition Expression Language` — `implemented`
 

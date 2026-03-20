@@ -4,7 +4,9 @@
 Req-based client for the `AttractorEx` HTTP control plane.
 
 This module is intentionally Phoenix-friendly: LiveViews, controllers, and other
-OTP processes can call it without depending on `AttractorPhoenix`-specific glue.
+OTP processes can call it without depending on `AttractorPhoenix`-specific glue. It
+covers the durable run surface, including the narrow explicit resume endpoint for
+admitted cancelled runs.
 
 # `answer_pipeline_question`
 
@@ -39,6 +41,8 @@ OTP processes can call it without depending on `AttractorPhoenix`-specific glue.
 # `get_status`
 
 # `list_pipelines`
+
+# `resume_pipeline`
 
 # `run_pipeline`
 

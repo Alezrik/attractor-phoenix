@@ -5,7 +5,9 @@ GenServer that owns durable runtime state for HTTP-managed pipeline runs.
 
 Run metadata, event history, checkpoints, pending questions, and artifact indexes are
 persisted through a pluggable run store so HTTP and Phoenix consumers can replay run
-history after process restarts.
+history after process restarts. The manager also admits one explicit
+checkpoint-backed resume for cancelled runs after the human gate has been fully
+cleared and the accepted answer has been durably recorded.
 
 # `cancel`
 
@@ -40,6 +42,14 @@ Creates and starts a pipeline run under HTTP management.
 # `replay_events`
 
 Returns persisted events after the given sequence number.
+
+# `reset`
+
+Clears in-memory and persisted HTTP runtime state for the current manager.
+
+# `resume_pipeline`
+
+Attempts one explicit checkpoint-backed resume for an admitted interrupted run.
 
 # `snapshot`
 

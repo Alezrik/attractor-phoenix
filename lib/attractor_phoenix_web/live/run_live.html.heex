@@ -179,6 +179,15 @@
               <p id="run-recovery-next-step-detail" class="mt-1 text-xs text-base-content/60">
                 {recovery.next_step}
               </p>
+              <button
+                :if={OperatorRunData.resume_ready?(@selected_pipeline)}
+                id="run-resume-pipeline"
+                type="button"
+                class="builder-btn mt-3"
+                phx-click="resume_pipeline"
+              >
+                Resume From Checkpoint
+              </button>
             </div>
             <div>
               <dt class="dashboard-card-label">Action consequence</dt>
@@ -323,6 +332,38 @@
             class="mt-2 text-sm leading-6 text-base-content/65"
           >
             {@last_question_receipt.known_limit}
+          </p>
+        </section>
+      <% end %>
+
+      <%= if @last_recovery_receipt do %>
+        <section class="dashboard-panel" id="run-recovery-receipt">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p class="dashboard-card-label">Recovery Action</p>
+              <h2 id="run-recovery-receipt-label" class="mt-2 text-xl font-semibold">
+                {@last_recovery_receipt.label}
+              </h2>
+            </div>
+            <span class="run-status-pill run-status-running">
+              {@last_recovery_receipt.owner}
+            </span>
+          </div>
+
+          <p id="run-recovery-receipt-detail" class="mt-3 text-sm leading-6 text-base-content/80">
+            {@last_recovery_receipt.detail}
+          </p>
+          <p
+            id="run-recovery-receipt-next-step"
+            class="mt-2 text-sm leading-6 text-base-content/65"
+          >
+            {@last_recovery_receipt.next_step}
+          </p>
+          <p
+            id="run-recovery-receipt-known-limit"
+            class="mt-2 text-sm leading-6 text-base-content/65"
+          >
+            {@last_recovery_receipt.known_limit}
           </p>
         </section>
       <% end %>
