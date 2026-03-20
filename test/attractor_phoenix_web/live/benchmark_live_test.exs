@@ -11,6 +11,7 @@ defmodule AttractorPhoenixWeb.BenchmarkLiveTest do
     assert has_element?(view, "#benchmark-score-panel")
     assert has_element?(view, "#benchmark-blocked-criteria")
     assert has_element?(view, "#benchmark-route-links")
+    assert has_element?(view, "#benchmark-proof-packet")
     assert has_element?(view, "#reference-set")
     assert has_element?(view, "#benchmark-dimensions")
     assert has_element?(view, "#required-evidence")
@@ -34,6 +35,15 @@ defmodule AttractorPhoenixWeb.BenchmarkLiveTest do
     assert html =~ "4.2"
     assert html =~ "See score, blockers, and execution routes"
     assert html =~ "Conformance scoreboard"
+    assert html =~ "Benchmark proof boundary"
+    assert html =~ "partially supported by"
+
+    assert html =~
+             "AttractorPhoenix.Benchmark.summary() and AttractorPhoenix.Conformance.summary()"
+
+    assert html =~
+             "raise blocked leadership criteria with executable proof before broadening benchmark claims"
+
     assert html =~ "CONF-STATE-001"
     assert html =~ "mix test test/attractor_ex/conformance"
     assert html =~ "Durable runtime and replayable state"

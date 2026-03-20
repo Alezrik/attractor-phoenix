@@ -126,6 +126,71 @@
       </aside>
     </section>
 
+    <section class="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]" id="benchmark-proof-packet">
+      <article class="dashboard-panel space-y-5">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p class="dashboard-card-label">Shared proof packet</p>
+            <h2 class="mt-3 text-xl font-semibold">Benchmark proof boundary</h2>
+            <p class="mt-2 text-sm leading-6 text-base-content/70">
+              Current benchmark posture is {support_phrase(@benchmark.proof_packet)}. Proof
+              artifact: {@benchmark.proof_packet.proof_artifact}. Known limit: {@benchmark.proof_packet.known_limits}.
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <span class={[
+              "rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]",
+              proof_status_tone(@benchmark.proof_packet.status)
+            ]}>
+              status {@benchmark.proof_packet.status}
+            </span>
+            <span class={[
+              "rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]",
+              proof_status_tone(@benchmark.proof_packet.claim_level)
+            ]}>
+              claim {@benchmark.proof_packet.claim_level}
+            </span>
+          </div>
+        </div>
+
+        <div class="grid gap-3 sm:grid-cols-2">
+          <%= for {label, value} <- proof_fields(@benchmark.proof_packet) do %>
+            <div class="rounded-3xl border border-base-300 bg-base-200/35 px-4 py-4">
+              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-base-content/55">
+                {label}
+              </p>
+              <p class="mt-2 text-sm leading-6 text-base-content/80">{value}</p>
+            </div>
+          <% end %>
+        </div>
+      </article>
+
+      <article class="dashboard-panel space-y-4">
+        <div>
+          <p class="dashboard-card-label">Proof language guide</p>
+          <p class="mt-3 text-sm leading-6 text-base-content/72">
+            This route now uses the same claim vocabulary expected in repo-side reporting so
+            benchmark posture, known limits, and next actions stay aligned.
+          </p>
+        </div>
+
+        <div class="space-y-3 text-sm leading-6 text-base-content/75">
+          <p><strong>supported by:</strong> direct benchmark or conformance evidence exists.</p>
+          <p>
+            <strong>partially supported by:</strong> evidence exists, but coverage is incomplete.
+          </p>
+          <p>
+            <strong>not yet proven:</strong>
+            the route shows scope and ownership without inventing missing proof.
+          </p>
+          <p>
+            <strong>known limit:</strong>
+            the blocked leadership criteria remain visible in the same packet.
+          </p>
+        </div>
+      </article>
+    </section>
+
     <section class="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
       <article class="dashboard-panel" id="immediate-next-steps">
         <div class="flex items-center justify-between gap-3">
