@@ -1,20 +1,21 @@
-defmodule Mix.Tasks.Attractor.Http.Hello do
+defmodule Mix.Tasks.Attractor.Api do
   use Mix.Task
 
-  @shortdoc "Runs Noor Halden's schema-backed HTTP API hello world"
+  @shortdoc "Runs Noor Halden's focused AttractorEx API smoke suite"
 
   @moduledoc """
-  Runs Noor Halden's first schema-backed HTTP API hello world without folding it
-  into the broader `mix test` or `mix attractor.http` loops.
+  Runs Noor Halden's focused AttractorEx API smoke suite without folding it into
+  the broader `mix test` or `mix attractor.http` loops.
 
-      mix attractor.http.hello
-      mix attractor.http.hello --trace
-      mix attractor.http.hello qa/http_hello/http_hello_world_test.exs
+      mix attractor.api
+      mix attractor.api --trace
+      mix test-api
+      mix test-api qa/http_api/api_smoke_test.exs
   """
 
   @default_targets [
-    "qa/http_hello/http_hello_world_test.exs",
-    "qa/http_hello/attractor_http_hello_task_test.exs"
+    "qa/http_api/api_smoke_test.exs",
+    "qa/http_api/attractor_api_task_test.exs"
   ]
   @supported_switches [trace: :boolean, seed: :integer, max_cases: :integer]
 
@@ -23,18 +24,18 @@ defmodule Mix.Tasks.Attractor.Http.Hello do
     {opts, positional, invalid} = OptionParser.parse(args, strict: @supported_switches)
 
     if invalid != [] do
-      Mix.raise(
-        "Unsupported options for mix attractor.http.hello: #{format_invalid_options(invalid)}"
-      )
+      Mix.raise("Unsupported options for mix attractor.api: #{format_invalid_options(invalid)}")
     end
 
     test_files = resolve_test_args(positional)
 
     Enum.each(test_files, fn path ->
       unless File.regular?(path) do
-        Mix.raise("Hello-world test file not found: #{path}")
+        Mix.raise("API smoke test file not found: #{path}")
       end
     end)
+
+    ensure_runtime!()
 
     ex_unit = ex_unit!()
 
@@ -46,7 +47,7 @@ defmodule Mix.Tasks.Attractor.Http.Hello do
     %{failures: failures} = ex_unit.run()
 
     if failures > 0 do
-      Mix.raise("mix attractor.http.hello failed with #{failures} failing test(s).")
+      Mix.raise("mix attractor.api failed with #{failures} failing test(s).")
     end
   end
 
@@ -97,5 +98,15 @@ defmodule Mix.Tasks.Attractor.Http.Hello do
     else
       Mix.raise("ExUnit is unavailable in the current environment.")
     end
+  end
+
+  defp ensure_runtime! do
+    Enum.each([:telemetry, :finch, :req, :bandit], fn app ->
+      case Application.ensure_all_started(app) do
+        {:ok, _started} -> :ok
+        {:error, {:already_started, _app}} -> :ok
+        {:error, reason} -> Mix.raise("Failed to start #{app}: #{inspect(reason)}")
+      end
+    end)
   end
 end
