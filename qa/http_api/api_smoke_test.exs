@@ -53,6 +53,90 @@ defmodule AttractorEx.APISmokeTest do
     assert status_response.body["status"] == "success"
   end
 
+  test "selected human-gate packet exposes workflow state and required-action data clearly", %{
+    base_url: base_url
+  } do
+    pipeline_id = unique_pipeline_id("api_workflow")
+
+    response =
+      Req.post!("#{base_url}/pipelines",
+        json: %{
+          "dot" => wait_human_dot(),
+          "opts" => %{"pipeline_id" => pipeline_id}
+        }
+      )
+
+    assert response.status == 202
+    assert response.body == %{"pipeline_id" => pipeline_id}
+
+    wait_for_pending_questions(base_url, pipeline_id)
+
+    pipeline = Req.get!("#{base_url}/pipelines/#{pipeline_id}")
+    assert pipeline.status == 200
+    assert pipeline.body["pipeline_id"] == pipeline_id
+    assert pipeline.body["status"] == "running"
+    assert pipeline.body["pending_questions"] == 1
+    assert pipeline.body["resume_ready"] == false
+
+    questions = Req.get!("#{base_url}/pipelines/#{pipeline_id}/questions")
+    assert questions.status == 200
+
+    assert %{
+             "questions" => [
+               %{
+                 "id" => "gate",
+                 "text" => "Approve release?",
+                 "type" => "MULTIPLE_CHOICE",
+                 "required" => true,
+                 "multiple" => false,
+                 "options" => [
+                   %{"key" => "A", "label" => "[A] Approve", "to" => "done"},
+                   %{"key" => "R", "label" => "[R] Retry", "to" => "retry"}
+                 ]
+               }
+             ]
+           } = questions.body
+  end
+
+  test "controlled workflow failure returns explicit error payload and preserves follow-up state", %{
+    base_url: base_url
+  } do
+    pipeline_id = unique_pipeline_id("api_fail")
+
+    response =
+      Req.post!("#{base_url}/pipelines",
+        json: %{
+          "dot" => fail_dot(),
+          "opts" => %{"pipeline_id" => pipeline_id}
+        }
+      )
+
+    assert response.status == 202
+    assert response.body == %{"pipeline_id" => pipeline_id}
+
+    wait_for_pipeline_status(base_url, pipeline_id, "fail")
+
+    pipeline = Req.get!("#{base_url}/pipelines/#{pipeline_id}")
+    assert pipeline.status == 200
+    assert pipeline.body["pipeline_id"] == pipeline_id
+    assert pipeline.body["status"] == "fail"
+    assert pipeline.body["has_checkpoint"] == true
+    assert pipeline.body["resume_ready"] == false
+
+    events = Req.get!("#{base_url}/pipelines/#{pipeline_id}/events?stream=false&after=0")
+    assert events.status == 200
+
+    failure_event = Enum.find(events.body["events"], &(&1["type"] == "PipelineFailed"))
+    assert is_map(failure_event)
+    assert failure_event["pipeline_id"] == pipeline_id
+    assert failure_event["status"] == "fail"
+    assert is_binary(failure_event["error"])
+    assert failure_event["error"] != ""
+    assert String.contains?(failure_event["error"], "No outgoing edge selected")
+    assert String.contains?(failure_event["error"], "task")
+    assert Enum.any?(events.body["events"], &(&1["type"] == "CheckpointSaved"))
+  end
+
   test "supports one explicit checkpoint-backed resume for the selected cancelled packet", %{
     base_url: base_url
   } do
@@ -255,6 +339,17 @@ defmodule AttractorEx.APISmokeTest do
       gate -> done [label="[A] Approve"]
       gate -> retry [label="[R] Retry"]
       retry -> done
+    }
+    """
+  end
+
+  defp fail_dot do
+    """
+    digraph attractor {
+      start [shape=Mdiamond]
+      task [shape=box, prompt="Task", retry_target="done"]
+      done [shape=Msquare]
+      start -> task
     }
     """
   end
