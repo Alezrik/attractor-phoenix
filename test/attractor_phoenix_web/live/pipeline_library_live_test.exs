@@ -17,6 +17,7 @@ defmodule AttractorPhoenixWeb.PipelineLibraryLiveTest do
     assert has_element?(view, "#library-page")
     assert has_element?(view, "#library-route-links")
     assert has_element?(view, "#library-form")
+    assert html =~ "Save New Artifact"
 
     params = %{
       "library" => %{
@@ -33,13 +34,16 @@ defmodule AttractorPhoenixWeb.PipelineLibraryLiveTest do
 
     assert has_element?(view, "#library-entry-support-intake")
     assert has_element?(view, "#library-featured-entry")
-    assert render(view) =~ "Load in Builder"
+    assert render(view) =~ "Reopen in Builder"
+    assert render(view) =~ "Saved once"
 
     {:ok, entry} = PipelineLibrary.get_entry("support-intake")
     assert entry.name == "Support Intake"
   end
 
-  test "loads an existing library pipeline into the builder from the admin page", %{conn: conn} do
+  test "library edit surface exposes stable artifact identity before reopening in builder", %{
+    conn: conn
+  } do
     {:ok, entry} =
       PipelineLibrary.create_entry(%{
         "name" => "Ops Runbook",
@@ -52,12 +56,19 @@ defmodule AttractorPhoenixWeb.PipelineLibraryLiveTest do
 
     assert html =~ entry.name
     assert html =~ ~p"/builder?library=#{entry.id}"
+    assert html =~ "Reopen in Builder"
+
+    {:ok, _edit_view, edit_html} = live(conn, ~p"/library/#{entry.id}/edit")
+
+    assert edit_html =~ "Update Existing Artifact"
+    assert edit_html =~ "Artifact ID"
+    assert edit_html =~ entry.id
 
     {:ok, _builder_view, builder_html} = live(conn, ~p"/builder?library=#{entry.id}")
 
-    assert builder_html =~ "Loaded from library"
     assert builder_html =~ "Ops Runbook"
     assert builder_html =~ "echo ops"
+    assert builder_html =~ "Update Existing Artifact"
   end
 
   defp sample_dot(command) do
