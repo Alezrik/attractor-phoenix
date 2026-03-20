@@ -170,6 +170,7 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLiveTest do
     assert has_element?(view, "#pipeline-dot")
     assert render(view) =~ "Generated DOT loaded into the builder."
     assert render(view) =~ "digraph generated_pipeline"
+    assert render(view) =~ "Save New Artifact"
   end
 
   test "create route shows discovered providers and models", %{conn: conn} do
@@ -288,10 +289,11 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLiveTest do
     assert render(view) =~ "Graph JSON"
   end
 
-  test "saves the current builder pipeline to the library and reloads it by query param", %{
+  test "builder proves save new then reload same artifact id then update existing", %{
     conn: conn
   } do
     {:ok, view, _html} = live(conn, ~p"/builder")
+    assert render(view) =~ "Save New Artifact"
 
     dot = """
     digraph attractor {
@@ -317,17 +319,43 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLiveTest do
     |> element("#pipeline-runner-form")
     |> render_submit(params)
 
-    assert render(view) =~ "Pipeline saved to the library."
-    assert render(view) =~ "Loaded from library"
+    assert render(view) =~
+             "Saved new library artifact Archive Pipeline (archive-pipeline). Future edits update this same artifact."
+
+    assert render(view) =~ "Update Existing Artifact"
+    assert render(view) =~ "Artifact ID"
 
     {:ok, entry} = PipelineLibrary.get_entry("archive-pipeline")
     assert entry.description == "Reusable archival flow"
 
+    update_params = %{
+      "pipeline" => %{
+        "action" => "save_library",
+        "dot" => String.replace(dot, "echo archived", "echo archived again"),
+        "context_json" => ~s({"dataset":"library","mode":"updated"}),
+        "library_name" => "Archive Pipeline Renamed",
+        "library_description" => "Updated archival flow"
+      }
+    }
+
+    view
+    |> element("#pipeline-runner-form")
+    |> render_submit(update_params)
+
+    assert render(view) =~ "Updated library artifact Archive Pipeline Renamed (archive-pipeline)."
+
+    {:ok, updated_entry} = PipelineLibrary.get_entry("archive-pipeline")
+    assert updated_entry.name == "Archive Pipeline Renamed"
+    assert updated_entry.description == "Updated archival flow"
+    assert updated_entry.context_json =~ ~s("mode": "updated")
+    assert updated_entry.dot =~ "echo archived again"
+
     {:ok, _reloaded_view, html} = live(conn, ~p"/builder?library=archive-pipeline")
 
-    assert html =~ "Archive Pipeline"
-    assert html =~ "Reusable archival flow"
-    assert html =~ "echo archived"
+    assert html =~ "Archive Pipeline Renamed"
+    assert html =~ "Updated archival flow"
+    assert html =~ "echo archived again"
+    assert html =~ "Update Existing Artifact"
   end
 
   test "builder run result links to the dedicated run detail page", %{conn: conn} do

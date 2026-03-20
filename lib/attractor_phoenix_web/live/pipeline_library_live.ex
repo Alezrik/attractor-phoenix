@@ -98,7 +98,7 @@ defmodule AttractorPhoenixWeb.PipelineLibraryLive do
 
   defp persist_entry(:edit, %{id: id}, params) do
     case PipelineLibrary.update_entry(id, params) do
-      {:ok, entry} -> {:ok, entry, "Library pipeline updated."}
+      {:ok, entry} -> {:ok, entry, "Updated library artifact #{entry.name} (#{entry.id})."}
       {:error, %{message: message}} -> {:error, message}
       {:error, :not_found} -> {:error, "Library pipeline not found."}
     end
@@ -106,8 +106,12 @@ defmodule AttractorPhoenixWeb.PipelineLibraryLive do
 
   defp persist_entry(_action, _entry, params) do
     case PipelineLibrary.create_entry(params) do
-      {:ok, entry} -> {:ok, entry, "Library pipeline created."}
-      {:error, %{message: message}} -> {:error, message}
+      {:ok, entry} ->
+        {:ok, entry,
+         "Saved new library artifact #{entry.name} (#{entry.id}). Future edits update this same artifact."}
+
+      {:error, %{message: message}} ->
+        {:error, message}
     end
   end
 

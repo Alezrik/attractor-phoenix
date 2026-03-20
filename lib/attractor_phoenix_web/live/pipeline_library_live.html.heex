@@ -9,7 +9,7 @@
   <:actions>
     <.link navigate={~p"/builder"} class="builder-btn">Open Builder</.link>
     <.link navigate={~p"/library/new"} id="new-library-entry" class="builder-btn">
-      New Library Pipeline
+      Save New Artifact
     </.link>
   </:actions>
   <:status>
@@ -96,7 +96,7 @@
                 navigate={~p"/builder?library=#{@featured_entry.id}"}
                 class="ui-button ui-button-primary"
               >
-                Load in Builder
+                Reopen in Builder
               </.link>
               <.link navigate={~p"/library/#{@featured_entry.id}/edit"} class="builder-btn">
                 Curate entry
@@ -161,7 +161,7 @@
                   <span class="library-entry-chip">{entry.id}</span>
                   <span :if={index == 0} class="library-entry-badge">Recent</span>
                   <span :if={entry.inserted_at == entry.updated_at} class="library-entry-badge">
-                    New draft
+                    Saved once
                   </span>
                 </div>
 
@@ -185,7 +185,7 @@
                   navigate={~p"/builder?library=#{entry.id}"}
                   class="ui-button ui-button-primary"
                 >
-                  Load in Builder
+                  Reopen in Builder
                 </.link>
                 <.link navigate={~p"/library/#{entry.id}/edit"} class="builder-btn">
                   Edit
@@ -209,25 +209,59 @@
     <aside class="library-form-panel">
       <div class="space-y-2">
         <p class="dashboard-card-label">
-          {if @live_action == :edit, do: "Entry curation", else: "New launchpad"}
+          {if @live_action == :edit, do: "Artifact curation", else: "New artifact"}
         </p>
         <h2 class="text-2xl font-bold">
           {if @live_action == :edit,
-            do: "Update library entry",
-            else: "Create a reusable launchpad"}
+            do: "Update existing artifact",
+            else: "Save a new durable artifact"}
         </h2>
         <p class="text-sm leading-6 text-base-content/70">
-          Store the same DOT and context payload the builder consumes, but keep creation isolated
-          from the browse-first launch surface on the left.
+          {if @live_action == :edit,
+            do:
+              "Update the same durable artifact Builder reloads by id. This route edits identity-backed content, not version history.",
+            else:
+              "Save the current DOT and context as a durable artifact. The first save establishes the artifact id Builder will use for later updates."}
         </p>
       </div>
 
       <div class="library-form-note">
-        <p class="library-stat-label">What this panel is for</p>
-        <p class="mt-2 text-sm leading-6 text-base-content/72">
-          Naming, documenting, and curating reusable graphs. Loading and continuing work stays the
-          primary action elsewhere on the route.
+        <p class="library-stat-label">
+          {if @editing_entry, do: "Artifact identity", else: "Save contract"}
         </p>
+        <%= if @editing_entry do %>
+          <div id="library-edit-identity" class="mt-3 space-y-3">
+            <p class="text-sm leading-6 text-base-content/72">
+              `Update` changes this same durable artifact. It does not imply publish, release,
+              compare, revert, or version-history semantics.
+            </p>
+            <div class="grid gap-3 sm:grid-cols-3">
+              <div class="rounded-2xl border border-base-300 bg-base-100 px-4 py-3">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-base-content/55">
+                  Artifact ID
+                </p>
+                <p class="mt-2 font-mono text-xs">{@editing_entry.id}</p>
+              </div>
+              <div class="rounded-2xl border border-base-300 bg-base-100 px-4 py-3">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-base-content/55">
+                  First Saved
+                </p>
+                <p class="mt-2 text-xs font-semibold">{@editing_entry.inserted_at}</p>
+              </div>
+              <div class="rounded-2xl border border-base-300 bg-base-100 px-4 py-3">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-base-content/55">
+                  Last Updated
+                </p>
+                <p class="mt-2 text-xs font-semibold">{@editing_entry.updated_at}</p>
+              </div>
+            </div>
+          </div>
+        <% else %>
+          <p class="mt-2 text-sm leading-6 text-base-content/72">
+            `Save` creates a new durable artifact from the current name, DOT, and context payload.
+            Loading and continuing work stays the primary action elsewhere on the route.
+          </p>
+        <% end %>
       </div>
 
       <.inline_error
@@ -268,7 +302,7 @@
 
         <div class="flex flex-wrap gap-2 pt-2">
           <button id="save-library-entry" type="submit" class="ui-button ui-button-primary">
-            {if @live_action == :edit, do: "Update Pipeline", else: "Create Pipeline"}
+            {if @live_action == :edit, do: "Update Existing Artifact", else: "Save New Artifact"}
           </button>
           <.link navigate={~p"/library"} class="builder-btn">
             Reset

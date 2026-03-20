@@ -294,7 +294,7 @@ defmodule AttractorPhoenix.PipelineLibrary do
   end
 
   defp timestamp do
-    DateTime.utc_now() |> DateTime.truncate(:second) |> DateTime.to_iso8601()
+    DateTime.utc_now() |> DateTime.truncate(:microsecond) |> DateTime.to_iso8601()
   end
 
   defp parse_timestamp(value) do

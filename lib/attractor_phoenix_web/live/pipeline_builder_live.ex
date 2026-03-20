@@ -83,6 +83,7 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
     prompt = Map.get(params, "prompt", "")
     provider = Map.get(params, "provider", "")
     model = Map.get(params, "model", "")
+    context_json = "{}"
 
     case DotGenerator.generate(prompt, provider: provider, model: model) do
       {:ok, dot} ->
@@ -90,8 +91,9 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
          socket
          |> assign(
            dot: dot,
-           form:
-             build_form(dot, socket.assigns.context_json, socket.assigns.loaded_library_entry),
+           context_json: context_json,
+           form: build_form(dot, context_json, nil),
+           loaded_library_entry: nil,
            error: nil
          )
          |> assign_create_state()
@@ -119,6 +121,8 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
       "context_json" => context_json
     }
 
+    action = if socket.assigns.loaded_library_entry, do: :update_existing, else: :save_new
+
     result =
       case socket.assigns.loaded_library_entry do
         %{id: id} -> PipelineLibrary.update_entry(id, attrs)
@@ -136,7 +140,7 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
            loaded_library_entry: entry,
            error: nil
          )
-         |> put_flash(:info, "Pipeline saved to the library.")
+         |> put_flash(:info, library_flash_message(action, entry))
          |> push_patch(to: ~p"/builder?library=#{entry.id}")}
 
       {:error, %{message: message}} ->
@@ -397,6 +401,14 @@ defmodule AttractorPhoenixWeb.PipelineBuilderLive do
   defp blank_to_nil(value) do
     trimmed = value |> to_string() |> String.trim()
     if trimmed == "", do: nil, else: trimmed
+  end
+
+  defp library_flash_message(:save_new, entry) do
+    "Saved new library artifact #{entry.name} (#{entry.id}). Future edits update this same artifact."
+  end
+
+  defp library_flash_message(:update_existing, entry) do
+    "Updated library artifact #{entry.name} (#{entry.id})."
   end
 
   defp submit_pipeline(dot, context, "pipelines") do
