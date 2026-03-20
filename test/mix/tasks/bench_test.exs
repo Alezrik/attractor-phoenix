@@ -45,6 +45,23 @@ defmodule Mix.Tasks.BenchTest do
     assert output =~ "custom benchmark"
   end
 
+  test "runs the selected resume benchmark script by path", %{tmp_dir: tmp_dir} do
+    write_script(
+      Path.join([tmp_dir, "bench", "selected_resume_slice.exs"]),
+      "selected resume benchmark"
+    )
+
+    output =
+      capture_io(fn ->
+        in_tmp_dir(tmp_dir, fn ->
+          Mix.Task.reenable("bench")
+          Mix.Tasks.Bench.run(["bench/selected_resume_slice.exs"])
+        end)
+      end)
+
+    assert output =~ "selected resume benchmark"
+  end
+
   test "raises when the selected benchmark script does not exist", %{tmp_dir: tmp_dir} do
     assert_raise Mix.Error, ~r/Benchmark script not found/, fn ->
       in_tmp_dir(tmp_dir, fn ->
