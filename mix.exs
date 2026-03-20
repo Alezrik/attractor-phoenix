@@ -32,9 +32,11 @@ defmodule AttractorPhoenix.MixProject do
     [
       preferred_envs: [
         "attractor.http": :test,
-        "attractor.http.hello": :api_test,
+        "attractor.api": :api_test,
         bench: :bench,
         precommit: :test,
+        "test-api": :api_test,
+        "test-e2e": :test,
         dialyzer: :dev,
         coveralls: :test,
         "coveralls.detail": :test,
@@ -46,7 +48,7 @@ defmodule AttractorPhoenix.MixProject do
   end
 
   # Specifies which paths to compile per environment.
-  defp elixirc_paths(:api_test), do: ["lib", "qa/http_hello/support"]
+  defp elixirc_paths(:api_test), do: ["lib", "qa/http_api/support"]
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 
@@ -112,8 +114,43 @@ defmodule AttractorPhoenix.MixProject do
         "credo --strict",
         "coveralls.json",
         "coverage.gate"
-      ]
+      ],
+      "test-api": ["attractor.api"],
+      "test-e2e": [&test_e2e/1]
     ]
+  end
+
+  defp test_e2e(args) do
+    System.put_env("ATTRACTOR_PHOENIX_E2E", "true")
+
+    Application.put_env(
+      :attractor_phoenix,
+      AttractorPhoenixWeb.Endpoint,
+      Application.get_env(:attractor_phoenix, AttractorPhoenixWeb.Endpoint, [])
+      |> Keyword.put(:server, true)
+    )
+
+    ensure_e2e_assets!()
+    Mix.Task.reenable("test")
+    Mix.Task.run("test", ["--include", "e2e", "test/e2e" | args])
+  end
+
+  defp ensure_e2e_assets! do
+    unless File.exists?("assets/node_modules/playwright/package.json") do
+      Mix.Task.run("cmd", ["npm", "--prefix", "assets", "install"])
+      Mix.Task.reenable("cmd")
+    end
+
+    Mix.Task.run("cmd", [
+      "npm",
+      "--prefix",
+      "assets",
+      "exec",
+      "playwright",
+      "--",
+      "install",
+      "chromium"
+    ])
   end
 
   defp docs do

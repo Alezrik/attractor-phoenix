@@ -1,11 +1,12 @@
 import Config
 
-# We don't run a server during test. If one is required,
-# you can enable the server option below.
+e2e_enabled? = System.get_env("ATTRACTOR_PHOENIX_E2E") in ~w(1 true t yes)
+
 config :attractor_phoenix, AttractorPhoenixWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
   secret_key_base: "kYoCrewZI2DJ/xNdrlpYS7VRO7ZNR3mBge2zdUhZDOQmnFDHKRXMfggysXYL6VQE",
-  server: false
+  url: [host: "127.0.0.1", port: 4002, scheme: "http"],
+  server: e2e_enabled?
 
 # In test we don't send emails
 config :attractor_phoenix, AttractorPhoenix.Mailer, adapter: Swoosh.Adapters.Test

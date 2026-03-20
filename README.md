@@ -249,8 +249,9 @@ Notes:
 
 ```bash
 mix test
+mix test-api
+mix test-e2e
 mix attractor.http
-mix attractor.http.hello
 mix bench
 mix coveralls
 mix coveralls.html
@@ -265,11 +266,22 @@ run independently from the broader suite:
 ```bash
 mix attractor.http
 mix attractor.http --trace
-mix attractor.http.hello
+mix test-api
 ```
 
-`mix attractor.http.hello` runs in `MIX_ENV=api_test` and targets `qa/http_hello/`,
-so it does not join the default `mix test` file sweep.
+`mix test-api` runs in `MIX_ENV=api_test` and targets `qa/http_api/`, so it
+does not join the default `mix test` file sweep.
+
+The browser-backed smoke lane is intentionally separate from the main suite:
+
+```bash
+mix test-e2e
+```
+
+That command installs the Playwright npm package and Chromium for the `assets/`
+workspace if they are missing, starts the Phoenix endpoint in test mode, and
+runs the tests under `test/e2e/`. The browser smoke tests are excluded from the
+default `mix test` run.
 
 ## Focused Benchmarks
 
