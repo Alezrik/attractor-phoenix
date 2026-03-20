@@ -280,7 +280,8 @@ mix test-e2e
 
 That command installs the Playwright npm package and Chromium for the `assets/`
 workspace if they are missing, starts the Phoenix endpoint in test mode, and
-runs the tests under `test/e2e/`.
+runs the tests under `test/e2e/`. The browser smoke tests are excluded from the
+default `mix test` run.
 
 ## Focused Benchmarks
 

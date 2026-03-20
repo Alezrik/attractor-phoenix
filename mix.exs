@@ -132,7 +132,7 @@ defmodule AttractorPhoenix.MixProject do
 
     ensure_e2e_assets!()
     Mix.Task.reenable("test")
-    Mix.Task.run("test", ["test/e2e" | args])
+    Mix.Task.run("test", ["--include", "e2e", "test/e2e" | args])
   end
 
   defp ensure_e2e_assets! do
