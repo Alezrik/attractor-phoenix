@@ -51,6 +51,13 @@ defmodule AttractorPhoenixWeb.RunLiveTest do
     assert has_element?(view, "#run-recovery-summary")
     assert has_element?(view, "#run-recovery-label", "Human gate blocks progress")
     assert has_element?(view, "#run-recovery-next-step", "Approve release?")
+    assert has_element?(view, "#run-recovery-detail", "selected cancelled packet")
+
+    assert has_element?(
+             view,
+             "#run-recovery-unavailable",
+             "does not generalize retry, replay, restart"
+           )
 
     assert has_element?(
              view,
@@ -74,6 +81,15 @@ defmodule AttractorPhoenixWeb.RunLiveTest do
     html = render(view)
 
     assert has_element?(view, "#run-scoped-failure-review", "Continue in Failure Review")
+    assert has_element?(view, "#run-recovery-detail", "checkpoint resume stays blocked")
+    assert has_element?(view, "#run-recovery-detail", "human gate is fully cleared")
+
+    assert has_element?(
+             view,
+             "#run-recovery-unavailable",
+             "one explicit checkpoint-backed recovery slice only"
+           )
+
     assert html =~ "/failures?"
     assert html =~ "status=cancelled"
     assert html =~ "questions=open"
@@ -116,6 +132,15 @@ defmodule AttractorPhoenixWeb.RunLiveTest do
     {:ok, view, _html} = live(conn, ~p"/runs/#{pipeline_id}")
 
     assert has_element?(view, "#run-recovery-label", "Checkpoint-backed resume available")
+    assert has_element?(view, "#run-recovery-detail", "recorded answer")
+    assert has_element?(view, "#run-recovery-effect", "same run id")
+
+    assert has_element?(
+             view,
+             "#run-recovery-unavailable",
+             "one explicit checkpoint-backed recovery slice only"
+           )
+
     assert has_element?(view, "#run-resume-pipeline", "Resume From Checkpoint")
 
     view
@@ -127,11 +152,12 @@ defmodule AttractorPhoenixWeb.RunLiveTest do
     assert has_element?(view, "#run-current-state", "Completed")
     assert has_element?(view, "#run-recovery-receipt")
     assert has_element?(view, "#run-recovery-receipt-label", "Checkpoint resume started")
+    assert has_element?(view, "#run-recovery-receipt-detail", "same run id")
 
     assert has_element?(
              view,
              "#run-recovery-receipt-known-limit",
-             "does not generalize retry, replay, or restart semantics"
+             "qualified checkpoint-backed continuity slice on the same run id only"
            )
   end
 

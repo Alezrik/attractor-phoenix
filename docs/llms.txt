@@ -179,5 +179,10 @@ as controllers, components, channels, and so on.
 
 ## Mix Tasks
 
+- [mix attractor.api](Mix.Tasks.Attractor.Api.md): Runs Noor Halden's focused AttractorEx API smoke suite without folding it into
+the broader `mix test` or `mix attractor.http` loops.
+- [mix attractor.http](Mix.Tasks.Attractor.Http.md): Runs the focused AttractorEx HTTP API suite without folding it into the full
+`mix test` loop.
+- [mix bench](Mix.Tasks.Bench.md): Runs focused benchmark scripts from `bench/` without folding them into `mix test`.
 - [mix coverage.gate](Mix.Tasks.Coverage.Gate.md): Enforces the minimum coverage threshold configured in `coveralls.json`.
 

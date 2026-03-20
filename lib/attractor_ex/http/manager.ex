@@ -42,6 +42,7 @@ defmodule AttractorEx.HTTP.Manager do
   def pipeline_events(server, id), do: GenServer.call(server, {:pipeline_events, id})
   def pending_questions(server, id), do: GenServer.call(server, {:pending_questions, id})
   def snapshot(server, id), do: GenServer.call(server, {:snapshot, id})
+  def pipeline_status_payload(pipeline), do: pipeline_summary(pipeline)
 
   @doc "Returns persisted events after the given sequence number."
   def replay_events(server, id, opts \\ []) do
@@ -644,6 +645,7 @@ defmodule AttractorEx.HTTP.Manager do
       "updated_at" => pipeline.updated_at,
       "has_checkpoint" => is_map(pipeline.checkpoint),
       "resume_ready" => resume_ready?(pipeline),
+      "recovery" => recovery_contract(pipeline),
       "artifacts" => Enum.map(pipeline.artifacts, &ArtifactRecord.to_map/1)
     }
   end
@@ -859,6 +861,30 @@ defmodule AttractorEx.HTTP.Manager do
     |> human_answers()
     |> map_size()
     |> Kernel.>(0)
+  end
+
+  defp recovery_contract(pipeline) do
+    %{
+      "state" => recovery_state(pipeline),
+      "action" => "checkpoint_resume",
+      "refusal_reason" => recovery_refusal_reason(pipeline),
+      "known_limit" => recovery_known_limit()
+    }
+  end
+
+  defp recovery_state(pipeline) do
+    if resume_ready?(pipeline), do: "available", else: "refused"
+  end
+
+  defp recovery_refusal_reason(pipeline) do
+    case validate_resume_contract(pipeline) do
+      :ok -> nil
+      {:error, {:resume_unavailable, reason}} -> reason
+    end
+  end
+
+  defp recovery_known_limit do
+    "This packet proves one explicit checkpoint-backed recovery slice only. It does not generalize retry, replay, restart, or non-selected-route recovery."
   end
 
   defp human_answers(pipeline) do

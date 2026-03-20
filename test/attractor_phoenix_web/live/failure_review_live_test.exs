@@ -67,6 +67,18 @@ defmodule AttractorPhoenixWeb.FailureReviewLiveTest do
 
     assert has_element?(
              view,
+             "#failure-recovery-detail-#{cancelled_id}",
+             "checkpoint resume stays blocked"
+           )
+
+    assert has_element?(
+             view,
+             "#failure-recovery-detail-#{cancelled_id}",
+             "human gate is fully cleared"
+           )
+
+    assert has_element?(
+             view,
              "#failure-recovery-effect-#{cancelled_id}",
              "does not retry, replay, or resume"
            )
@@ -231,6 +243,18 @@ defmodule AttractorPhoenixWeb.FailureReviewLiveTest do
              view,
              "#failure-recovery-label-#{pipeline_id}",
              "Checkpoint-backed resume available"
+           )
+
+    assert has_element?(
+             view,
+             "#failure-recovery-detail-#{pipeline_id}",
+             "recorded answer"
+           )
+
+    assert has_element?(
+             view,
+             "#failure-recovery-effect-#{pipeline_id}",
+             "same run id"
            )
 
     assert has_element?(

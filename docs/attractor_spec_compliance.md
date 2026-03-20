@@ -294,6 +294,7 @@ Implemented:
   - Phoenix PubSub replay-filtered snapshots via `after_sequence`
   - boot-time reload and recovery of incomplete HTTP-managed runs
   - explicit `POST /pipelines/:id/resume` admission only for cancelled runs with checkpoint, cleared questions, and a recorded human answer
+  - status-contract recovery packet with explicit `refused` vs `available` state, refusal reason, admitted action name, and known-limit text on the selected cancelled packet
 
 ### `10. Condition Expression Language` — `implemented`
 

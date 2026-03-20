@@ -82,24 +82,21 @@ try {
   }, "pipeline to cancel");
 
   const page = await browser.newPage();
-  await page.goto(`${baseUrl}/?status=all&questions=open&search=${pipelineId}`, {
-    waitUntil: "networkidle"
-  });
-
-  const dashboardRun = page.locator(`#open-run-${pipelineId}`);
-  await dashboardRun.waitFor({ state: "visible" });
-
-  const dashboardNextStep = await page.locator(`#dashboard-next-step-${pipelineId}`).textContent();
-  if (!dashboardNextStep || !dashboardNextStep.includes("debugger")) {
-    throw new Error(`Missing dashboard next-step guidance: ${dashboardNextStep}`);
-  }
-
   await page.goto(`${baseUrl}/runs/${pipelineId}`, { waitUntil: "networkidle" });
 
   await page.locator("#answer-form-gate").waitFor({ state: "visible" });
   const runGateOwner = await page.locator("#run-human-gate-owner").textContent();
   if (!runGateOwner || !runGateOwner.includes("Operator review required")) {
     throw new Error(`Missing run detail gate owner text: ${runGateOwner}`);
+  }
+
+  const runRefusalDetail = await page.locator("#run-recovery-detail").textContent();
+  if (
+    !runRefusalDetail ||
+    !runRefusalDetail.includes("checkpoint resume stays blocked") ||
+    !runRefusalDetail.includes("human gate is fully cleared")
+  ) {
+    throw new Error(`Missing pre-cancel refusal guidance on run detail: ${runRefusalDetail}`);
   }
 
   await page.goto(`${baseUrl}/failures?questions=open&search=${pipelineId}`, {
@@ -112,6 +109,17 @@ try {
   const failureEffect = await page.locator(`#failure-recovery-effect-${pipelineId}`).textContent();
   if (!failureEffect || !failureEffect.includes("does not retry, replay, or resume")) {
     throw new Error(`Missing failure review known-limit text: ${failureEffect}`);
+  }
+
+  const failureRefusalDetail = await page
+    .locator(`#failure-recovery-detail-${pipelineId}`)
+    .textContent();
+  if (
+    !failureRefusalDetail ||
+    !failureRefusalDetail.includes("checkpoint resume stays blocked") ||
+    !failureRefusalDetail.includes("human gate is fully cleared")
+  ) {
+    throw new Error(`Missing explicit refusal boundary on failure review: ${failureRefusalDetail}`);
   }
 
   await page.goto(`${baseUrl}/runs/${pipelineId}/debugger?focus=questions`, {
@@ -133,6 +141,17 @@ try {
 
   const resumeButton = page.locator("#run-resume-pipeline");
   await resumeButton.waitFor({ state: "visible" });
+
+  const availableDetail = await page.locator("#run-recovery-detail").textContent();
+  if (!availableDetail || !availableDetail.includes("recorded answer")) {
+    throw new Error(`Missing explicit availability detail on run detail: ${availableDetail}`);
+  }
+
+  const availableEffect = await page.locator("#run-recovery-effect").textContent();
+  if (!availableEffect || !availableEffect.includes("same run id")) {
+    throw new Error(`Missing qualified continuity framing before resume: ${availableEffect}`);
+  }
+
   await resumeButton.click();
 
   await page.locator("#run-recovery-receipt-label").waitFor({ state: "visible" });
@@ -140,6 +159,20 @@ try {
   const receiptLabel = await page.locator("#run-recovery-receipt-label").textContent();
   if (!receiptLabel || !receiptLabel.includes("Checkpoint resume started")) {
     throw new Error(`Missing resume receipt label: ${receiptLabel}`);
+  }
+
+  const receiptDetail = await page.locator("#run-recovery-receipt-detail").textContent();
+  const receiptKnownLimit = await page.locator("#run-recovery-receipt-known-limit").textContent();
+
+  if (!receiptDetail || !receiptDetail.includes("same run id")) {
+    throw new Error(`Missing same-run continuity detail on receipt: ${receiptDetail}`);
+  }
+
+  if (
+    !receiptKnownLimit ||
+    !receiptKnownLimit.includes("qualified checkpoint-backed continuity slice on the same run id only")
+  ) {
+    throw new Error(`Missing qualified continuity known-limit on receipt: ${receiptKnownLimit}`);
   }
 
   await waitFor(async () => {
@@ -151,8 +184,9 @@ try {
     [
       "SABLE_OPERATOR_JOURNEY_OK",
       `pipeline_id=${pipelineId}`,
-      "dashboard_seen=true",
-      "resume_receipt_seen=true"
+      "refusal_seen=true",
+      "availability_seen=true",
+      "qualified_continuity_seen=true"
     ].join(" ")
   );
 } finally {

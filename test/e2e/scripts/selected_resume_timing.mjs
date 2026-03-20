@@ -50,7 +50,9 @@ async function waitFor(predicate, label, maxAttempts = 100) {
 }
 
 const browser = await chromium.launch();
-const timings = [];
+const refusalTimings = [];
+const availabilityTimings = [];
+const receiptTimings = [];
 
 try {
   for (let iteration = 0; iteration < 3; iteration += 1) {
@@ -70,25 +72,41 @@ try {
       return body.questions && body.questions.length > 0 ? body.questions : null;
     }, "pending questions");
 
+    const cancelStart = performance.now();
     await jsonRequest(`/pipelines/${pipelineId}/cancel`, {
       method: "POST",
       body: JSON.stringify({})
     });
 
-    await waitFor(async () => {
+    const refusedPayload = await waitFor(async () => {
       const { body } = await jsonRequest(`/pipelines/${pipelineId}`);
-      return body.status === "cancelled" ? body : null;
+      return body.status === "cancelled" && body.recovery?.state === "refused" ? body : null;
     }, "pipeline to cancel");
 
+    const refusalMs = Math.round(performance.now() - cancelStart);
+    refusalTimings.push(refusalMs);
+
+    if (!String(refusedPayload.recovery?.refusal_reason || "").includes("human gate is fully cleared")) {
+      throw new Error(`Missing explicit refusal reason during timing run: ${JSON.stringify(refusedPayload.recovery)}`);
+    }
+
+    const answerStart = performance.now();
     await jsonRequest(`/answer`, {
       method: "POST",
       body: JSON.stringify({ pipeline_id: pipelineId, question_id: "gate", value: "A" })
     });
 
-    await waitFor(async () => {
+    const availablePayload = await waitFor(async () => {
       const { body } = await jsonRequest(`/pipelines/${pipelineId}`);
-      return body.resume_ready === true ? body : null;
+      return body.resume_ready === true && body.recovery?.state === "available" ? body : null;
     }, "resume readiness");
+
+    const availabilityMs = Math.round(performance.now() - answerStart);
+    availabilityTimings.push(availabilityMs);
+
+    if (availablePayload.recovery?.refusal_reason !== null) {
+      throw new Error(`Expected refusal_reason to clear once available during timing run: ${JSON.stringify(availablePayload.recovery)}`);
+    }
 
     const page = await browser.newPage();
     await page.goto(`${baseUrl}/runs/${pipelineId}`, { waitUntil: "networkidle" });
@@ -96,7 +114,7 @@ try {
     const resumeButton = page.locator("#run-resume-pipeline");
     await resumeButton.waitFor({ state: "visible" });
 
-    const startTime = performance.now();
+    const resumeStart = performance.now();
     await resumeButton.click();
 
     await waitFor(async () => {
@@ -104,24 +122,32 @@ try {
       return receiptLabel && receiptLabel.includes("Checkpoint resume started") ? receiptLabel : null;
     }, "run detail to reflect completion", 300);
 
-    const elapsedMs = Math.round(performance.now() - startTime);
-    timings.push(elapsedMs);
+    const receiptMs = Math.round(performance.now() - resumeStart);
+    receiptTimings.push(receiptMs);
 
-    if (elapsedMs > 15000) {
-      throw new Error(`Resume iteration ${iteration + 1} exceeded the 15s sanity ceiling: ${elapsedMs}ms`);
+    if (refusalMs > 15000 || availabilityMs > 15000 || receiptMs > 15000) {
+      throw new Error(
+        `Iteration ${iteration + 1} exceeded the 15s sanity ceiling: refusal=${refusalMs}ms availability=${availabilityMs}ms receipt=${receiptMs}ms`
+      );
     }
 
     await page.close();
   }
 
-  const maxElapsed = Math.max(...timings);
+  const maxRefusal = Math.max(...refusalTimings);
+  const maxAvailability = Math.max(...availabilityTimings);
+  const maxReceipt = Math.max(...receiptTimings);
 
   console.log(
     [
       "RHEA_RESUME_TIMING_OK",
       "iterations=3",
-      `max_ms=${maxElapsed}`,
-      `samples_ms=${timings.join(",")}`
+      `max_refusal_ms=${maxRefusal}`,
+      `max_availability_ms=${maxAvailability}`,
+      `max_receipt_ms=${maxReceipt}`,
+      `refusal_samples_ms=${refusalTimings.join(",")}`,
+      `availability_samples_ms=${availabilityTimings.join(",")}`,
+      `receipt_samples_ms=${receiptTimings.join(",")}`
     ].join(" ")
   );
 } finally {

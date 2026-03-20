@@ -85,10 +85,16 @@ try {
     throw new Error(`Expected cancel to return 202, got ${cancelResponse.status}`);
   }
 
-  await waitFor(async () => {
+  const refusedPayload = await waitFor(async () => {
     const { body } = await jsonRequest(`/pipelines/${pipelineId}`);
-    return body.status === "cancelled" ? body : null;
+    return body.status === "cancelled" && body.recovery?.state === "refused" ? body : null;
   }, "pipeline to cancel");
+
+  if (!String(refusedPayload.recovery?.refusal_reason || "").includes("human gate is fully cleared")) {
+    throw new Error(
+      `Expected explicit refusal reason before readiness, got ${JSON.stringify(refusedPayload.recovery)}`
+    );
+  }
 
   const { response: answerResponse } = await jsonRequest(
     `/answer`,
@@ -102,10 +108,16 @@ try {
     throw new Error(`Expected answer to return 202, got ${answerResponse.status}`);
   }
 
-  await waitFor(async () => {
+  const availablePayload = await waitFor(async () => {
     const { body } = await jsonRequest(`/pipelines/${pipelineId}`);
-    return body.resume_ready === true ? body : null;
+    return body.resume_ready === true && body.recovery?.state === "available" ? body : null;
   }, "resume readiness");
+
+  if (availablePayload.recovery?.refusal_reason !== null) {
+    throw new Error(
+      `Expected refusal_reason to clear once recovery becomes available, got ${JSON.stringify(availablePayload.recovery)}`
+    );
+  }
 
   const page = await browser.newPage();
   await page.goto(`${baseUrl}/runs/${pipelineId}`, { waitUntil: "networkidle" });
@@ -127,10 +139,22 @@ try {
     throw new Error(`Missing resume receipt label: ${receiptLabel}`);
   }
 
-  await waitFor(async () => {
+  const completedPayload = await waitFor(async () => {
     const { body } = await jsonRequest(`/pipelines/${pipelineId}`);
     return body.status === "success" ? body : null;
   }, "pipeline to complete after resume", 300);
+
+  if (completedPayload.recovery?.state !== "refused") {
+    throw new Error(
+      `Expected post-resume status payload to return to a refused state outside the selected packet, got ${JSON.stringify(completedPayload.recovery)}`
+    );
+  }
+
+  if (!String(completedPayload.recovery?.refusal_reason || "").includes("selected cancelled packet")) {
+    throw new Error(
+      `Expected post-resume refusal reason to stay packet-scoped, got ${JSON.stringify(completedPayload.recovery)}`
+    );
+  }
 
   const { response: rejectedResponse, body: rejectedBody } = await jsonRequest(
     `/pipelines/${pipelineId}/resume`,
@@ -149,7 +173,9 @@ try {
     [
       "NOOR_API_RESUME_CONTRACT_OK",
       `pipeline_id=${pipelineId}`,
-      "resume_ready=true",
+      `refusal_state=${refusedPayload.recovery.state}`,
+      `availability_state=${availablePayload.recovery.state}`,
+      `post_resume_state=${completedPayload.recovery.state}`,
       "resume_rejected_after_completion=true"
     ].join(" ")
   );
