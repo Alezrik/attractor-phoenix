@@ -42,6 +42,11 @@ defmodule AttractorPhoenixWeb.SetupLiveTest do
     assert has_element?(view, "#setup-form")
     assert has_element?(view, "#default-model-form")
     assert has_element?(view, "#setup-summary-grid")
+    assert has_element?(view, "#setup-proof-packet")
+    assert html =~ "Provider readiness proof boundary"
+    assert html =~ "not yet proven"
+    refute html =~ "not yet proven by"
+    assert html =~ "AttractorPhoenix.LLMSetup.get_settings()"
 
     view
     |> element("#setup-form")
@@ -60,6 +65,8 @@ defmodule AttractorPhoenixWeb.SetupLiveTest do
     assert render(view) =~ "gpt-5"
     assert render(view) =~ "claude-sonnet-4-5"
     assert render(view) =~ "gemini-2.5-pro"
+    assert render(view) =~ "supported by"
+    assert render(view) =~ "configured provider(s) ready for default routing"
 
     view
     |> element("#default-model-form")
@@ -91,6 +98,7 @@ defmodule AttractorPhoenixWeb.SetupLiveTest do
     assert render(view) =~ "Provider settings refreshed."
     assert render(view) =~ "Provider Credentials"
     assert render(view) =~ "codex-5.3"
+    assert render(view) =~ "supported by"
 
     settings = LLMSetup.get_settings()
     assert settings.providers["openai"].mode == "cli"

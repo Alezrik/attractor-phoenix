@@ -4,6 +4,7 @@ defmodule AttractorPhoenix.Benchmark do
   """
 
   alias AttractorPhoenix.Conformance
+  alias AttractorPhoenix.TrustProof
 
   @conformance Conformance.summary()
 
@@ -383,8 +384,9 @@ defmodule AttractorPhoenix.Benchmark do
 
   def summary do
     composite = composite_score(@dimensions)
+    leadership_ready = leadership_ready?(@dimensions)
 
-    %{
+    base_summary = %{
       title: "Mission And Competitive Benchmark",
       mission_dimensions: @mission_dimensions,
       target_capabilities: @target_capabilities,
@@ -394,7 +396,7 @@ defmodule AttractorPhoenix.Benchmark do
       dimensions: @dimensions,
       conformance: @conformance,
       composite_score: composite,
-      leadership_ready?: leadership_ready?(@dimensions),
+      leadership_ready?: leadership_ready,
       current_position: @current_position,
       required_evidence: @required_evidence,
       scoring_rubric: @scoring_rubric,
@@ -410,6 +412,8 @@ defmodule AttractorPhoenix.Benchmark do
       anti_goals: @anti_goals,
       immediate_next_steps: @immediate_next_steps
     }
+
+    Map.put(base_summary, :proof_packet, TrustProof.benchmark_record(base_summary))
   end
 
   defp composite_score(dimensions) do

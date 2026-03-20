@@ -2,6 +2,7 @@ defmodule AttractorPhoenixWeb.SetupLive do
   use AttractorPhoenixWeb, :live_view
 
   alias AttractorPhoenix.LLMSetup
+  alias AttractorPhoenix.TrustProof
 
   @impl true
   def mount(_params, _session, socket) do
@@ -12,6 +13,7 @@ defmodule AttractorPhoenixWeb.SetupLive do
      |> assign(
        page_title: "Setup",
        settings: settings,
+       proof_packet: TrustProof.provider_health_record(settings),
        setup_form: build_setup_form(settings),
        default_form: build_default_form(settings),
        error: nil
@@ -28,6 +30,7 @@ defmodule AttractorPhoenixWeb.SetupLive do
            socket
            |> assign(
              settings: settings,
+             proof_packet: TrustProof.provider_health_record(settings),
              setup_form: build_setup_form(settings),
              default_form: build_default_form(settings),
              error: nil
@@ -43,7 +46,12 @@ defmodule AttractorPhoenixWeb.SetupLive do
           {:ok, settings} ->
             {:noreply,
              socket
-             |> assign(settings: settings, setup_form: build_setup_form(settings), error: nil)
+             |> assign(
+               settings: settings,
+               proof_packet: TrustProof.provider_health_record(settings),
+               setup_form: build_setup_form(settings),
+               error: nil
+             )
              |> assign(:default_form, build_default_form(settings))
              |> put_flash(:info, "API keys saved.")}
 
@@ -62,6 +70,7 @@ defmodule AttractorPhoenixWeb.SetupLive do
              socket
              |> assign(
                settings: settings,
+               proof_packet: TrustProof.provider_health_record(settings),
                setup_form: build_setup_form(settings),
                default_form: build_default_form(settings),
                error: nil
@@ -151,5 +160,34 @@ defmodule AttractorPhoenixWeb.SetupLive do
       entry.api_key == "" -> "Not saved"
       true -> "Saved"
     end
+  end
+
+  defp proof_status_tone(status) when status in ["ready", "fixed"],
+    do: "bg-success/12 text-success"
+
+  defp proof_status_tone("improved"), do: "bg-info/12 text-info"
+  defp proof_status_tone("partial"), do: "bg-warning/12 text-warning"
+  defp proof_status_tone("blocked"), do: "bg-error/12 text-error"
+  defp proof_status_tone("unproven"), do: "bg-base-200 text-base-content/70"
+  defp proof_status_tone(_status), do: "bg-base-200 text-base-content/70"
+
+  defp support_phrase(record), do: TrustProof.support_phrase(record)
+
+  defp proof_fields(record) do
+    [
+      {"Surface", record.surface},
+      {"Scope", record.scope},
+      {"Subject", record.subject},
+      {"Status", record.status},
+      {"Claim level", record.claim_level},
+      {"Confidence basis", record.confidence_basis},
+      {"Proof artifact", record.proof_artifact},
+      {"Owner", record.owner},
+      {"Timestamp", record.timestamp},
+      {"Next action", record.next_action},
+      {"Provider", record.provider},
+      {"Readiness", record.readiness},
+      {"Latency / cost / quality", record.latency_cost_quality_tradeoff}
+    ]
   end
 end
