@@ -889,15 +889,15 @@ defmodule AttractorEx.HTTP.Manager do
   defp clear_store(%{root: root}) do
     runs_root = Path.join(root, "runs")
 
-    :ok = remove_path(runs_root)
-    File.mkdir_p(runs_root)
+    with :ok <- remove_path(runs_root) do
+      File.mkdir_p(runs_root)
+    end
   end
 
   defp clear_store(_store_config), do: :ok
 
   defp remove_path(path) do
     case File.rm_rf(path) do
-      :ok -> :ok
       {:ok, _paths} -> :ok
       {:error, reason, _path} -> {:error, reason}
     end
