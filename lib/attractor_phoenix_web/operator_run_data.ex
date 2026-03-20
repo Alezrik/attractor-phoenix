@@ -347,6 +347,60 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
     }
   end
 
+  def canonical_route_handoff(pipeline, questions \\ [])
+  def canonical_route_handoff(nil, _questions), do: nil
+
+  def canonical_route_handoff(pipeline, questions) when is_map(pipeline) do
+    status = normalize_status(pipeline["status"])
+    pending_questions = max(pipeline["pending_questions"] || 0, length(questions))
+
+    case {status, pending_questions > 0} do
+      {status, _} when status in [:fail, :cancelled] ->
+        %{
+          mode:
+            if(pending_questions > 0,
+              do: "Inspection -> failure review -> action",
+              else: "Inspection -> failure review"
+            ),
+          next_step:
+            if(pending_questions > 0,
+              do:
+                "Inspect this run first, then continue into the run-scoped failure review before opening the human-gate debugger.",
+              else:
+                "Inspect this run first, then continue into the run-scoped failure review to confirm the same failure slice."
+            ),
+          route_detail:
+            if(pending_questions > 0,
+              do:
+                "Failure review stays filtered to this run and its current question state so the operator does not skip inspection and lose route truth.",
+              else:
+                "Failure review stays filtered to this run so the operator can keep the same failure context instead of widening into the full queue."
+            ),
+          known_limit:
+            "This handoff clarifies one selected run route only. It does not imply retry, replay, resume, or broader operator continuity.",
+          failure_review_params: failure_review_query_params(pipeline, questions)
+        }
+
+      _ ->
+        nil
+    end
+  end
+
+  def failure_review_query_params(pipeline, questions \\ [])
+  def failure_review_query_params(nil, _questions), do: %{}
+
+  def failure_review_query_params(pipeline, questions) when is_map(pipeline) do
+    status = normalize_status(pipeline["status"])
+    pending_questions = max(pipeline["pending_questions"] || 0, length(questions))
+
+    [
+      {"status", failure_review_status_filter(status)},
+      {"questions", failure_review_question_filter(status, pending_questions)},
+      {"search", pipeline["pipeline_id"]}
+    ]
+    |> Enum.reject(fn {_key, value} -> value in [nil, ""] end)
+  end
+
   def question_resolution_summary(nil, _pipeline, _questions), do: nil
   def question_resolution_summary(_question, nil, _questions), do: nil
 
@@ -380,7 +434,9 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
       question: question_prompt(question),
       owner: "Operator response accepted",
       detail: detail,
-      next_step: next_step
+      next_step: next_step,
+      known_limit:
+        "The question is cleared on this route, but that does not prove retry, replay, resume, or any broader recovery semantics."
     }
   end
 
@@ -950,6 +1006,21 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
   defp blank_to_default(value, default) do
     if blank?(value), do: default, else: to_string(value)
   end
+
+  defp failure_review_status_filter(status) when status in [:fail, :cancelled],
+    do: Atom.to_string(status)
+
+  defp failure_review_status_filter(_status), do: nil
+
+  defp failure_review_question_filter(status, pending_questions)
+       when status in [:fail, :cancelled] and pending_questions > 0,
+       do: "open"
+
+  defp failure_review_question_filter(status, pending_questions)
+       when status in [:fail, :cancelled] and pending_questions == 0,
+       do: "clear"
+
+  defp failure_review_question_filter(_status, _pending_questions), do: nil
 
   defp blank?(value), do: !present?(value)
 

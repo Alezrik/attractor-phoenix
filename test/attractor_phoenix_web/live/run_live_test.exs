@@ -59,6 +59,47 @@ defmodule AttractorPhoenixWeb.RunLiveTest do
            )
   end
 
+  test "run detail keeps the selected cancelled packet scoped to failure review", %{conn: conn} do
+    pipeline_id = "run_detail_failure_route_#{System.unique_integer([:positive])}"
+
+    assert {:ok, %{"pipeline_id" => ^pipeline_id}} =
+             AttractorAPI.create_pipeline(wait_human_dot(), %{}, pipeline_id: pipeline_id)
+
+    wait_for_questions(pipeline_id)
+    assert {:ok, %{"status" => "cancelled"}} = AttractorAPI.cancel_pipeline(pipeline_id)
+    wait_for_pipeline_status(pipeline_id, "cancelled")
+
+    {:ok, view, _html} = live(conn, ~p"/runs/#{pipeline_id}")
+
+    html = render(view)
+
+    assert has_element?(view, "#run-scoped-failure-review", "Continue in Failure Review")
+    assert html =~ "/failures?"
+    assert html =~ "status=cancelled"
+    assert html =~ "questions=open"
+    assert html =~ "search=#{pipeline_id}"
+
+    assert has_element?(view, "#run-route-handoff-mode", "Inspection -> failure review -> action")
+
+    assert has_element?(
+             view,
+             "#run-route-handoff-next-step",
+             "Inspect this run first, then continue into the run-scoped failure review before opening the human-gate debugger."
+           )
+
+    assert has_element?(
+             view,
+             "#run-route-handoff-detail",
+             "Failure review stays filtered to this run and its current question state"
+           )
+
+    assert has_element?(
+             view,
+             "#run-route-handoff-known-limit",
+             "does not imply retry, replay, resume, or broader operator continuity"
+           )
+  end
+
   defp fail_dot do
     """
     digraph attractor {

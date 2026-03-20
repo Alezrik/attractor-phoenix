@@ -192,6 +192,12 @@ defmodule AttractorPhoenixWeb.FailureReviewLiveTest do
              "No pending human-gate questions remain on this route."
            )
 
+    assert has_element?(
+             debugger_view,
+             "#debugger-human-gate-resolution-known-limit",
+             "does not prove retry, replay, resume, or any broader recovery semantics"
+           )
+
     {:ok, cleared_failure_view, _html} =
       live(conn, ~p"/failures?questions=open&search=#{pipeline_id}")
 
