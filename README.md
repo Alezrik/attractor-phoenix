@@ -249,12 +249,24 @@ Notes:
 
 ```bash
 mix test
+mix bench
 mix coveralls
 mix coveralls.html
 mix docs
 ```
 
 Current `AttractorEx`-focused coverage is configured via `coveralls.json` and is enforced locally by `mix precommit` via `mix coverage.gate`, targeting >= `90%`.
+
+## Focused Benchmarks
+
+Focused benchmark scripts live under `bench/` so scale and performance probes stay out of the normal `mix test` loop.
+
+```bash
+mix bench
+mix bench bench/hello_world.exs
+```
+
+The starter script at `bench/hello_world.exs` is intentionally small. It exists to prove the benchmark lane, dependencies, and dedicated `MIX_ENV=bench` setup before deeper library or load scenarios are added.
 
 ## Notes (Windows)
 
