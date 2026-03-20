@@ -42,6 +42,8 @@ and business logic.
 
 - [AttractorPhoenix.Mailer](AttractorPhoenix.Mailer.md)
 - [AttractorPhoenix.PipelineLibrary](AttractorPhoenix.PipelineLibrary.md): File-backed storage for reusable builder pipelines.
+- [AttractorPhoenix.TrustProof](AttractorPhoenix.TrustProof.md): Shared proof-packet shaping for setup and benchmark trust surfaces.
+
 - [AttractorPhoenixWeb](AttractorPhoenixWeb.md): The entrypoint for defining your web interface, such
 as controllers, components, channels, and so on.
 - [AttractorPhoenixWeb.AttractorChannel](AttractorPhoenixWeb.AttractorChannel.md): Phoenix Channel that streams `AttractorEx` pipeline snapshots and live updates.

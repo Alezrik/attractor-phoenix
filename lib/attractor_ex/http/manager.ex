@@ -4,7 +4,9 @@ defmodule AttractorEx.HTTP.Manager do
 
   Run metadata, event history, checkpoints, pending questions, and artifact indexes are
   persisted through a pluggable run store so HTTP and Phoenix consumers can replay run
-  history after process restarts.
+  history after process restarts. The manager also admits one explicit
+  checkpoint-backed resume for cancelled runs after the human gate has been fully
+  cleared and the accepted answer has been durably recorded.
   """
 
   use GenServer
@@ -45,6 +47,12 @@ defmodule AttractorEx.HTTP.Manager do
   def replay_events(server, id, opts \\ []) do
     GenServer.call(server, {:replay_events, id, opts})
   end
+
+  @doc "Clears in-memory and persisted HTTP runtime state for the current manager."
+  def reset(server), do: GenServer.call(server, :reset, :infinity)
+
+  @doc "Attempts one explicit checkpoint-backed resume for an admitted interrupted run."
+  def resume_pipeline(server, id), do: GenServer.call(server, {:resume_pipeline, id}, :infinity)
 
   def submit_answer(server, id, qid, answer),
     do: GenServer.call(server, {:submit_answer, id, qid, answer})
@@ -209,6 +217,16 @@ defmodule AttractorEx.HTTP.Manager do
     {:reply, reply, state}
   end
 
+  def handle_call(:reset, _from, state) do
+    stop_pipeline_tasks(state.pipelines)
+
+    with :ok <- clear_store(state.store_config) do
+      {:reply, :ok, %{state | pipelines: %{}}}
+    else
+      {:error, reason} -> {:reply, {:error, reason}, state}
+    end
+  end
+
   def handle_call({:submit_answer, id, qid, answer}, _from, state) do
     with {:ok, pipeline} <- fetch_pipeline(state, id),
          {:ok, question} <- fetch_question(pipeline, qid) do
@@ -218,6 +236,7 @@ defmodule AttractorEx.HTTP.Manager do
 
       state =
         state
+        |> persist_human_answer(id, qid, answer)
         |> update_in([:pipelines, id, :questions], &Map.delete(&1, qid))
         |> persist_pipeline_questions(id)
         |> notify_question_state(id)
@@ -225,6 +244,46 @@ defmodule AttractorEx.HTTP.Manager do
       {:reply, :ok, state}
     else
       error -> {:reply, error, state}
+    end
+  end
+
+  def handle_call({:resume_pipeline, id}, _from, state) do
+    with {:ok, pipeline} <- fetch_pipeline(state, id),
+         :ok <- validate_resume_contract(pipeline) do
+      resumed_from_status = pipeline.status |> normalize_status() |> Atom.to_string()
+
+      state =
+        state
+        |> put_in([:pipelines, id, :status], :running)
+        |> put_in([:pipelines, id, :result], nil)
+        |> put_in([:pipelines, id, :error], nil)
+        |> touch_pipeline(id)
+        |> append_event(id, %{
+          type: "PipelineResumeStarted",
+          pipeline_id: id,
+          status: "running",
+          recovery_action: "checkpoint_resume",
+          resumed_from_status: resumed_from_status,
+          checkpoint: pipeline.checkpoint,
+          context: pipeline.context
+        })
+
+      state = start_run_task(state, id, :resume)
+
+      {:reply,
+       {:ok,
+        %{
+          "pipeline_id" => id,
+          "status" => "running",
+          "recovery_action" => "checkpoint_resume",
+          "resumed_from_status" => resumed_from_status
+        }}, state}
+    else
+      {:error, :not_found} ->
+        {:reply, {:error, :not_found}, state}
+
+      {:error, {:resume_unavailable, reason}} ->
+        {:reply, {:error, :resume_unavailable, reason}, state}
     end
   end
 
@@ -295,34 +354,46 @@ defmodule AttractorEx.HTTP.Manager do
 
   @impl true
   def handle_info({:pipeline_finished, id, {:ok, result}}, state) do
-    status = Map.get(result, :status) || Map.get(result, "status") || :success
+    case get_in(state, [:pipelines, id]) do
+      nil ->
+        {:noreply, state}
 
-    state =
-      state
-      |> put_in([:pipelines, id, :status], status)
-      |> put_in([:pipelines, id, :result], normalize_map(result))
-      |> put_in([:pipelines, id, :error], nil)
-      |> put_in([:pipelines, id, :context], normalize_map(result.context))
-      |> put_in([:pipelines, id, :checkpoint], build_checkpoint(result))
-      |> touch_pipeline(id)
-      |> refresh_artifacts(id)
+      _pipeline ->
+        status = Map.get(result, :status) || Map.get(result, "status") || :success
 
-    :ok = persist_pipeline_record(state, id)
+        state =
+          state
+          |> put_in([:pipelines, id, :status], status)
+          |> put_in([:pipelines, id, :result], normalize_map(result))
+          |> put_in([:pipelines, id, :error], nil)
+          |> put_in([:pipelines, id, :context], normalize_map(result.context))
+          |> put_in([:pipelines, id, :checkpoint], build_checkpoint(result))
+          |> touch_pipeline(id)
+          |> refresh_artifacts(id)
 
-    {:noreply, state}
+        :ok = persist_pipeline_record(state, id)
+
+        {:noreply, state}
+    end
   end
 
   def handle_info({:pipeline_finished, id, {:error, error}}, state) do
-    state =
-      state
-      |> put_in([:pipelines, id, :status], :fail)
-      |> put_in([:pipelines, id, :error], normalize_map(error))
-      |> touch_pipeline(id)
-      |> refresh_artifacts(id)
+    case get_in(state, [:pipelines, id]) do
+      nil ->
+        {:noreply, state}
 
-    :ok = persist_pipeline_record(state, id)
+      _pipeline ->
+        state =
+          state
+          |> put_in([:pipelines, id, :status], :fail)
+          |> put_in([:pipelines, id, :error], normalize_map(error))
+          |> touch_pipeline(id)
+          |> refresh_artifacts(id)
 
-    {:noreply, state}
+        :ok = persist_pipeline_record(state, id)
+
+        {:noreply, state}
+    end
   end
 
   def handle_info({:DOWN, _ref, :process, pid, _reason}, state) do
@@ -488,6 +559,40 @@ defmodule AttractorEx.HTTP.Manager do
     }
   end
 
+  defp persist_human_answer(state, id, qid, answer) do
+    normalized_answer = normalize_map(answer)
+
+    state
+    |> update_in([:pipelines, id, :context], &put_human_answer(&1 || %{}, qid, normalized_answer))
+    |> update_in([:pipelines, id, :checkpoint], fn
+      nil ->
+        nil
+
+      checkpoint ->
+        update_in(
+          checkpoint,
+          ["context"],
+          &put_human_answer(normalize_map(&1 || %{}), qid, normalized_answer)
+        )
+    end)
+  end
+
+  defp put_human_answer(context, qid, answer) do
+    human =
+      context
+      |> Map.get("human", %{})
+      |> normalize_map()
+
+    answers =
+      human
+      |> Map.get("answers", %{})
+      |> normalize_map()
+      |> Map.put(qid, answer)
+
+    context
+    |> Map.put("human", Map.put(human, "answers", answers))
+  end
+
   defp normalize_event(id, event, sequence) do
     EventRecord.new(id, sequence, normalize_map(event))
     |> EventRecord.to_map()
@@ -538,6 +643,7 @@ defmodule AttractorEx.HTTP.Manager do
       "inserted_at" => pipeline.inserted_at,
       "updated_at" => pipeline.updated_at,
       "has_checkpoint" => is_map(pipeline.checkpoint),
+      "resume_ready" => resume_ready?(pipeline),
       "artifacts" => Enum.map(pipeline.artifacts, &ArtifactRecord.to_map/1)
     }
   end
@@ -710,6 +816,91 @@ defmodule AttractorEx.HTTP.Manager do
     state
     |> get_in([:pipelines, id, :events])
     |> Enum.filter(&(Map.get(&1, "sequence", 0) > after_sequence))
+  end
+
+  defp validate_resume_contract(pipeline) do
+    cond do
+      resume_ready?(pipeline) ->
+        :ok
+
+      normalize_status(pipeline.status) != :cancelled ->
+        {:error,
+         {:resume_unavailable,
+          "checkpoint resume is only admitted for the selected cancelled packet"}}
+
+      not is_map(pipeline.checkpoint) ->
+        {:error,
+         {:resume_unavailable, "checkpoint resume requires a persisted checkpoint snapshot"}}
+
+      map_size(pipeline.questions || %{}) > 0 ->
+        {:error,
+         {:resume_unavailable,
+          "checkpoint resume stays blocked until the selected human gate is fully cleared"}}
+
+      not answered_human_gate?(pipeline) ->
+        {:error,
+         {:resume_unavailable,
+          "checkpoint resume is limited to the post-action cancelled packet with a recorded human answer"}}
+
+      true ->
+        {:error, {:resume_unavailable, "checkpoint resume is not available for this run"}}
+    end
+  end
+
+  defp resume_ready?(pipeline) do
+    normalize_status(pipeline.status) == :cancelled and
+      is_map(pipeline.checkpoint) and
+      map_size(pipeline.questions || %{}) == 0 and
+      answered_human_gate?(pipeline)
+  end
+
+  defp answered_human_gate?(pipeline) do
+    pipeline
+    |> human_answers()
+    |> map_size()
+    |> Kernel.>(0)
+  end
+
+  defp human_answers(pipeline) do
+    pipeline
+    |> checkpoint_or_context()
+    |> Map.get("human", %{})
+    |> normalize_map()
+    |> Map.get("answers", %{})
+    |> normalize_map()
+  end
+
+  defp checkpoint_or_context(%{checkpoint: %{"context" => checkpoint_context}})
+       when is_map(checkpoint_context),
+       do: checkpoint_context
+
+  defp checkpoint_or_context(%{context: context}) when is_map(context), do: context
+  defp checkpoint_or_context(_pipeline), do: %{}
+
+  defp stop_pipeline_tasks(pipelines) do
+    Enum.each(pipelines, fn {_id, pipeline} ->
+      case pipeline.task_pid do
+        pid when is_pid(pid) -> Process.exit(pid, :kill)
+        _ -> :ok
+      end
+    end)
+  end
+
+  defp clear_store(%{root: root}) do
+    runs_root = Path.join(root, "runs")
+
+    :ok = remove_path(runs_root)
+    File.mkdir_p(runs_root)
+  end
+
+  defp clear_store(_store_config), do: :ok
+
+  defp remove_path(path) do
+    case File.rm_rf(path) do
+      :ok -> :ok
+      {:ok, _paths} -> :ok
+      {:error, reason, _path} -> {:error, reason}
+    end
   end
 
   defp terminal?(status), do: MapSet.member?(@terminal_statuses, status)

@@ -121,6 +121,42 @@ defmodule AttractorPhoenixWeb.DebuggerLiveTest do
            )
   end
 
+  test "debugger exposes and executes the explicit checkpoint resume action on the selected packet",
+       %{conn: conn} do
+    pipeline_id = "debugger_resume_#{System.unique_integer([:positive])}"
+
+    assert {:ok, %{"pipeline_id" => ^pipeline_id}} =
+             AttractorAPI.create_pipeline(wait_human_dot(), %{}, pipeline_id: pipeline_id)
+
+    wait_for_questions(pipeline_id)
+    assert {:ok, %{"status" => "cancelled"}} = AttractorAPI.cancel_pipeline(pipeline_id)
+    wait_for_pipeline_status(pipeline_id, "cancelled")
+    assert {:ok, _payload} = AttractorAPI.answer_question(pipeline_id, "gate", "A")
+    wait_for_questions_to_clear(pipeline_id)
+    wait_for_resume_ready(pipeline_id)
+
+    {:ok, view, _html} = live(conn, ~p"/runs/#{pipeline_id}/debugger?focus=questions")
+
+    assert has_element?(view, "#debugger-recovery-label", "Checkpoint-backed resume available")
+    assert has_element?(view, "#debugger-resume-pipeline", "Resume From Checkpoint")
+
+    view
+    |> element("#debugger-resume-pipeline")
+    |> render_click()
+
+    wait_for_pipeline_status(pipeline_id, "success")
+
+    assert has_element?(view, "#debugger-run-state", "Completed")
+    assert has_element?(view, "#debugger-recovery-receipt")
+    assert has_element?(view, "#debugger-recovery-receipt-label", "Checkpoint resume started")
+
+    assert has_element?(
+             view,
+             "#debugger-recovery-receipt-known-limit",
+             "does not generalize retry, replay, or restart semantics"
+           )
+  end
+
   defp wait_human_dot do
     """
     digraph attractor {
@@ -166,6 +202,41 @@ defmodule AttractorPhoenixWeb.DebuggerLiveTest do
         receive do
         after
           20 -> wait_for_pipeline_status(pipeline_id, status, attempts - 1)
+        end
+    end
+  end
+
+  defp wait_for_questions_to_clear(pipeline_id, attempts \\ 100)
+
+  defp wait_for_questions_to_clear(_pipeline_id, 0),
+    do: flunk("expected pending questions to clear")
+
+  defp wait_for_questions_to_clear(pipeline_id, attempts) do
+    case AttractorAPI.get_pipeline_questions(pipeline_id) do
+      {:ok, %{"questions" => []}} ->
+        :ok
+
+      _ ->
+        receive do
+        after
+          20 -> wait_for_questions_to_clear(pipeline_id, attempts - 1)
+        end
+    end
+  end
+
+  defp wait_for_resume_ready(pipeline_id, attempts \\ 100)
+
+  defp wait_for_resume_ready(_pipeline_id, 0), do: flunk("expected checkpoint resume readiness")
+
+  defp wait_for_resume_ready(pipeline_id, attempts) do
+    case AttractorAPI.get_pipeline(pipeline_id) do
+      {:ok, %{"resume_ready" => true}} ->
+        :ok
+
+      _ ->
+        receive do
+        after
+          20 -> wait_for_resume_ready(pipeline_id, attempts - 1)
         end
     end
   end

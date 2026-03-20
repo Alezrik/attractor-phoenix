@@ -3,8 +3,8 @@ defmodule AttractorEx.HTTP.Router do
   Plug router exposing the AttractorEx HTTP API.
 
   The router supports pipeline creation, status polling, SSE event streams, graph
-  renderings, question answering, cancellation, checkpoint inspection, and context
-  inspection.
+  renderings, question answering, cancellation, one explicit checkpoint-backed resume
+  action for admitted cancelled runs, checkpoint inspection, and context inspection.
   """
 
   use Plug.Router
@@ -115,6 +115,21 @@ defmodule AttractorEx.HTTP.Router do
     case Manager.cancel(manager, id) do
       :ok -> json(conn, 202, %{"pipeline_id" => id, "status" => "cancelled"})
       {:error, :not_found} -> json(conn, 404, %{"error" => "pipeline not found"})
+    end
+  end
+
+  post "/pipelines/:id/resume" do
+    manager = manager!(conn)
+
+    case Manager.resume_pipeline(manager, id) do
+      {:ok, payload} ->
+        json(conn, 202, payload)
+
+      {:error, :not_found} ->
+        json(conn, 404, %{"error" => "pipeline not found"})
+
+      {:error, :resume_unavailable, reason} ->
+        json(conn, 409, %{"error" => reason})
     end
   end
 
@@ -253,7 +268,12 @@ defmodule AttractorEx.HTTP.Router do
           "logs_root" => pipeline.logs_root,
           "inserted_at" => pipeline.inserted_at,
           "updated_at" => pipeline.updated_at,
-          "has_checkpoint" => is_map(pipeline.checkpoint)
+          "has_checkpoint" => is_map(pipeline.checkpoint),
+          "resume_ready" =>
+            pipeline.status in [:cancelled, "cancelled"] and
+              is_map(pipeline.checkpoint) and
+              map_size(pipeline.questions) == 0 and
+              map_size(get_in(pipeline.checkpoint, ["context", "human", "answers"]) || %{}) > 0
         })
 
       {:error, :not_found} ->

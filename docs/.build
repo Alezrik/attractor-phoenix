@@ -88,6 +88,7 @@ AttractorPhoenix.LLMProviderDiscovery.html
 AttractorPhoenix.LLMSetup.html
 AttractorPhoenix.Mailer.html
 AttractorPhoenix.PipelineLibrary.html
+AttractorPhoenix.TrustProof.html
 AttractorPhoenix.html
 AttractorPhoenixWeb.AttractorChannel.html
 AttractorPhoenixWeb.AuthoringController.html
@@ -124,8 +125,8 @@ dist/lato-latin-700-normal-2XVSBPG4.woff2
 dist/lato-latin-ext-400-normal-N27NCBWW.woff2
 dist/lato-latin-ext-700-normal-Q2L5DVMW.woff2
 dist/remixicon-ZWU5GQ4X.woff2
-dist/search_data-75C2BBE1.js
-dist/sidebar_items-B78E6AC9.js
+dist/search_data-D77E9D26.js
+dist/sidebar_items-953701D2.js
 http-api.html
 human-in-the-loop.html
 index.html

@@ -87,6 +87,7 @@ AttractorPhoenix.LLMProviderDiscovery.md
 AttractorPhoenix.LLMSetup.md
 AttractorPhoenix.Mailer.md
 AttractorPhoenix.PipelineLibrary.md
+AttractorPhoenix.TrustProof.md
 AttractorPhoenix.md
 AttractorPhoenixWeb.AttractorChannel.md
 AttractorPhoenixWeb.AuthoringController.md

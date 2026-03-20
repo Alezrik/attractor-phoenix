@@ -3,7 +3,9 @@ defmodule AttractorExPhx.Client do
   Req-based client for the `AttractorEx` HTTP control plane.
 
   This module is intentionally Phoenix-friendly: LiveViews, controllers, and other
-  OTP processes can call it without depending on `AttractorPhoenix`-specific glue.
+  OTP processes can call it without depending on `AttractorPhoenix`-specific glue. It
+  covers the durable run surface, including the narrow explicit resume endpoint for
+  admitted cancelled runs.
   """
 
   @default_timeout 5_000
@@ -41,6 +43,7 @@ defmodule AttractorExPhx.Client do
   end
 
   def cancel_pipeline(id), do: post_json("/pipelines/#{id}/cancel", %{})
+  def resume_pipeline(id), do: post_json("/pipelines/#{id}/resume", %{})
 
   def answer_pipeline_question(id, question_id, answer) do
     post_json("/pipelines/#{id}/questions/#{question_id}/answer", %{answer: answer})

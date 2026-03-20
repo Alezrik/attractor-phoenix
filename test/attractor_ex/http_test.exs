@@ -386,6 +386,141 @@ defmodule AttractorEx.HTTPTest do
              Jason.decode!(final_status_conn.resp_body)
   end
 
+  test "supports one explicit checkpoint-backed resume for the selected cancelled packet" do
+    dot = """
+    digraph attractor {
+      start [shape=Mdiamond]
+      gate [shape=hexagon, prompt="Approve release?", human.timeout="5s"]
+      done [shape=Msquare]
+      retry [shape=box, prompt="Retry release"]
+      start -> gate
+      gate -> done [label="[A] Approve"]
+      gate -> retry [label="[R] Retry"]
+      retry -> done
+    }
+    """
+
+    create_conn =
+      conn(:post, "/pipelines", Jason.encode!(%{"dot" => dot}))
+      |> put_req_header("content-type", "application/json")
+      |> Router.call(@router_opts)
+
+    assert create_conn.status == 202
+    %{"pipeline_id" => pipeline_id} = Jason.decode!(create_conn.resp_body)
+
+    wait_for(fn ->
+      case Manager.pending_questions(AttractorEx.HTTP.Manager, pipeline_id) do
+        {:ok, [_question | _]} -> {:ok, :ready}
+        _ -> :retry
+      end
+    end)
+
+    cancel_conn =
+      conn(:post, "/pipelines/#{pipeline_id}/cancel", Jason.encode!(%{}))
+      |> put_req_header("content-type", "application/json")
+      |> Router.call(@router_opts)
+
+    assert cancel_conn.status == 202
+
+    answer_conn =
+      conn(
+        :post,
+        "/answer",
+        Jason.encode!(%{"pipeline_id" => pipeline_id, "question_id" => "gate", "value" => "A"})
+      )
+      |> put_req_header("content-type", "application/json")
+      |> Router.call(@router_opts)
+
+    assert answer_conn.status == 202
+
+    wait_for(fn ->
+      case Router.call(conn(:get, "/pipelines/#{pipeline_id}"), @router_opts) do
+        %{status: 200, resp_body: body} ->
+          case Jason.decode!(body) do
+            %{"status" => "cancelled", "resume_ready" => true} = payload -> {:ok, payload}
+            _ -> :retry
+          end
+
+        _ ->
+          :retry
+      end
+    end)
+
+    resume_conn =
+      conn(:post, "/pipelines/#{pipeline_id}/resume", Jason.encode!(%{}))
+      |> put_req_header("content-type", "application/json")
+      |> Router.call(@router_opts)
+
+    assert resume_conn.status == 202
+
+    assert %{
+             "pipeline_id" => ^pipeline_id,
+             "status" => "running",
+             "recovery_action" => "checkpoint_resume",
+             "resumed_from_status" => "cancelled"
+           } = Jason.decode!(resume_conn.resp_body)
+
+    wait_for(fn ->
+      case Manager.get_pipeline(AttractorEx.HTTP.Manager, pipeline_id) do
+        {:ok, %{status: :success}} -> {:ok, :done}
+        {:ok, %{status: "success"}} -> {:ok, :done}
+        _ -> :retry
+      end
+    end)
+
+    final_status_conn = Router.call(conn(:get, "/pipelines/#{pipeline_id}"), @router_opts)
+    assert final_status_conn.status == 200
+
+    assert %{"status" => "success", "resume_ready" => false} =
+             Jason.decode!(final_status_conn.resp_body)
+
+    replay_conn =
+      Router.call(
+        conn(:get, "/pipelines/#{pipeline_id}/events?stream=false&after=0"),
+        @router_opts
+      )
+
+    assert replay_conn.status == 200
+    %{"events" => events} = Jason.decode!(replay_conn.resp_body)
+    assert Enum.any?(events, &(&1["type"] == "PipelineResumeStarted"))
+    assert Enum.any?(events, &(&1["type"] == "PipelineCompleted"))
+  end
+
+  test "rejects checkpoint resume when the selected packet contract is not met" do
+    dot = """
+    digraph attractor {
+      start [shape=Mdiamond]
+      done [shape=Msquare]
+      start -> done
+    }
+    """
+
+    create_conn =
+      conn(:post, "/pipelines", Jason.encode!(%{"dot" => dot}))
+      |> put_req_header("content-type", "application/json")
+      |> Router.call(@router_opts)
+
+    assert create_conn.status == 202
+    %{"pipeline_id" => pipeline_id} = Jason.decode!(create_conn.resp_body)
+
+    wait_for(fn ->
+      case Manager.get_pipeline(AttractorEx.HTTP.Manager, pipeline_id) do
+        {:ok, %{status: :success}} -> {:ok, :done}
+        {:ok, %{status: "success"}} -> {:ok, :done}
+        _ -> :retry
+      end
+    end)
+
+    resume_conn =
+      conn(:post, "/pipelines/#{pipeline_id}/resume", Jason.encode!(%{}))
+      |> put_req_header("content-type", "application/json")
+      |> Router.call(@router_opts)
+
+    assert resume_conn.status == 409
+    assert %{"error" => error} = Jason.decode!(resume_conn.resp_body)
+    assert error =~ "selected cancelled packet"
+  end
+
   defp wait_for(fun, attempts \\ 100)
 
   defp wait_for(_fun, 0), do: flunk("condition was not met in time")

@@ -177,6 +177,23 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
             "Retry, replay, and resume are not exposed as safe operator actions on this route yet."
         }
 
+      resume_ready?(pipeline) ->
+        %{
+          label: "Checkpoint-backed resume available",
+          tone: "run-status-running",
+          mode: "Explicit recovery action",
+          owner: "Operator recovery choice",
+          action: "Resume from saved checkpoint",
+          detail:
+            "The selected cancelled packet now has a persisted checkpoint and a cleared human gate, so one explicit checkpoint-backed resume action is admitted on this route.",
+          next_step:
+            "Trigger the explicit resume control to continue this same run from the latest checkpoint-backed boundary.",
+          effect:
+            "Resume continues this same run id from the saved checkpoint. It proves one checkpoint-backed recovery slice only.",
+          unavailable:
+            "Retry, replay, restart, and broader operator recovery claims remain out of scope."
+        }
+
       status == :fail and has_checkpoint ->
         %{
           label: "Failure with checkpoint context",
@@ -422,6 +439,9 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
         pending_questions > 0 ->
           "Continue reviewing the remaining human-gate prompts before claiming the operator path is clear."
 
+        resume_ready?(pipeline) ->
+          "Use the explicit checkpoint resume control only if you need the admitted recovery slice for this cancelled packet."
+
         terminal_status?(pipeline["status"]) ->
           "Use the current route for inspection and proof review rather than additional state-changing claims."
 
@@ -436,12 +456,29 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
       detail: detail,
       next_step: next_step,
       known_limit:
-        "The question is cleared on this route, but that does not prove retry, replay, resume, or any broader recovery semantics."
+        if resume_ready?(pipeline) do
+          "The question is cleared on this route, but only one explicit checkpoint-backed resume action is admitted next. This still does not prove retry, replay, restart, or broader recovery semantics."
+        else
+          "The question is cleared on this route, but that does not prove retry, replay, resume, or any broader recovery semantics."
+        end
     }
   end
 
   def graph_markup(nil), do: nil
   def graph_markup(svg), do: HTML.raw(svg)
+
+  def recovery_resume_receipt do
+    %{
+      label: "Checkpoint resume started",
+      owner: "Operator recovery action accepted",
+      detail:
+        "The run is now continuing from its saved checkpoint on the same run id through the explicit control-plane resume action.",
+      next_step:
+        "Follow the run state and debugger timeline to confirm the resumed result without widening the claim beyond this packet.",
+      known_limit:
+        "This proves one checkpoint-backed resume slice only. It does not generalize retry, replay, or restart semantics."
+    }
+  end
 
   def endpoint_catalog do
     [
@@ -457,6 +494,7 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
       %{method: "POST", path: "/pipelines/:id/questions/:qid/answer", label: "Answer question"},
       %{method: "POST", path: "/answer", label: "Answer alias"},
       %{method: "POST", path: "/pipelines/:id/cancel", label: "Cancel run"},
+      %{method: "POST", path: "/pipelines/:id/resume", label: "Resume run"},
       %{
         method: "GET",
         path: "/pipelines/:id/graph?format=svg|json|dot|mermaid|text",
@@ -842,6 +880,9 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
 
   def connection_detail(:stale, _mode), do: "The view is stale and needs a refresh path."
   def connection_detail(_, _), do: "Connection state unknown."
+
+  def resume_ready?(pipeline) when is_map(pipeline), do: pipeline["resume_ready"] == true
+  def resume_ready?(_pipeline), do: false
 
   defp normalize_answer(answer) do
     trimmed = String.trim(to_string(answer || ""))

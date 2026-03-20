@@ -8,7 +8,7 @@
     <meta name="project" content="attractor_phoenix v0.1.0">
 
 
-    <title>AttractorEx.Condition — attractor_phoenix v0.1.0</title>
+    <title>AttractorPhoenix.TrustProof — attractor_phoenix v0.1.0</title>
 
     <link rel="stylesheet" href="dist/html-elixir-YJO4MOOW.css" />
 
@@ -97,19 +97,19 @@ attractor_phoenix
 <div id="top-content">
   <div class="heading-with-actions top-heading">
     <h1>
-      <span translate="no">AttractorEx.<wbr>Condition</span> 
+      <span translate="no">AttractorPhoenix.<wbr>TrustProof</span> 
       <small class="app-vsn" translate="no">(attractor_phoenix v0.1.0)</small>
 
     </h1>
 
-<a href="AttractorEx.Condition.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
+<a href="AttractorPhoenix.TrustProof.md" title="Copy Markdown (hold Ctrl/Cmd and click it to open as Markdown)" class="copy-markdown icon-action" rel="help">
   <i class="ri-markdown-line" aria-hidden="true"></i>
   <span class="sr-only">Copy Markdown</span>
 </a>
 
 
 
-      <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/condition.ex#L1" title="View Source" class="icon-action" rel="help">
+      <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/trust_proof.ex#L1" title="View Source" class="icon-action" rel="help">
         <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         <span class="sr-only">View Source</span>
       </a>
@@ -118,8 +118,7 @@ attractor_phoenix
 
 
     <section id="moduledoc">
-<p>Evaluates the compact condition-expression language used on pipeline edges.</p><p>Supported features include truthy path checks, equality and inequality, numeric
-comparisons, <code class="inline">&amp;&amp;</code> clause chaining, and nested map access with dot notation.</p>
+<p>Shared proof-packet shaping for setup and benchmark trust surfaces.</p>
     </section>
 
 </div>
@@ -131,6 +130,20 @@ comparisons, <code class="inline">&amp;&amp;</code> clause chaining, and nested 
       </a>
       <span class="text">Summary</span>
     </h2>
+<div class="summary-types summary">
+  <h3>
+    <a href="#types">Types</a>
+  </h3>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:proof_record/0" data-no-tooltip="" translate="no">proof_record()</a>
+
+      </div>
+
+    </div>
+
+</div>
 <div class="summary-functions summary">
   <h3>
     <a href="#functions">Functions</a>
@@ -138,21 +151,25 @@ comparisons, <code class="inline">&amp;&amp;</code> clause chaining, and nested 
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#evaluate/2" data-no-tooltip="" translate="no">evaluate(expression, context)</a>
+        <a href="#benchmark_record/1" data-no-tooltip="" translate="no">benchmark_record(benchmark)</a>
 
       </div>
-
-        <div class="summary-synopsis"><p>Evaluates a condition string against the current execution context.</p></div>
 
     </div>
 
     <div class="summary-row">
       <div class="summary-signature">
-        <a href="#valid?/1" data-no-tooltip="" translate="no">valid?(expression)</a>
+        <a href="#provider_health_record/1" data-no-tooltip="" translate="no">provider_health_record(settings)</a>
 
       </div>
 
-        <div class="summary-synopsis"><p>Returns whether an expression parses successfully.</p></div>
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#support_phrase/1" data-no-tooltip="" translate="no">support_phrase(arg1)</a>
+
+      </div>
 
     </div>
 
@@ -160,6 +177,47 @@ comparisons, <code class="inline">&amp;&amp;</code> clause chaining, and nested 
 
   </section>
 
+
+  <section id="types" class="details-list">
+    <h2 class="section-heading">
+      <a class="hover-link" href="#types">
+        <i class="ri-link-m" aria-hidden="true"></i>
+      </a>
+      <span class="text">Types</span>
+    </h2>
+
+    <div class="types-list">
+<section class="detail" id="t:proof_record/0">
+
+  <div class="detail-header">
+    <a href="#t:proof_record/0" class="detail-link" data-no-tooltip="" aria-label="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">proof_record()</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/trust_proof.ex#L12" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@type</span> proof_record() :: <a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+
+    </div>
+  </section>
 
   <section id="functions" class="details-list">
     <h2 class="section-heading">
@@ -170,17 +228,17 @@ comparisons, <code class="inline">&amp;&amp;</code> clause chaining, and nested 
     </h2>
 
     <div class="functions-list">
-<section class="detail" id="evaluate/2">
+<section class="detail" id="benchmark_record/1">
 
   <div class="detail-header">
-    <a href="#evaluate/2" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#benchmark_record/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">evaluate(expression, context)</h1>
+      <h1 class="signature" translate="no">benchmark_record(benchmark)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/condition.ex#L12" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/trust_proof.ex#L15" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -189,20 +247,26 @@ comparisons, <code class="inline">&amp;&amp;</code> clause chaining, and nested 
 
   <section class="docstring">
 
-<p>Evaluates a condition string against the current execution context.</p>
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> benchmark_record(<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()) :: <a href="#t:proof_record/0">proof_record</a>()</pre>
+
+      </div>
+
+
   </section>
 </section>
-<section class="detail" id="valid?/1">
+<section class="detail" id="provider_health_record/1">
 
   <div class="detail-header">
-    <a href="#valid?/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+    <a href="#provider_health_record/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
       <i class="ri-link-m" aria-hidden="true"></i>
     </a>
     <div class="heading-with-actions">
-      <h1 class="signature" translate="no">valid?(expression)</h1>
+      <h1 class="signature" translate="no">provider_health_record(settings)</h1>
 
 
-        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_ex/condition.ex#L27" class="icon-action" rel="help" aria-label="View Source">
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/trust_proof.ex#L40" class="icon-action" rel="help" aria-label="View Source">
           <i class="ri-code-s-slash-line" aria-hidden="true"></i>
         </a>
 
@@ -211,7 +275,41 @@ comparisons, <code class="inline">&amp;&amp;</code> clause chaining, and nested 
 
   <section class="docstring">
 
-<p>Returns whether an expression parses successfully.</p>
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> provider_health_record(<a href="https://hexdocs.pm/elixir/typespecs.html#basic-types">map</a>()) :: <a href="#t:proof_record/0">proof_record</a>()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="support_phrase/1">
+
+  <div class="detail-header">
+    <a href="#support_phrase/1" class="detail-link" data-no-tooltip="" aria-label="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+    </a>
+    <div class="heading-with-actions">
+      <h1 class="signature" translate="no">support_phrase(arg1)</h1>
+
+
+        <a href="https://github.com/Alezrik/attractor-phoenix/blob/main/lib/attractor_phoenix/trust_proof.ex#L70" class="icon-action" rel="help" aria-label="View Source">
+          <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        </a>
+
+    </div>
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">@spec</span> support_phrase(<a href="#t:proof_record/0">proof_record</a>()) :: <a href="https://hexdocs.pm/elixir/String.html#t:t/0">String.t</a>()</pre>
+
+      </div>
+
+
   </section>
 </section>
 

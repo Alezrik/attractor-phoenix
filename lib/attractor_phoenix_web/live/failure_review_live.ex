@@ -1,6 +1,7 @@
 defmodule AttractorPhoenixWeb.FailureReviewLive do
   use AttractorPhoenixWeb, :live_view
 
+  alias AttractorExPhx.Client, as: AttractorAPI
   alias AttractorPhoenixWeb.OperatorRunData
 
   @impl true
@@ -43,6 +44,16 @@ defmodule AttractorPhoenixWeb.FailureReviewLive do
 
   def handle_event("clear_filters", _params, socket) do
     {:noreply, push_patch(socket, to: ~p"/failures")}
+  end
+
+  def handle_event("resume_pipeline", %{"pipeline_id" => pipeline_id}, socket) do
+    socket =
+      case AttractorAPI.resume_pipeline(pipeline_id) do
+        {:ok, _payload} -> load_failures(socket)
+        {:error, message} -> assign(socket, error: message)
+      end
+
+    {:noreply, socket}
   end
 
   defp load_failures(socket) do

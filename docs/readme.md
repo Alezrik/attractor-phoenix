@@ -88,11 +88,12 @@ Implemented endpoints:
 2. `GET /pipelines/:id`
 3. `GET /pipelines/:id/events`
 4. `POST /pipelines/:id/cancel`
-5. `GET /pipelines/:id/graph`
-6. `GET /pipelines/:id/questions`
-7. `POST /pipelines/:id/questions/:qid/answer`
-8. `GET /pipelines/:id/checkpoint`
-9. `GET /pipelines/:id/context`
+5. `POST /pipelines/:id/resume`
+6. `GET /pipelines/:id/graph`
+7. `GET /pipelines/:id/questions`
+8. `POST /pipelines/:id/questions/:qid/answer`
+9. `GET /pipelines/:id/checkpoint`
+10. `GET /pipelines/:id/context`
 
 Compatibility aliases for the definition-of-done checklist:
 
@@ -120,13 +121,17 @@ Human-in-the-loop web flow:
 1. Submit a pipeline containing `wait.human`.
 2. Poll `GET /pipelines/:id/questions` for pending questions.
 3. Send a choice to `POST /pipelines/:id/questions/:qid/answer`.
-4. Subscribe to `GET /pipelines/:id/events` for SSE status updates.
+4. If the run is cancelled after a persisted checkpoint, inspect `resume_ready` from `GET /pipelines/:id`.
+5. Use `POST /pipelines/:id/resume` only when that cancelled packet has a checkpoint, no pending questions, and a recorded human answer.
+6. Subscribe to `GET /pipelines/:id/events` for SSE status updates.
 
 Replay and recovery details:
 
 1. `GET /pipelines/:id/events?after=<sequence>` replays persisted events after a known sequence number.
 2. Incomplete runs are reloaded on boot and resumed from their latest checkpoint when one exists.
-3. Persisted runs index artifacts discovered under each run directory so operators can inspect generated files alongside checkpoints and events.
+3. Accepted human answers are persisted into run context and checkpoint-backed context when available so post-answer cancelled packets remain durably inspectable.
+4. `POST /pipelines/:id/resume` admits one explicit checkpoint-backed resume for a cancelled run only when the checkpoint exists, no questions remain, and a human answer is recorded.
+5. Persisted runs index artifacts discovered under each run directory so operators can inspect generated files alongside checkpoints and events.
 
 ## Configuring LLM Nodes (`codergen`)
 

@@ -238,6 +238,16 @@
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">
+                  <button
+                    :if={OperatorRunData.resume_ready?(pipeline)}
+                    id={"resume-failure-pipeline-#{pipeline["pipeline_id"]}"}
+                    type="button"
+                    class="builder-btn"
+                    phx-click="resume_pipeline"
+                    phx-value-pipeline_id={pipeline["pipeline_id"]}
+                  >
+                    Resume From Checkpoint
+                  </button>
                   <.link
                     :if={(pipeline["pending_questions"] || 0) > 0}
                     navigate={~p"/runs/#{pipeline["pipeline_id"]}/debugger?focus=questions"}

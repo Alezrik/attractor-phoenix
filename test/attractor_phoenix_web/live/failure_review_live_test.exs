@@ -155,7 +155,7 @@ defmodule AttractorPhoenixWeb.FailureReviewLiveTest do
            )
   end
 
-  test "failure review route can clear a cancelled run's pending human gate without implying resume",
+  test "failure review route can clear a cancelled run's pending human gate before explicit resume",
        %{conn: conn} do
     pipeline_id = "failure_route_answer_#{System.unique_integer([:positive])}"
 
@@ -195,7 +195,7 @@ defmodule AttractorPhoenixWeb.FailureReviewLiveTest do
     assert has_element?(
              debugger_view,
              "#debugger-human-gate-resolution-known-limit",
-             "does not prove retry, replay, resume, or any broader recovery semantics"
+             "only one explicit checkpoint-backed resume action is admitted next"
            )
 
     {:ok, cleared_failure_view, _html} =
@@ -208,6 +208,48 @@ defmodule AttractorPhoenixWeb.FailureReviewLiveTest do
            )
 
     assert render(cleared_failure_view) =~ "0 runs shown"
+  end
+
+  test "failure review exposes the explicit checkpoint resume action only after the selected packet is ready",
+       %{conn: conn} do
+    pipeline_id = "failure_resume_#{System.unique_integer([:positive])}"
+
+    assert {:ok, %{"pipeline_id" => ^pipeline_id}} =
+             AttractorAPI.create_pipeline(wait_human_dot(), %{}, pipeline_id: pipeline_id)
+
+    wait_for_questions(pipeline_id)
+    assert {:ok, %{"status" => "cancelled"}} = AttractorAPI.cancel_pipeline(pipeline_id)
+    wait_for_pipeline_status(pipeline_id, "cancelled")
+    assert {:ok, _payload} = AttractorAPI.answer_question(pipeline_id, "gate", "A")
+    wait_for_questions_to_clear(pipeline_id)
+    wait_for_resume_ready(pipeline_id)
+
+    {:ok, view, _html} =
+      live(conn, ~p"/failures?status=cancelled&questions=clear&search=#{pipeline_id}")
+
+    assert has_element?(
+             view,
+             "#failure-recovery-label-#{pipeline_id}",
+             "Checkpoint-backed resume available"
+           )
+
+    assert has_element?(
+             view,
+             "#resume-failure-pipeline-#{pipeline_id}",
+             "Resume From Checkpoint"
+           )
+
+    view
+    |> element("#resume-failure-pipeline-#{pipeline_id}")
+    |> render_click()
+
+    wait_for_pipeline_status(pipeline_id, "success")
+
+    assert has_element?(
+             view,
+             "#failure-review-empty",
+             "No runs currently need failure review"
+           )
   end
 
   test "dashboard review-failures controls navigate to the dedicated route", %{conn: conn} do
@@ -331,6 +373,23 @@ defmodule AttractorPhoenixWeb.FailureReviewLiveTest do
         receive do
         after
           20 -> wait_for_failure_queue_question_clear(pipeline_id, attempts - 1)
+        end
+    end
+  end
+
+  defp wait_for_resume_ready(pipeline_id, attempts \\ 100)
+
+  defp wait_for_resume_ready(_pipeline_id, 0), do: flunk("expected checkpoint resume readiness")
+
+  defp wait_for_resume_ready(pipeline_id, attempts) do
+    case AttractorAPI.get_pipeline(pipeline_id) do
+      {:ok, %{"resume_ready" => true}} ->
+        :ok
+
+      _ ->
+        receive do
+        after
+          20 -> wait_for_resume_ready(pipeline_id, attempts - 1)
         end
     end
   end

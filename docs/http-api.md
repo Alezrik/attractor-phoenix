@@ -29,6 +29,7 @@ The router exposes these endpoints:
 - `GET /pipelines/:id`
 - `GET /pipelines/:id/events`
 - `POST /pipelines/:id/cancel`
+- `POST /pipelines/:id/resume`
 - `GET /pipelines/:id/graph`
 - `GET /pipelines/:id/questions`
 - `POST /pipelines/:id/questions/:qid/answer`
@@ -78,6 +79,11 @@ consumption after reconnects or process restarts.
 
 When service mode is used, `AttractorEx.HTTP.Manager` runs pipelines with `AttractorEx.Interviewers.Server`, which means `wait.human` questions become pending HTTP resources that can be listed and answered out-of-process.
 
+Accepted answers are persisted into the run context and, when a checkpoint exists, into
+the checkpoint-backed context snapshot as well. That keeps the post-answer cancelled
+packet truthful to inspect and gives the control plane durable evidence for the
+explicit resume contract below.
+
 ## Recovery and Replay
 
 The HTTP runtime now persists:
@@ -91,3 +97,16 @@ The HTTP runtime now persists:
 On boot, persisted runs are reloaded before serving requests. Incomplete runs are
 restarted from their latest checkpoint when one exists, otherwise from their initial
 context.
+
+`POST /pipelines/:id/resume` is intentionally narrower than boot-time recovery. It
+accepts one explicit checkpoint-backed resume only when all of the following are true:
+
+1. the run is already in `cancelled` state
+2. a persisted checkpoint snapshot exists
+3. no pending questions remain
+4. a human answer has been durably recorded in context or checkpoint context
+
+If the contract is not met, the endpoint returns `409` with a reason string instead of
+falling back to retry, replay, or restart semantics. Status payloads also expose
+`resume_ready` so operator surfaces can advertise the explicit recovery control without
+over-claiming broader recovery support.
