@@ -36,12 +36,17 @@ defmodule Mix.Tasks.Attractor.Http.Hello do
       end
     end)
 
-    ExUnit.start(autorun: false)
-    ExUnit.configure(ex_unit_configuration(opts))
+    ex_unit!()
+    |> apply(:start, [[autorun: false]])
+
+    ex_unit!()
+    |> apply(:configure, [ex_unit_configuration(opts)])
 
     Enum.each(test_files, &Code.require_file/1)
 
-    %{failures: failures} = ExUnit.run()
+    %{failures: failures} =
+      ex_unit!()
+      |> apply(:run, [])
 
     if failures > 0 do
       Mix.raise("mix attractor.http.hello failed with #{failures} failing test(s).")
@@ -87,5 +92,13 @@ defmodule Mix.Tasks.Attractor.Http.Hello do
       {option, nil} -> to_string(option)
       {option, value} -> "#{option}=#{value}"
     end)
+  end
+
+  defp ex_unit! do
+    if Code.ensure_loaded?(ExUnit) do
+      ExUnit
+    else
+      Mix.raise("ExUnit is unavailable in the current environment.")
+    end
   end
 end
