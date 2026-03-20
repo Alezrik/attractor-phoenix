@@ -1,11 +1,11 @@
-defmodule AttractorPhoenixWeb.E2E.QATeamAutomationTest do
+defmodule AttractorPhoenixWeb.E2E.SelectedResumeAutomationTest do
   use AttractorPhoenixWeb.E2ECase
 
   @tag :e2e
-  test "Noor's API lane covers the selected checkpoint-backed resume contract" do
+  test "selected checkpoint-backed resume contract is enforced through the control plane" do
     base_url = AttractorPhoenixWeb.Endpoint.url()
 
-    output = run_playwright_script!("test/e2e/scripts/noor_api_resume_contract.mjs", base_url)
+    output = run_playwright_script!("test/e2e/scripts/selected_resume_api_contract.mjs", base_url)
 
     assert output =~ "NOOR_API_RESUME_CONTRACT_OK"
     assert output =~ "resume_ready=true"
@@ -13,10 +13,10 @@ defmodule AttractorPhoenixWeb.E2E.QATeamAutomationTest do
   end
 
   @tag :e2e
-  test "Sable's UI lane covers the canonical operator journey and resume receipt" do
+  test "selected operator journey exposes resume receipt through the UI" do
     base_url = AttractorPhoenixWeb.Endpoint.url()
 
-    output = run_playwright_script!("test/e2e/scripts/sable_operator_journey.mjs", base_url)
+    output = run_playwright_script!("test/e2e/scripts/selected_resume_operator_journey.mjs", base_url)
 
     assert output =~ "SABLE_OPERATOR_JOURNEY_OK"
     assert output =~ "dashboard_seen=true"
@@ -24,10 +24,10 @@ defmodule AttractorPhoenixWeb.E2E.QATeamAutomationTest do
   end
 
   @tag :e2e
-  test "Rhea's performance lane measures the selected resume slice repeatedly" do
+  test "selected resume slice timing is measured repeatedly" do
     base_url = AttractorPhoenixWeb.Endpoint.url()
 
-    output = run_playwright_script!("test/e2e/scripts/rhea_resume_timing.mjs", base_url)
+    output = run_playwright_script!("test/e2e/scripts/selected_resume_timing.mjs", base_url)
 
     assert output =~ "RHEA_RESUME_TIMING_OK"
     assert output =~ "iterations=3"
