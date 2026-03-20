@@ -110,3 +110,32 @@ If the contract is not met, the endpoint returns `409` with a reason string inst
 falling back to retry, replay, or restart semantics. Status payloads also expose
 `resume_ready` so operator surfaces can advertise the explicit recovery control without
 over-claiming broader recovery support.
+
+## Focused Verification
+
+Run the maintained HTTP API suite with:
+
+```bash
+mix attractor.http
+```
+
+By default this task runs:
+
+- `test/attractor_ex/http_manager_test.exs`
+- `test/attractor_ex/http_test.exs`
+- `test/attractor_ex/conformance/transport_conformance_test.exs`
+
+Pass a specific test path when you want a narrower slice:
+
+```bash
+mix attractor.http test/attractor_ex/http_test.exs
+```
+
+Noor Halden's first schema-backed contract check now has its own hello-world lane:
+
+```bash
+mix attractor.http.hello
+```
+
+That lane runs from `qa/http_hello/` under `MIX_ENV=api_test`, so it stays out of
+the default `mix test` loop.
