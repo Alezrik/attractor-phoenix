@@ -36,17 +36,14 @@ defmodule Mix.Tasks.Attractor.Http.Hello do
       end
     end)
 
-    ex_unit!()
-    |> apply(:start, [[autorun: false]])
+    ex_unit = ex_unit!()
 
-    ex_unit!()
-    |> apply(:configure, [ex_unit_configuration(opts)])
+    ex_unit.start(autorun: false)
+    ex_unit.configure(ex_unit_configuration(opts))
 
     Enum.each(test_files, &Code.require_file/1)
 
-    %{failures: failures} =
-      ex_unit!()
-      |> apply(:run, [])
+    %{failures: failures} = ex_unit.run()
 
     if failures > 0 do
       Mix.raise("mix attractor.http.hello failed with #{failures} failing test(s).")
