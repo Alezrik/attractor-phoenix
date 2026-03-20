@@ -249,6 +249,8 @@ Notes:
 
 ```bash
 mix test
+mix attractor.http
+mix attractor.http.hello
 mix bench
 mix coveralls
 mix coveralls.html
@@ -256,6 +258,18 @@ mix docs
 ```
 
 Current `AttractorEx`-focused coverage is configured via `coveralls.json` and is enforced locally by `mix precommit` via `mix coverage.gate`, targeting >= `90%`.
+
+The HTTP surface also has a dedicated lane so transport and contract checks can
+run independently from the broader suite:
+
+```bash
+mix attractor.http
+mix attractor.http --trace
+mix attractor.http.hello
+```
+
+`mix attractor.http.hello` runs in `MIX_ENV=api_test` and targets `qa/http_hello/`,
+so it does not join the default `mix test` file sweep.
 
 ## Focused Benchmarks
 

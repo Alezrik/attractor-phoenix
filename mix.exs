@@ -31,6 +31,8 @@ defmodule AttractorPhoenix.MixProject do
   def cli do
     [
       preferred_envs: [
+        "attractor.http": :test,
+        "attractor.http.hello": :api_test,
         bench: :bench,
         precommit: :test,
         dialyzer: :dev,
@@ -44,6 +46,7 @@ defmodule AttractorPhoenix.MixProject do
   end
 
   # Specifies which paths to compile per environment.
+  defp elixirc_paths(:api_test), do: ["lib", "qa/http_hello/support"]
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 
@@ -75,6 +78,7 @@ defmodule AttractorPhoenix.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
+      {:open_api_spex, path: "../examples/inspiration-api/open_api_spex", only: :api_test},
       {:excoveralls, "~> 0.18", only: :test},
       {:propcheck, "~> 1.5", only: [:dev, :test]},
       {:junit_formatter, "~> 3.4", only: :test, runtime: false},
