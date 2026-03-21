@@ -107,9 +107,17 @@ accepts one explicit checkpoint-backed resume only when all of the following are
 4. a human answer has been durably recorded in context or checkpoint context
 
 If the contract is not met, the endpoint returns `409` with a reason string instead of
-falling back to retry, replay, or restart semantics. Status payloads also expose
-`resume_ready` so operator surfaces can advertise the explicit recovery control without
-over-claiming broader recovery support.
+falling back to retry, replay, or restart semantics. Status payloads also expose:
+
+- `resume_ready` for backwards-compatible readiness checks
+- `recovery.state` as `refused` or `available`
+- `recovery.action` as the explicit admitted action name
+- `recovery.refusal_reason` when the selected packet is not yet recovery-ready
+- `recovery.known_limit` so clients can keep the packet inside the current claim ceiling
+
+That recovery contract is intentionally packet-specific. It lets operator surfaces show
+explicit refusal and explicit availability on one selected cancelled packet without
+over-claiming broader retry, replay, restart, or non-selected-route recovery support.
 
 ## Focused Verification
 

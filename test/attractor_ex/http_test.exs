@@ -437,8 +437,19 @@ defmodule AttractorEx.HTTPTest do
       case Router.call(conn(:get, "/pipelines/#{pipeline_id}"), @router_opts) do
         %{status: 200, resp_body: body} ->
           case Jason.decode!(body) do
-            %{"status" => "cancelled", "resume_ready" => true} = payload -> {:ok, payload}
-            _ -> :retry
+            %{
+              "status" => "cancelled",
+              "resume_ready" => true,
+              "recovery" => %{
+                "state" => "available",
+                "action" => "checkpoint_resume",
+                "refusal_reason" => nil
+              }
+            } = payload ->
+              {:ok, payload}
+
+            _ ->
+              :retry
           end
 
         _ ->
@@ -471,8 +482,17 @@ defmodule AttractorEx.HTTPTest do
     final_status_conn = Router.call(conn(:get, "/pipelines/#{pipeline_id}"), @router_opts)
     assert final_status_conn.status == 200
 
-    assert %{"status" => "success", "resume_ready" => false} =
-             Jason.decode!(final_status_conn.resp_body)
+    assert %{
+             "status" => "success",
+             "resume_ready" => false,
+             "recovery" => %{
+               "state" => "refused",
+               "action" => "checkpoint_resume",
+               "refusal_reason" => refusal_reason
+             }
+           } = Jason.decode!(final_status_conn.resp_body)
+
+    assert refusal_reason =~ "selected cancelled packet"
 
     replay_conn =
       Router.call(
@@ -519,6 +539,113 @@ defmodule AttractorEx.HTTPTest do
     assert resume_conn.status == 409
     assert %{"error" => error} = Jason.decode!(resume_conn.resp_body)
     assert error =~ "selected cancelled packet"
+  end
+
+  test "exposes explicit refusal and availability recovery-state payloads on the selected packet" do
+    dot = """
+    digraph attractor {
+      start [shape=Mdiamond]
+      gate [shape=hexagon, prompt="Approve release?", human.timeout="5s"]
+      done [shape=Msquare]
+      retry [shape=box, prompt="Retry release"]
+      start -> gate
+      gate -> done [label="[A] Approve"]
+      gate -> retry [label="[R] Retry"]
+      retry -> done
+    }
+    """
+
+    create_conn =
+      conn(:post, "/pipelines", Jason.encode!(%{"dot" => dot}))
+      |> put_req_header("content-type", "application/json")
+      |> Router.call(@router_opts)
+
+    assert create_conn.status == 202
+    %{"pipeline_id" => pipeline_id} = Jason.decode!(create_conn.resp_body)
+
+    wait_for(fn ->
+      case Manager.pending_questions(AttractorEx.HTTP.Manager, pipeline_id) do
+        {:ok, [_question | _]} -> {:ok, :ready}
+        _ -> :retry
+      end
+    end)
+
+    cancel_conn =
+      conn(:post, "/pipelines/#{pipeline_id}/cancel", Jason.encode!(%{}))
+      |> put_req_header("content-type", "application/json")
+      |> Router.call(@router_opts)
+
+    assert cancel_conn.status == 202
+
+    refused_payload =
+      wait_for(fn ->
+        case Router.call(conn(:get, "/pipelines/#{pipeline_id}"), @router_opts) do
+          %{status: 200, resp_body: body} ->
+            case Jason.decode!(body) do
+              %{
+                "status" => "cancelled",
+                "resume_ready" => false,
+                "recovery" => %{
+                  "state" => "refused",
+                  "action" => "checkpoint_resume",
+                  "refusal_reason" => reason,
+                  "known_limit" => known_limit
+                }
+              } = payload
+              when is_binary(reason) and is_binary(known_limit) ->
+                {:ok, payload}
+
+              _ ->
+                :retry
+            end
+
+          _ ->
+            :retry
+        end
+      end)
+
+    assert refused_payload["recovery"]["refusal_reason"] =~ "human gate is fully cleared"
+    assert refused_payload["recovery"]["known_limit"] =~ "checkpoint-backed recovery slice only"
+
+    answer_conn =
+      conn(
+        :post,
+        "/pipelines/#{pipeline_id}/questions/gate/answer",
+        Jason.encode!(%{"answer" => "A"})
+      )
+      |> put_req_header("content-type", "application/json")
+      |> Router.call(@router_opts)
+
+    assert answer_conn.status == 202
+
+    available_payload =
+      wait_for(fn ->
+        case Router.call(conn(:get, "/pipelines/#{pipeline_id}"), @router_opts) do
+          %{status: 200, resp_body: body} ->
+            case Jason.decode!(body) do
+              %{
+                "status" => "cancelled",
+                "resume_ready" => true,
+                "recovery" => %{
+                  "state" => "available",
+                  "action" => "checkpoint_resume",
+                  "refusal_reason" => nil,
+                  "known_limit" => known_limit
+                }
+              } = payload
+              when is_binary(known_limit) ->
+                {:ok, payload}
+
+              _ ->
+                :retry
+            end
+
+          _ ->
+            :retry
+        end
+      end)
+
+    assert available_payload["recovery"]["known_limit"] =~ "checkpoint-backed recovery slice only"
   end
 
   defp wait_for(fun, attempts \\ 100)

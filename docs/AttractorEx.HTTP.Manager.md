@@ -35,6 +35,8 @@ Creates and starts a pipeline run under HTTP management.
 
 # `pipeline_graph`
 
+# `pipeline_status_payload`
+
 # `record_event`
 
 # `register_question`

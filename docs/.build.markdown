@@ -111,6 +111,9 @@ AttractorPhoenixWeb.SetupLive.md
 AttractorPhoenixWeb.Telemetry.md
 AttractorPhoenixWeb.UserSocket.md
 AttractorPhoenixWeb.md
+Mix.Tasks.Attractor.Api.md
+Mix.Tasks.Attractor.Http.md
+Mix.Tasks.Bench.md
 Mix.Tasks.Coverage.Gate.md
 agent-loop.md
 api-reference.md

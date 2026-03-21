@@ -34,6 +34,7 @@ defmodule Bench.SelectedResumeSlice do
 
     expect_ok!(AttractorExPhx.Client.cancel_pipeline(pipeline_id), "cancel pipeline")
     wait_for_status(pipeline_id, "cancelled")
+    assert_recovery_state!(pipeline_id, "refused", "human gate is fully cleared")
 
     expect_ok!(
       AttractorExPhx.Client.answer_question(pipeline_id, "gate", "A"),
@@ -41,9 +42,11 @@ defmodule Bench.SelectedResumeSlice do
     )
 
     wait_for_resume_ready(pipeline_id)
+    assert_recovery_state!(pipeline_id, "available", nil)
 
     expect_ok!(AttractorExPhx.Client.resume_pipeline(pipeline_id), "resume pipeline")
     wait_for_status(pipeline_id, "success")
+    assert_recovery_state!(pipeline_id, "refused", "selected cancelled packet")
   end
 
   defp selected_resume_dot do
@@ -109,6 +112,33 @@ defmodule Bench.SelectedResumeSlice do
     receive do
     after
       20 -> fun.()
+    end
+  end
+
+  defp assert_recovery_state!(pipeline_id, expected_state, expected_reason) do
+    payload = expect_ok!(AttractorExPhx.Client.get_pipeline(pipeline_id), "get pipeline")
+    recovery = payload["recovery"] || %{}
+
+    if recovery["state"] != expected_state do
+      raise(
+        "expected recovery state #{inspect(expected_state)}, got #{inspect(recovery["state"])}"
+      )
+    end
+
+    case expected_reason do
+      nil ->
+        if recovery["refusal_reason"] != nil do
+          raise(
+            "expected no refusal_reason for available recovery state, got #{inspect(recovery["refusal_reason"])}"
+          )
+        end
+
+      reason ->
+        unless String.contains?(to_string(recovery["refusal_reason"] || ""), reason) do
+          raise(
+            "expected refusal_reason to include #{inspect(reason)}, got #{inspect(recovery["refusal_reason"])}"
+          )
+        end
     end
   end
 

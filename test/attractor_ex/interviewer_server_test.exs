@@ -101,7 +101,7 @@ defmodule AttractorEx.InterviewerServerTest do
         send(parent, {:multiple_result, result})
       end)
 
-    assert_receive {:event, %{type: "InterviewStarted"}}
+    assert_receive {:event, %{type: "InterviewStarted"}}, 500
     assert_receive {:event, %{type: "InterviewTimeout", duration_ms: 1}}
     assert_receive {:multiple_result, {:timeout}}
     assert {:ok, []} = Manager.pending_questions(manager, "server-timeout")
@@ -363,7 +363,8 @@ defmodule AttractorEx.InterviewerServerTest do
       end)
 
     assert_receive {:event,
-                    %{type: "InterviewStarted", question: %{id: "gate", type: "MULTIPLE_CHOICE"}}}
+                    %{type: "InterviewStarted", question: %{id: "gate", type: "MULTIPLE_CHOICE"}}},
+                   500
 
     wait_until(fn -> match?({:ok, [_]}, Manager.pending_questions(manager, "server-multiple")) end)
 

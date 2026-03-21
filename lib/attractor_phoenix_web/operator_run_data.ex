@@ -150,13 +150,17 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
     pending_questions = max(pipeline["pending_questions"] || 0, length(questions))
     has_checkpoint = pipeline["has_checkpoint"] == true
     first_question = List.first(questions)
+    recovery_state = recovery_state(pipeline)
+    refusal_reason = recovery_refusal_reason(pipeline)
+    known_limit = recovery_known_limit(pipeline)
+    recovery_action = recovery_action_label(pipeline)
 
     cond do
       pending_questions > 0 ->
         %{
           label: "Human gate blocks progress",
           tone: "run-status-question",
-          mode: "Action-taking route",
+          mode: "Explicit refusal state",
           owner: "Operator review required",
           action:
             if(is_map(first_question),
@@ -164,34 +168,35 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
               else: "Answer pending human gate"
             ),
           detail:
-            "#{pending_questions} pending question(s) still block the run, so the truthful recovery path starts with a human answer rather than automatic retry or resume.",
+            recovery_refusal_detail(
+              refusal_reason,
+              "#{pending_questions} pending question(s) still block the selected packet, so checkpoint resume remains explicitly refused until the human gate is cleared."
+            ),
           next_step:
             if is_map(first_question) do
-              "Answer the pending question on this route or inspect the debugger before responding."
+              "Answer the pending question on this route or inspect the debugger before responding. Recovery stays refused until that answer is recorded."
             else
-              "Open run detail or debugger to inspect the waiting prompt before responding."
+              "Open run detail or debugger to inspect the waiting prompt before responding. Recovery stays refused until the selected human gate is cleared."
             end,
           effect:
             "Submitting an answer advances the waiting gate. It does not retry, replay, or resume the run by itself.",
-          unavailable:
-            "Retry, replay, and resume are not exposed as safe operator actions on this route yet."
+          unavailable: known_limit
         }
 
-      resume_ready?(pipeline) ->
+      recovery_state == "available" ->
         %{
           label: "Checkpoint-backed resume available",
           tone: "run-status-running",
-          mode: "Explicit recovery action",
+          mode: "Explicit availability state",
           owner: "Operator recovery choice",
-          action: "Resume from saved checkpoint",
+          action: recovery_action,
           detail:
-            "The selected cancelled packet now has a persisted checkpoint and a cleared human gate, so one explicit checkpoint-backed resume action is admitted on this route.",
+            "The selected cancelled packet now has a persisted checkpoint, a cleared human gate, and a recorded answer, so one explicit checkpoint-backed resume action is admitted on this route.",
           next_step:
             "Trigger the explicit resume control to continue this same run from the latest checkpoint-backed boundary.",
           effect:
-            "Resume continues this same run id from the saved checkpoint. It proves one checkpoint-backed recovery slice only.",
-          unavailable:
-            "Retry, replay, restart, and broader operator recovery claims remain out of scope."
+            "Resume continues this same run id from the saved checkpoint and yields one qualified continuity slice only.",
+          unavailable: known_limit
         }
 
       status == :fail and has_checkpoint ->
@@ -235,12 +240,15 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
           owner: "Operator decision",
           action: "Inspect checkpoint boundary",
           detail:
-            "The run ended in cancelled state after checkpointable progress, so operators can inspect the saved boundary before deciding what work to restart elsewhere.",
+            recovery_refusal_detail(
+              refusal_reason,
+              "The run ended in cancelled state after checkpointable progress, so operators can inspect the saved boundary before deciding what work to restart elsewhere."
+            ),
           next_step:
             "Use the debugger to compare the checkpoint snapshot and recent events before planning recovery.",
           effect:
             "Checkpoint comparison supports recovery planning. It does not resume the cancelled run from this route.",
-          unavailable: "Resume, retry, and replay are not exposed here as safe operator actions."
+          unavailable: known_limit
         }
 
       status == :cancelled ->
@@ -472,11 +480,11 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
       label: "Checkpoint resume started",
       owner: "Operator recovery action accepted",
       detail:
-        "The run is now continuing from its saved checkpoint on the same run id through the explicit control-plane resume action.",
+        "The run is now continuing from its saved checkpoint on the same run id through the explicit control-plane resume action. This is one qualified continuity result on the selected packet.",
       next_step:
-        "Follow the run state and debugger timeline to confirm the resumed result without widening the claim beyond this packet.",
+        "Follow the run state and debugger timeline on this same run id to confirm the resumed result without widening the claim beyond this packet.",
       known_limit:
-        "This proves one checkpoint-backed resume slice only. It does not generalize retry, replay, or restart semantics."
+        "This proves one qualified checkpoint-backed continuity slice on the same run id only. It does not generalize retry, replay, restart, or non-selected-route recovery."
     }
   end
 
@@ -883,6 +891,32 @@ defmodule AttractorPhoenixWeb.OperatorRunData do
 
   def resume_ready?(pipeline) when is_map(pipeline), do: pipeline["resume_ready"] == true
   def resume_ready?(_pipeline), do: false
+
+  defp recovery_contract(pipeline) when is_map(pipeline), do: pipeline["recovery"] || %{}
+  defp recovery_contract(_pipeline), do: %{}
+
+  defp recovery_state(pipeline), do: recovery_contract(pipeline)["state"]
+
+  defp recovery_refusal_reason(pipeline), do: recovery_contract(pipeline)["refusal_reason"]
+
+  defp recovery_known_limit(pipeline) do
+    recovery_contract(pipeline)["known_limit"] ||
+      "This packet does not generalize retry, replay, restart, or non-selected-route recovery."
+  end
+
+  defp recovery_action_label(pipeline) do
+    case recovery_contract(pipeline)["action"] do
+      "checkpoint_resume" -> "Resume from saved checkpoint"
+      action when is_binary(action) and action != "" -> action
+      _ -> "Inspect recovery state"
+    end
+  end
+
+  defp recovery_refusal_detail(reason, _fallback) when is_binary(reason) and reason != "" do
+    "Recovery is currently refused: #{reason}."
+  end
+
+  defp recovery_refusal_detail(_reason, fallback), do: fallback
 
   defp normalize_answer(answer) do
     trimmed = String.trim(to_string(answer || ""))

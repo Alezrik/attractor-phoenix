@@ -23,7 +23,15 @@ defmodule AttractorPhoenixWeb.DebuggerLiveTest do
     assert has_element?(view, "#debugger-recovery-summary")
     assert has_element?(view, "#debugger-recovery-label", "Human gate blocks progress")
     assert has_element?(view, "#debugger-recovery-next-step", "Approve release?")
+    assert has_element?(view, "#debugger-recovery-detail", "selected cancelled packet")
     assert has_element?(view, "#debugger-recovery-effect", "does not retry, replay, or resume")
+
+    assert has_element?(
+             view,
+             "#debugger-recovery-unavailable",
+             "does not generalize retry, replay, restart"
+           )
+
     assert has_element?(view, "#debugger-human-gate-summary")
     assert has_element?(view, "#debugger-human-gate-action", "Approve release?")
     assert has_element?(view, "#debugger-human-gate-effect", "does not retry, replay, or resume")
@@ -54,6 +62,30 @@ defmodule AttractorPhoenixWeb.DebuggerLiveTest do
     assert has_element?(debugger_view, "#run-debugger-page")
     assert has_element?(debugger_view, "#debugger-human-gate-summary")
     assert has_element?(debugger_view, "#debugger-recovery-summary")
+  end
+
+  test "debugger shows explicit refusal on the selected cancelled packet before resume is admitted",
+       %{conn: conn} do
+    pipeline_id = "debugger_refused_packet_#{System.unique_integer([:positive])}"
+
+    assert {:ok, %{"pipeline_id" => ^pipeline_id}} =
+             AttractorAPI.create_pipeline(wait_human_dot(), %{}, pipeline_id: pipeline_id)
+
+    wait_for_questions(pipeline_id)
+    assert {:ok, %{"status" => "cancelled"}} = AttractorAPI.cancel_pipeline(pipeline_id)
+    wait_for_pipeline_status(pipeline_id, "cancelled")
+
+    {:ok, view, _html} = live(conn, ~p"/runs/#{pipeline_id}/debugger?focus=questions")
+
+    assert has_element?(view, "#debugger-recovery-label", "Human gate blocks progress")
+    assert has_element?(view, "#debugger-recovery-detail", "checkpoint resume stays blocked")
+    assert has_element?(view, "#debugger-recovery-detail", "human gate is fully cleared")
+
+    assert has_element?(
+             view,
+             "#debugger-recovery-unavailable",
+             "one explicit checkpoint-backed recovery slice only"
+           )
   end
 
   test "human-gate answer flow leaves explicit post-answer confirmation across debugger and run detail",
@@ -138,6 +170,8 @@ defmodule AttractorPhoenixWeb.DebuggerLiveTest do
     {:ok, view, _html} = live(conn, ~p"/runs/#{pipeline_id}/debugger?focus=questions")
 
     assert has_element?(view, "#debugger-recovery-label", "Checkpoint-backed resume available")
+    assert has_element?(view, "#debugger-recovery-detail", "recorded answer")
+    assert has_element?(view, "#debugger-recovery-effect", "same run id")
     assert has_element?(view, "#debugger-resume-pipeline", "Resume From Checkpoint")
 
     view
@@ -149,11 +183,12 @@ defmodule AttractorPhoenixWeb.DebuggerLiveTest do
     assert has_element?(view, "#debugger-run-state", "Completed")
     assert has_element?(view, "#debugger-recovery-receipt")
     assert has_element?(view, "#debugger-recovery-receipt-label", "Checkpoint resume started")
+    assert has_element?(view, "#debugger-recovery-receipt-detail", "same run id")
 
     assert has_element?(
              view,
              "#debugger-recovery-receipt-known-limit",
-             "does not generalize retry, replay, or restart semantics"
+             "qualified checkpoint-backed continuity slice on the same run id only"
            )
   end
 

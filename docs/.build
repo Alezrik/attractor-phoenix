@@ -112,6 +112,9 @@ AttractorPhoenixWeb.SetupLive.html
 AttractorPhoenixWeb.Telemetry.html
 AttractorPhoenixWeb.UserSocket.html
 AttractorPhoenixWeb.html
+Mix.Tasks.Attractor.Api.html
+Mix.Tasks.Attractor.Http.html
+Mix.Tasks.Bench.html
 Mix.Tasks.Coverage.Gate.html
 agent-loop.html
 api-reference.html
@@ -125,8 +128,8 @@ dist/lato-latin-700-normal-2XVSBPG4.woff2
 dist/lato-latin-ext-400-normal-N27NCBWW.woff2
 dist/lato-latin-ext-700-normal-Q2L5DVMW.woff2
 dist/remixicon-ZWU5GQ4X.woff2
-dist/search_data-D77E9D26.js
-dist/sidebar_items-953701D2.js
+dist/search_data-384F971F.js
+dist/sidebar_items-C93F7647.js
 http-api.html
 human-in-the-loop.html
 index.html

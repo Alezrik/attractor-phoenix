@@ -260,21 +260,7 @@ defmodule AttractorEx.HTTP.Router do
 
     case Manager.get_pipeline(manager, id) do
       {:ok, pipeline} ->
-        json(conn, 200, %{
-          "pipeline_id" => pipeline.id,
-          "status" => pipeline.status,
-          "event_count" => length(pipeline.events),
-          "pending_questions" => map_size(pipeline.questions),
-          "logs_root" => pipeline.logs_root,
-          "inserted_at" => pipeline.inserted_at,
-          "updated_at" => pipeline.updated_at,
-          "has_checkpoint" => is_map(pipeline.checkpoint),
-          "resume_ready" =>
-            pipeline.status in [:cancelled, "cancelled"] and
-              is_map(pipeline.checkpoint) and
-              map_size(pipeline.questions) == 0 and
-              map_size(get_in(pipeline.checkpoint, ["context", "human", "answers"]) || %{}) > 0
-        })
+        json(conn, 200, Manager.pipeline_status_payload(pipeline))
 
       {:error, :not_found} ->
         json(conn, 404, %{"error" => "pipeline not found"})
